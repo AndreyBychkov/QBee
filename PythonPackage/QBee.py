@@ -1,6 +1,6 @@
 import sympy as sp
 
-from PythonPachage.AST_walk import find_non_polynomial
+from PythonPackage.AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder
 
 
