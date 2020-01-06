@@ -1,10 +1,11 @@
 import sympy as sp
+from collections.abc import Iterable
 
 
 class SymbolsHolder:
 
-    def __init__(self, symbols: list):
-        self._original_symbols = symbols
+    def __init__(self, symbols: Iterable[sp.Symbol]):
+        self._original_symbols = list(symbols)
         self._added_symbols = list()
         self._base_name = "y_"
 
