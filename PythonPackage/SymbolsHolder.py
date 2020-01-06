@@ -4,7 +4,7 @@ from collections.abc import Iterable
 
 class SymbolsHolder:
 
-    def __init__(self, symbols: Iterable[sp.Symbol]):
+    def __init__(self, symbols: Iterable):
         self._original_symbols = list(symbols)
         self._added_symbols = list()
         self._base_name = "y_"
