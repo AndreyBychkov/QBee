@@ -31,6 +31,20 @@ class EquationSystem:
             non_polynomial_found = find_non_polynomial(eq)
         return False if non_polynomial_found else True
 
+    def polynomize(self, mode='algebraic'):
+        if mode == 'algebraic':
+            self._polynomize_algebraic()
+        elif mode == 'differential':
+            self._polynomize_differential()
+        else:
+            raise ValueError("mode must be 'algebraic' or 'differential")
+
+    def _polynomize_algebraic(self):
+        pass
+
+    def _polynomize_differential(self):
+        pass
+
     def __len__(self):
         return len(self._equations)
 
