@@ -9,6 +9,7 @@ from SymbolsHolder import SymbolsHolder
 class EquationSystem:
     def __init__(self, equations: List[sp.Eq]):
         self._equations = equations
+        self._original_equation_indexes = list(range(len(equations)))
         self._replacement_equations = list()
 
         self.variables = SymbolsHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
@@ -26,10 +27,10 @@ class EquationSystem:
             self._equations[i] = sp.expand(self._equations[i])
 
     def is_polynomial(self):
-        non_polynomial_found = None
-        for eq in self._equations:
-            non_polynomial_found = find_non_polynomial(eq)
-        return False if non_polynomial_found else True
+        for i in self._original_equation_indexes:
+            if not self.equations[i].args[1].is_polynomial():
+                return False
+        return True
 
     def polynomize(self, mode='algebraic'):
         if mode == 'algebraic':
