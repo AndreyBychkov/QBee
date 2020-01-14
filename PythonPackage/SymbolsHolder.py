@@ -2,6 +2,10 @@ import sympy as sp
 from collections.abc import Iterable
 
 
+def make_derivative_symbol(symbol):
+    return sp.Symbol(rf"\dot {symbol}")
+
+
 class SymbolsHolder:
 
     def __init__(self, symbols: Iterable):
@@ -22,7 +26,7 @@ class SymbolsHolder:
 
     def create_symbol_with_derivative(self):
         new_symbol = self.create_symbol()
-        new_symbol_der = sp.Symbol(rf"\dot {new_symbol}")
+        new_symbol_der = make_derivative_symbol(new_symbol)
         return new_symbol, new_symbol_der
 
     def get_last_added(self):
