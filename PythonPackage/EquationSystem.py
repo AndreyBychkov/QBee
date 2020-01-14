@@ -40,10 +40,24 @@ class EquationSystem:
             raise ValueError("mode must be 'algebraic' or 'differential")
 
     def _polynomize_algebraic(self):
-        pass
+        while not self.is_polynomial():
+            self._replace_algebraic()
+
+    def _replace_algebraic(self):
+        for equation in self._equations:
+            non_poly_elem = find_non_polynomial(equation)
+            if non_poly_elem:
+                new_symbol = self.variables.create_symbol()
+                self.replace_expression(non_poly_elem, new_symbol)
+                self._equations.append(sp.Eq(new_symbol, non_poly_elem))
+                break
 
     def _polynomize_differential(self):
-        pass
+        while not self.is_polynomial():
+            self._replace_differential()
+
+    def _replace_differential(self):
+        raise NotImplementedError("Differential replace is not implemented.")
 
     def __len__(self):
         return len(self._equations)
