@@ -26,9 +26,23 @@ class EquationSystem:
         for i in range(len(self._equations)):
             self._equations[i] = sp.expand(self._equations[i])
 
-    def is_polynomial(self):
+    def is_polynomial(self, mode="original"):
+        if mode == "original":
+            return self._is_polynomial_original()
+        elif mode == "full":
+            return self._is_polynomial_full()
+        else:
+            raise ValueError("mode must be 'original' or 'full'.")
+
+    def _is_polynomial_original(self):
         for i in self._original_equation_indexes:
             if not self.equations[i].args[1].is_polynomial():
+                return False
+        return True
+
+    def _is_polynomial_full(self):
+        for eq in self._equations:
+            if not eq.args[1].is_polynomial():
                 return False
         return True
 
@@ -55,12 +69,12 @@ class EquationSystem:
                 break
 
     def _polynomize_differential(self):
-        while not self.is_polynomial():
+        while not self.is_polynomial(mode="full"):
             self._replace_differential()
 
     def _replace_differential(self):
-        for i in self._original_equation_indexes:
-            non_poly_elem = find_non_polynomial(self.equations[i].args[1])
+        for eq in self._equations:
+            non_poly_elem = find_non_polynomial(eq.args[1])
             if non_poly_elem:
                 new_symbol, new_symbol_der = self.variables.create_symbol_with_derivative()
                 self.replace_expression(non_poly_elem, new_symbol)
