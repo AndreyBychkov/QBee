@@ -83,12 +83,11 @@ class EquationSystem:
                 break
 
     def _calculate_Lie_derivative(self, expr: sp.Expr):
-        if len(expr.free_symbols) > 1:
-            raise NotImplementedError("Now we can take only derivatives of uni-variable expressions")
-        var = next(iter(expr.free_symbols))
-        var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
-        var_diff = var_diff_eq.args[1]
-        der = expr.diff(var) * var_diff
+        der = expr.diff(*expr.free_symbols)
+        for var in expr.free_symbols:
+            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
+            var_diff = var_diff_eq.args[1]
+            der *= var_diff
         return self._replace_from_list(der)
 
     def _replace_from_list(self, expr: sp.Expr):
