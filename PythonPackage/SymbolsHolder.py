@@ -20,6 +20,11 @@ class SymbolsHolder:
         self._added_symbols.append(new_symbol)
         return new_symbol
 
+    def create_symbol_with_derivative(self):
+        new_symbol = self.create_symbol()
+        new_symbol_der = sp.Symbol(rf"\dot {new_symbol}")
+        return new_symbol, new_symbol_der
+
     def get_last_added(self):
         return self._added_symbols[-1]
 
