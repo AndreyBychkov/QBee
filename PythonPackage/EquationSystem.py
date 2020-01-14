@@ -45,11 +45,12 @@ class EquationSystem:
             self._replace_algebraic()
 
     def _replace_algebraic(self):
-        for equation in self._equations:
-            non_poly_elem = find_non_polynomial(equation)
+        for i in self._original_equation_indexes:
+            non_poly_elem = find_non_polynomial(self.equations[i].args[1])
             if non_poly_elem:
                 new_symbol = self.variables.create_symbol()
                 self.replace_expression(non_poly_elem, new_symbol)
+                self._replacement_equations.append(sp.Eq(new_symbol, non_poly_elem))
                 self._equations.append(sp.Eq(new_symbol, non_poly_elem))
                 break
 
