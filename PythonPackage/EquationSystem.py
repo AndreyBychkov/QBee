@@ -3,7 +3,7 @@ import sympy as sp
 from functools import reduce
 from typing import List
 from AST_walk import find_non_polynomial
-from SymbolsHolder import SymbolsHolder
+from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 
 
 class EquationSystem:
@@ -59,7 +59,29 @@ class EquationSystem:
             self._replace_differential()
 
     def _replace_differential(self):
-        raise NotImplementedError("Differential replace is not implemented.")
+        for i in self._original_equation_indexes:
+            non_poly_elem = find_non_polynomial(self.equations[i].args[1])
+            if non_poly_elem:
+                new_symbol, new_symbol_der = self.variables.create_symbol_with_derivative()
+                self.replace_expression(non_poly_elem, new_symbol)
+                self._replacement_equations.append(sp.Eq(new_symbol, non_poly_elem))
+                self._equations.append(sp.Eq(new_symbol_der, self._calculate_Lie_derivative(non_poly_elem)))
+                break
+
+    def _calculate_Lie_derivative(self, expr: sp.Expr):
+        if len(expr.free_symbols) > 1:
+            raise NotImplementedError("Now we can take only derivatives of uni-variable expressions")
+        var = next(iter(expr.free_symbols))
+        var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
+        var_diff = var_diff_eq.args[1]
+        der = expr.diff(var) * var_diff
+        return self._replace_from_list(der)
+
+    def _replace_from_list(self, expr: sp.Expr):
+        new_expr = expr.copy()
+        for left, right in map(lambda eq: eq.args, self._replacement_equations):
+            new_expr = new_expr.subs(right, left)
+        return new_expr
 
     def __len__(self):
         return len(self._equations)
