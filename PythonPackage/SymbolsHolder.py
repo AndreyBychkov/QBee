@@ -29,6 +29,10 @@ class SymbolsHolder:
         new_symbol_der = make_derivative_symbol(new_symbol)
         return new_symbol, new_symbol_der
 
+    def add_symbols(self, symbols: Iterable):
+        for new_symbol in symbols:
+            self._added_symbols.append(new_symbol)
+
     def get_last_added(self):
         return self._added_symbols[-1]
 

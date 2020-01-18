@@ -7,16 +7,16 @@ from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 
 
 class EquationSystem:
-    def __init__(self, equations: List[sp.Eq], parameter_variables: Iterable[sp.Symbol] = None):
+    def __init__(self, equations: List[sp.Eq],
+                 parameter_variables: Iterable[sp.Symbol] = None,
+                 input_variables: Iterable[sp.Symbol] = None):
         self._equations = equations
         self._original_equation_indexes = list(range(len(equations)))
         self._replacement_equations = list()
 
         self.variables = SymbolsHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
-        if parameter_variables is None:
-            self._parameter_vars = set()
-        else:
-            self._parameter_vars = set(parameter_variables)
+        self._parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
+        self._input_vars = set(input_variables) if input_variables is not None else set()
 
     @property
     def equations(self):
@@ -87,12 +87,15 @@ class EquationSystem:
                 break
 
     def _calculate_Lie_derivative(self, expr: sp.Expr):
-        curr_symbols = expr.free_symbols.difference(self._parameter_vars)
         result = sp.Integer(0)
-        for var in curr_symbols:
+        for var in expr.free_symbols.difference(self._parameter_vars).difference(self._input_vars):
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
             var_diff = var_diff_eq.args[1]
             result += expr.diff(var) * var_diff
+        for input_var in expr.free_symbols.intersection(self._input_vars):
+            input_var_dot = make_derivative_symbol(input_var)
+            self.variables.add_symbols([input_var_dot])
+            result += expr.diff(input_var) * input_var_dot
         return self._replace_from_list(result)
 
     def _replace_from_list(self, expr: sp.Expr):
