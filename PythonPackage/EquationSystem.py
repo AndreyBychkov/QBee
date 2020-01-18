@@ -88,12 +88,12 @@ class EquationSystem:
 
     def _calculate_Lie_derivative(self, expr: sp.Expr):
         curr_symbols = expr.free_symbols.difference(self._parameter_vars)
-        der = expr.diff(*curr_symbols)
+        result = sp.Integer(0)
         for var in curr_symbols:
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
             var_diff = var_diff_eq.args[1]
-            der *= var_diff
-        return self._replace_from_list(der)
+            result += expr.diff(var) * var_diff
+        return self._replace_from_list(result)
 
     def _replace_from_list(self, expr: sp.Expr):
         new_expr = expr.copy()
