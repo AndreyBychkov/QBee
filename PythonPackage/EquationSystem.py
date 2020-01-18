@@ -1,18 +1,22 @@
 import sympy as sp
 
 from functools import reduce
-from typing import List
+from typing import List, Iterable
 from AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 
 
 class EquationSystem:
-    def __init__(self, equations: List[sp.Eq]):
+    def __init__(self, equations: List[sp.Eq], parameter_variables: Iterable[sp.Symbol] = None):
         self._equations = equations
         self._original_equation_indexes = list(range(len(equations)))
         self._replacement_equations = list()
 
         self.variables = SymbolsHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
+        if parameter_variables is None:
+            self._parameter_vars = set()
+        else:
+            self._parameter_vars = set(parameter_variables)
 
     @property
     def equations(self):
@@ -83,8 +87,9 @@ class EquationSystem:
                 break
 
     def _calculate_Lie_derivative(self, expr: sp.Expr):
-        der = expr.diff(*expr.free_symbols)
-        for var in expr.free_symbols:
+        curr_symbols = expr.free_symbols.difference(self._parameter_vars)
+        der = expr.diff(*curr_symbols)
+        for var in curr_symbols:
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
             var_diff = var_diff_eq.args[1]
             der *= var_diff
