@@ -10,7 +10,7 @@ class EquationSystem:
     def __init__(self, equations: List[sp.Eq],
                  parameter_variables: Iterable[sp.Symbol] = None,
                  input_variables: Iterable[sp.Symbol] = None):
-        self._equations = equations
+        self._equations = equations.copy()
         self._original_equation_indexes = list(range(len(equations)))
         self._replacement_equations = list()
 
