@@ -118,6 +118,28 @@ class EquationSystem:
             new_expr = new_expr.subs(right, left)
         return new_expr
 
+    def quadratic_linearize(self, mode="algebraic") -> None:
+        """
+        Transforms the system into quadratic-linear form.
+
+        :param mode: if 'algebraic', adds auxiliary equations in form y = f(x, y);
+                     if 'differential', adds auxiliary equations in form y' = f(x, y).
+        """
+        if not self.is_polynomial():
+            raise RuntimeError("System is not polynomized. Polynomize it first.")
+        if mode == "algebraic":
+            self._quadratic_linearize_algebraic()
+        elif mode == "differential":
+            self._quadratic_linearize_differential()
+        else:
+            raise ValueError("mode must be 'algebraic' or 'differential'")
+
+    def _quadratic_linearize_algebraic(self):
+        pass
+
+    def _quadratic_linearize_differential(self):
+        pass
+
     def __len__(self):
         return len(self._equations)
 
@@ -126,3 +148,5 @@ class EquationSystem:
 
     def __str__(self):
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
+
+
