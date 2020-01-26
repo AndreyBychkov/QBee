@@ -23,14 +23,21 @@ class EquationSystem:
         return self._equations
 
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
+        """Replace 'old' expression with 'new' expression for each equation."""
         for i in range(len(self._equations)):
             self._equations[i] = self._equations[i].subs(old, new)
 
     def expand_equations(self):
+        """Apply SymPy 'expand' function to each of equation."""
         for i in range(len(self._equations)):
             self._equations[i] = sp.expand(self._equations[i])
 
-    def is_polynomial(self, mode="original"):
+    def is_polynomial(self, mode="original") -> bool:
+        """
+        Checks if the system is polynomial.
+
+        :param mode: if 'original', checks only original equations of system; if 'full', checks all equations.
+        """
         if mode == "original":
             return self._is_polynomial_original()
         elif mode == "full":
@@ -38,19 +45,25 @@ class EquationSystem:
         else:
             raise ValueError("mode must be 'original' or 'full'.")
 
-    def _is_polynomial_original(self):
+    def _is_polynomial_original(self) -> bool:
         for i in self._original_equation_indexes:
             if not self.equations[i].args[1].is_polynomial():
                 return False
         return True
 
-    def _is_polynomial_full(self):
+    def _is_polynomial_full(self) -> bool:
         for eq in self._equations:
             if not eq.args[1].is_polynomial():
                 return False
         return True
 
-    def polynomize(self, mode='algebraic'):
+    def polynomize(self, mode='algebraic') -> None:
+        """
+        Transforms the system into polynomial form.
+
+        :param mode: if 'algebraic', adds auxiliary equations in form y = f(x, y);
+                     if 'differential', adds auxiliary equations in form y' = f(x, y).
+        """
         if mode == 'algebraic':
             self._polynomize_algebraic()
         elif mode == 'differential':
@@ -87,6 +100,7 @@ class EquationSystem:
                 break
 
     def _calculate_Lie_derivative(self, expr: sp.Expr):
+        """Calculates Lie derivative using chain rule."""
         result = sp.Integer(0)
         for var in expr.free_symbols.difference(self._parameter_vars).difference(self._input_vars):
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
@@ -96,9 +110,9 @@ class EquationSystem:
             input_var_dot = make_derivative_symbol(input_var)
             self.variables.add_symbols([input_var_dot])
             result += expr.diff(input_var) * input_var_dot
-        return self._replace_from_list(result)
+        return self._replace_from_replacement_equations(result)
 
-    def _replace_from_list(self, expr: sp.Expr):
+    def _replace_from_replacement_equations(self, expr: sp.Expr):
         new_expr = expr.copy()
         for left, right in map(lambda eq: eq.args, self._replacement_equations):
             new_expr = new_expr.subs(right, left)
