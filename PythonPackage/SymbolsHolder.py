@@ -7,11 +7,18 @@ def make_derivative_symbol(symbol) -> sp.Symbol:
     """
     Makes symbol with the dot from input symbol.
 
+    If symbols with index must be in form 's_{index}'.
+
     Example:
         .. math:: \dot{x} = make\_derivative\_symbol(x)
 
     """
-    return sp.Symbol(rf"\dot {symbol}")
+    str_symbol = str(symbol)
+    if '_' in str_symbol:
+        name, index, *other = str(symbol).split('_')
+        return sp.Symbol(rf'\dot {name}' + '_' + '%s' % index)
+    else:
+        return sp.Symbol(rf'\dot {str_symbol}')
 
 
 class SymbolsHolder:
@@ -34,11 +41,11 @@ class SymbolsHolder:
         :return: Created symbol
         """
         if not self._added_symbols:
-            new_symbol = sp.Symbol(self._base_name + "0")
+            new_symbol = sp.Symbol(self._base_name + "{0}")
         else:
             last = str(self.get_last_added())
-            new_index = int(last.split("_")[1]) + 1
-            new_symbol = sp.Symbol(last[:-1] + str(new_index))
+            new_index = int(last.split("_")[1][1:-1]) + 1
+            new_symbol = sp.Symbol(self._base_name + "{%d}" % new_index)
 
         self._added_symbols.append(new_symbol)
         return new_symbol
