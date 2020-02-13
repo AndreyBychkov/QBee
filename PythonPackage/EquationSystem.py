@@ -118,6 +118,33 @@ class EquationSystem:
             new_expr = new_expr.subs(right, left)
         return new_expr
 
+    def is_quadratic_linear(self, mode='full') -> bool:
+        if mode == 'original':
+            return self._is_quadratic_linear_original()
+        elif mode == 'full':
+            return self._is_quadratic_linear_full()
+        else:
+            raise ValueError("mode must be 'original' or 'full'.")
+
+    def _is_quadratic_linear_full(self) -> bool:
+        for eq in self._equations:
+            if not self._is_poly_quadratic_linear(eq.args[1]):
+                return False
+        return True
+
+    def _is_quadratic_linear_original(self) -> bool:
+        for i in self._original_equation_indexes:
+            if not self._is_poly_quadratic_linear(self._equations[i].args[1]):
+                return False
+        return True
+
+    def _is_poly_quadratic_linear(self, poly: sp.Expr) -> bool:
+        monomials = sp.Add.make_args(poly)
+        for mon in monomials:
+            if sp.total_degree(mon) > 2:
+                return False
+        return True
+
     def quadratic_linearize(self, mode="algebraic") -> None:
         """
         Transforms the system into quadratic-linear form.
@@ -148,5 +175,3 @@ class EquationSystem:
 
     def __str__(self):
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
-
-
