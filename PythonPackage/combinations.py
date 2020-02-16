@@ -16,6 +16,7 @@ def get_decompositions(monomial: sp.Poly) -> Set[Tuple]:
 
     """
     res = _get_decompositions_rec(monomial, [], set())
+    res = res if res is not None else {(monomial, )}
     res = map(lambda s: sorted(s, key=sp.polys.orderings.monomial_key('grlex', monomial.free_symbols)), res)
     res = map(lambda b: list(map(lambda m: m.as_expr(), b)), res)  # For convenient representation. Can be removed if necessary.
     res = set(tuple(s) for s in res)
