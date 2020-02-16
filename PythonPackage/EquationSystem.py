@@ -1,9 +1,11 @@
 import sympy as sp
+import random
 
 from functools import reduce
 from typing import List, Iterable
 from AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder, make_derivative_symbol
+from util import polynomial_replace, get_possible_replacements
 
 
 class EquationSystem:
@@ -26,6 +28,11 @@ class EquationSystem:
         """Replace 'old' expression with 'new' expression for each equation."""
         for i in range(len(self._equations)):
             self._equations[i] = self._equations[i].subs(old, new)
+
+    def replace_subexpression(self, old: sp.Expr, new: sp.Expr):
+        """If any expression in system is divisible on 'old', replace it with 'new'"""
+        for i, eq in enumerate(self._equations):
+            self._equations[i] = sp.Eq(eq.args[0], polynomial_replace(eq.args[1], old, new))
 
     def expand_equations(self):
         """Apply SymPy 'expand' function to each of equation."""
@@ -162,10 +169,23 @@ class EquationSystem:
             raise ValueError("mode must be 'algebraic' or 'differential'")
 
     def _quadratic_linearize_algebraic(self):
-        pass
+        raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
 
     def _quadratic_linearize_differential(self):
-        pass
+        self._quadratic_linearize_diff_rand()
+
+    def _quadratic_linearize_diff_rand(self):
+        """Picks replacement in random way."""
+        while not self.is_quadratic_linear():
+            right_equations = list(map(lambda eq: eq.args[1], self._equations))
+            possible_replacements = set(reduce(set.union, map(get_possible_replacements, right_equations)))
+            rand_replacement = random.choice(tuple(possible_replacements)).as_expr()
+
+            new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
+            self.replace_subexpression(rand_replacement, new_symbol)
+            self._replacement_equations.append(sp.Eq(new_symbol, rand_replacement))
+
+            self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(rand_replacement)).expand())
 
     def __len__(self):
         return len(self._equations)
