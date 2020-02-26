@@ -2,7 +2,7 @@ import sympy as sp
 import random
 
 from functools import reduce
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Callable
 from AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 from util import polynomial_replace, get_possible_replacements
@@ -152,7 +152,7 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearize(self, mode="algebraic", debug=None) -> None:
+    def quadratic_linearize(self, mode="algebraic", method='sqrt-first', debug=None) -> None:
         """
         Transforms the system into quadratic-linear form.
 
@@ -164,48 +164,46 @@ class EquationSystem:
         if mode == "algebraic":
             self._quadratic_linearize_algebraic(debug=debug)
         elif mode == "differential":
-            self._quadratic_linearize_differential(debug=debug)
+            self._quadratic_linearize_differential(method, debug=debug)
         else:
             raise ValueError("mode must be 'algebraic' or 'differential'")
 
     def _quadratic_linearize_algebraic(self, debug=None):
         raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
 
-    def _quadratic_linearize_differential(self, debug=None):
-        self._quadratic_linearize_diff_rand(debug)
-
-    def _quadratic_linearize_diff_rand(self, debug=None):
-        """Picks replacement in random way.
-        :param debug:
-        :param debug:
-        """
+    def _quadratic_linearize_differential(self, method: str, debug=None):
         while not self.is_quadratic_linear():
             self._debug_system_print(debug)
-            right_equations = list(map(lambda eq: eq.args[1], self._equations))
-            possible_replacements = set(reduce(set.union, map(get_possible_replacements, right_equations)))
-            rand_replacement = random.choice(tuple(possible_replacements)).as_expr()
 
+            replacement = self._ql_choice_method_name_to_function(method)()
             new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
-            self.replace_subexpression(rand_replacement, new_symbol)
-            self._replacement_equations.append(sp.Eq(new_symbol, rand_replacement))
+            self.replace_subexpression(replacement, new_symbol)
+            self._replacement_equations.append(sp.Eq(new_symbol, replacement))
 
-            self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(rand_replacement)).expand())
+            self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
 
-    def _quadratic_linearize_diff_square_first(self, debug=None):
-        self._debug_system_print(debug)
+    def _ql_choice_method_name_to_function(self, method):
+        if method == 'random':
+            return self._ql_random_choice
+        elif method == 'sqrt-first':
+            return self._ql_sqrt_first_choice
+        else:
+            raise ValueError("Replacement method has wrong name.")
+
+    def _ql_random_choice(self):
+        right_equations = list(map(lambda eq: eq.args[1], self._equations))
+        possible_replacements = set(reduce(set.union, map(get_possible_replacements, right_equations)))
+        rand_replacement = random.choice(tuple(possible_replacements)).as_expr()
+        return rand_replacement
+
+    def _ql_sqrt_first_choice(self):
         right_equations = list(map(lambda eq: eq.args[1], self._equations))
         possible_replacements = tuple(set(reduce(set.union, map(get_possible_replacements, right_equations))))
         sqrt_replacements = tuple(filter(lambda x: len(x.free_symbols) == 1, possible_replacements))
         if sqrt_replacements:
-            replacement = random.choice(sqrt_replacements).as_expr()
+            return random.choice(sqrt_replacements).as_expr()
         else:
-            replacement = random.choice(possible_replacements).as_expr()
-
-        new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
-        self.replace_subexpression(replacement, new_symbol)
-        self._replacement_equations.append(sp.Eq(new_symbol, replacement))
-
-        self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
+            return random.choice(possible_replacements).as_expr()
 
     def _debug_system_print(self, level: Optional[str]):
         if level is None or level == 'silent':
