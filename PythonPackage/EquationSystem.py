@@ -191,6 +191,22 @@ class EquationSystem:
 
             self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(rand_replacement)).expand())
 
+    def _quadratic_linearize_diff_square_first(self, debug=None):
+        self._debug_system_print(debug)
+        right_equations = list(map(lambda eq: eq.args[1], self._equations))
+        possible_replacements = tuple(set(reduce(set.union, map(get_possible_replacements, right_equations))))
+        sqrt_replacements = tuple(filter(lambda x: len(x.free_symbols) == 1, possible_replacements))
+        if sqrt_replacements:
+            replacement = random.choice(sqrt_replacements).as_expr()
+        else:
+            replacement = random.choice(possible_replacements).as_expr()
+
+        new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
+        self.replace_subexpression(replacement, new_symbol)
+        self._replacement_equations.append(sp.Eq(new_symbol, replacement))
+
+        self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
+
     def _debug_system_print(self, level: Optional[str]):
         if level is None or level == 'silent':
             pass
