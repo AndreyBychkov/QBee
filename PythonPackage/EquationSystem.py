@@ -2,7 +2,7 @@ import sympy as sp
 import random
 
 from functools import reduce
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 from AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 from util import polynomial_replace, get_possible_replacements
@@ -152,7 +152,7 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearize(self, mode="algebraic") -> None:
+    def quadratic_linearize(self, mode="algebraic", debug=None) -> None:
         """
         Transforms the system into quadratic-linear form.
 
@@ -162,21 +162,25 @@ class EquationSystem:
         if not self.is_polynomial():
             raise RuntimeError("System is not polynomized. Polynomize it first.")
         if mode == "algebraic":
-            self._quadratic_linearize_algebraic()
+            self._quadratic_linearize_algebraic(debug=debug)
         elif mode == "differential":
-            self._quadratic_linearize_differential()
+            self._quadratic_linearize_differential(debug=debug)
         else:
             raise ValueError("mode must be 'algebraic' or 'differential'")
 
-    def _quadratic_linearize_algebraic(self):
+    def _quadratic_linearize_algebraic(self, debug=None):
         raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
 
-    def _quadratic_linearize_differential(self):
-        self._quadratic_linearize_diff_rand()
+    def _quadratic_linearize_differential(self, debug=None):
+        self._quadratic_linearize_diff_rand(debug)
 
-    def _quadratic_linearize_diff_rand(self):
-        """Picks replacement in random way."""
+    def _quadratic_linearize_diff_rand(self, debug=None):
+        """Picks replacement in random way.
+        :param debug:
+        :param debug:
+        """
         while not self.is_quadratic_linear():
+            self._debug_system_print(debug)
             right_equations = list(map(lambda eq: eq.args[1], self._equations))
             possible_replacements = set(reduce(set.union, map(get_possible_replacements, right_equations)))
             rand_replacement = random.choice(tuple(possible_replacements)).as_expr()
@@ -186,6 +190,21 @@ class EquationSystem:
             self._replacement_equations.append(sp.Eq(new_symbol, rand_replacement))
 
             self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(rand_replacement)).expand())
+
+    def _debug_system_print(self, level: Optional[str]):
+        if level is None or level == 'silent':
+            pass
+        elif level == 'info':
+            print('-' * 100)
+            print(self.equations, end='\n\n')
+        elif level == 'debug':
+            print('-' * 100)
+            print('Equations:')
+            print(self.equations, end='\n\n')
+            print('Replacement equations:')
+            print(self._replacement_equations, end='\n\n')
+        else:
+            raise ValueError("debug value must be 'silent', 'info' or debug'")
 
     def __len__(self):
         return len(self._equations)
