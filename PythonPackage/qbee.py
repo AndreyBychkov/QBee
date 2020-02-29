@@ -6,7 +6,7 @@ from EquationSystem import EquationSystem
 def polynomialize(system: List[sp.Eq],
                   parameter_variables: Iterable[sp.Symbol] = None,
                   input_variables: Iterable[sp.Symbol] = None,
-                  mode='algebraic') -> List[sp.Eq]:
+                  mode='differential') -> List[sp.Eq]:
     """
         Transforms the system into polynomial form using variable replacement techniques.
 
