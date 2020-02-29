@@ -185,25 +185,44 @@ class EquationSystem:
     def _ql_choice_method_name_to_function(self, method):
         if method == 'random':
             return self._ql_random_choice
+        elif method == 'count-first':
+            return self._ql_count_first_choice
         elif method == 'sqrt-first':
             return self._ql_sqrt_first_choice
+        elif method == 'sqrt-count-first':
+            return self._ql_sqrt_count_first_choice
         else:
             raise ValueError("Replacement method has wrong name.")
 
     def _ql_random_choice(self):
         right_equations = list(map(lambda eq: eq.args[1], self._equations))
-        possible_replacements = set(reduce(set.union, map(get_possible_replacements, right_equations)))
-        rand_replacement = random.choice(tuple(possible_replacements)).as_expr()
+        possible_replacements = get_possible_replacements(right_equations, count_sorted=False)
+        rand_replacement = random.choice(possible_replacements).as_expr()
         return rand_replacement
+
+    def _ql_count_first_choice(self):
+        right_equations = list(map(lambda eq: eq.args[1], self._equations))
+        possible_replacements = get_possible_replacements(right_equations, count_sorted=True)
+        most_frequent_replacement = possible_replacements[0].as_expr()
+        return most_frequent_replacement
 
     def _ql_sqrt_first_choice(self):
         right_equations = list(map(lambda eq: eq.args[1], self._equations))
-        possible_replacements = tuple(set(reduce(set.union, map(get_possible_replacements, right_equations))))
+        possible_replacements = get_possible_replacements(right_equations, count_sorted=False)
         sqrt_replacements = tuple(filter(lambda x: len(x.free_symbols) == 1, possible_replacements))
         if sqrt_replacements:
-            return random.choice(sqrt_replacements).as_expr()
+            return sqrt_replacements[0].as_expr()
         else:
-            return random.choice(possible_replacements).as_expr()
+            return possible_replacements[0].as_expr()
+
+    def _ql_sqrt_count_first_choice(self):
+        right_equations = list(map(lambda eq: eq.args[1], self._equations))
+        possible_replacements = get_possible_replacements(right_equations, count_sorted=True)
+        sqrt_replacements = tuple(filter(lambda x: len(x.free_symbols) == 1, possible_replacements))
+        if sqrt_replacements:
+            return sqrt_replacements[0].as_expr()
+        else:
+            return possible_replacements[0].as_expr()
 
     def _debug_system_print(self, level: Optional[str]):
         if level is None or level == 'silent':

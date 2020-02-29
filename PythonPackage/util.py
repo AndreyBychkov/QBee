@@ -2,17 +2,28 @@ import sympy as sp
 
 from combinations import get_decompositions
 from functools import reduce, partial
+from typing import List, Tuple
+from operator import add
+from collections import Counter
 
 
-def get_possible_replacements(poly: sp.Expr):
-    terms = list(map(lambda m: sp.Poly(m), sp.Add.make_args(poly.expand())))
+def get_possible_replacements(poly_list: List[sp.Expr], count_sorted=True) -> Tuple[sp.Poly]:
+    combined_poly = sum(poly_list)
+    terms = list(map(lambda m: sp.Poly(m), sp.Add.make_args(combined_poly.expand())))
     decompositions = list(map(get_decompositions, terms))
 
     possible_replacements = list()
     for dec in decompositions:
         all_replacements = reduce(set.union, map(set, dec))
         possible_replacements += list(filter(lambda p: p.total_degree() > 1, map(sp.Poly, all_replacements)))
-    return set(possible_replacements)
+    possible_replacements = set(possible_replacements)
+
+    if count_sorted:
+        decompositions_list = reduce(add, map(list, decompositions))
+        decompositions_list = reduce(add, decompositions_list)
+        counts = Counter(decompositions_list)
+        possible_replacements = sorted(possible_replacements, key=lambda r: counts[r.as_expr()], reverse=True)
+    return tuple(possible_replacements)
 
 
 def polynomial_replace(poly: sp.Expr, old: sp.Expr, new: sp.Expr) -> sp.Expr:
@@ -26,3 +37,7 @@ def monomial_replace(monomial: sp.Expr, old: sp.Expr, new: sp.Expr) -> sp.Expr:
         return quotient * new
     else:
         return monomial
+
+
+def sorted_square_first(monomials: List[sp.Poly]) -> List[sp.Poly]:
+    return sorted(monomials, key=lambda m: len(m.free_symbols) / m.total_degree())
