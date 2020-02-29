@@ -154,10 +154,30 @@ class EquationSystem:
 
     def quadratic_linearize(self, mode="differential", method='sqrt-count-first', debug=None) -> None:
         """
-        Transforms the system into quadratic-linear form.
+        Transforms the system into quadratic-linear form using variable replacement technique.
 
-        :param mode: if 'algebraic', adds auxiliary equations in form y = f(x, y);
-                     if 'differential', adds auxiliary equations in form y' = f(x, y).
+        :param mode: auxiliary equation form.
+        :param method: next replacement choice method.
+
+        Mode
+        -----------------
+        **algebraic**
+            adds auxiliary equations in form y = f(x, y)
+        **differential**
+             adds auxiliary equations in form y' = f(x, y)
+
+        Method
+        -----------------
+        **random**
+            choose next possible replacement in random way;
+        **count-first**
+            choose most frequent possible replacement as the next one;
+        **sqrt-first**
+            choose next possible replacement within variables' squares in random way;
+        **sqrt-count-first**
+             choose most frequent square replacement as the next one;
+
+
         """
         if not self.is_polynomial():
             raise RuntimeError("System is not polynomized. Polynomize it first.")
