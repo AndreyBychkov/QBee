@@ -165,6 +165,7 @@ class EquationSystem:
 
         :param mode: auxiliary equation form.
         :param method: next replacement choice method.
+        :param debug: printing mode while quadratic linearization is performed.
 
         Mode
         -----------------
@@ -184,6 +185,14 @@ class EquationSystem:
         **sqrt-count-first**
              choose most frequent square replacement as the next one;
 
+        Debug
+        ---------------
+        **None** or **silent**
+            prints nothing;
+        **info**
+            prints equations in system each iteration;
+        **debug**
+            prints equations in system with replacement equations each iteration;
 
         """
         if not self.is_polynomial():
