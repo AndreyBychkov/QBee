@@ -64,7 +64,7 @@ class EquationSystem:
                 return False
         return True
 
-    def polynomize(self, mode='algebraic') -> None:
+    def polynomize(self, mode='differential') -> None:
         """
         Transforms the system into polynomial form.
 
@@ -152,7 +152,7 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearize(self, mode="algebraic", method='sqrt-count-first', debug=None) -> None:
+    def quadratic_linearize(self, mode="differential", method='sqrt-count-first', debug=None) -> None:
         """
         Transforms the system into quadratic-linear form.
 
