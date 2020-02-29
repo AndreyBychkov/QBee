@@ -152,7 +152,7 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearize(self, mode="algebraic", method='sqrt-first', debug=None) -> None:
+    def quadratic_linearize(self, mode="algebraic", method='sqrt-count-first', debug=None) -> None:
         """
         Transforms the system into quadratic-linear form.
 
