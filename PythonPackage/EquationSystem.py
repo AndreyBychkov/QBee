@@ -66,10 +66,17 @@ class EquationSystem:
 
     def polynomialize(self, mode='differential') -> None:
         """
-        Transforms the system into polynomial form.
+        Transforms the system into polynomial form using variable replacement techniques.
 
-        :param mode: if 'algebraic', adds auxiliary equations in form y = f(x, y);
-                     if 'differential', adds auxiliary equations in form y' = f(x, y).
+        :param mode: auxiliary equation form.
+
+        Mode
+        -----------------
+        **algebraic**
+            adds auxiliary equations in form y = f(x, y)
+        **differential**
+             adds auxiliary equations in form y' = f(x, y)
+
         """
         if mode == 'algebraic':
             self._polynomize_algebraic()
