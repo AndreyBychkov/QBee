@@ -64,7 +64,7 @@ class EquationSystem:
                 return False
         return True
 
-    def polynomize(self, mode='differential') -> None:
+    def polynomialize(self, mode='differential') -> None:
         """
         Transforms the system into polynomial form.
 
