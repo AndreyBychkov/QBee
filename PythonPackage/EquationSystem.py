@@ -1,6 +1,7 @@
 import random
 import hashlib
 import sympy as sp
+import pandas as pd
 
 from functools import reduce
 from typing import List, Iterable, Optional, Callable
@@ -213,15 +214,26 @@ class EquationSystem:
         raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
 
     def _quadratic_linearize_differential(self, method: str, debug=None):
+        log_rows_list = list()
         while not self.is_quadratic_linear():
             self._debug_system_print(debug)
+            log_dict = dict()
+            log_dict['from'] = self.equations_hash
 
             replacement = self._ql_choice_method_name_to_function(method)()
+            log_dict['replacement'] = replacement
+
             new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
             self.replace_subexpression(replacement, new_symbol)
             self._replacement_equations.append(sp.Eq(new_symbol, replacement))
 
             self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
+            log_dict['name'] = self.equations_hash
+            log_dict['is_ql'] = False
+            log_rows_list.append(log_dict)
+        log_df = pd.DataFrame(log_rows_list)
+        log_df.at[len(log_df) - 1, 'is_ql'] = True
+        log_df.to_csv(r'C:\Users\а\IdeaProjects\QBee\PythonPackage\visuzalization\log.csv', index=False)
         if not (debug is None or debug == 'silent'):
             print('-' * 100)
 
