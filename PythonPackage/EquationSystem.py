@@ -165,13 +165,14 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearize(self, mode="differential", method='sqrt-count-first', debug=None) -> None:
+    def quadratic_linearize(self, mode="differential", method='sqrt-count-first', debug=None, log_file: Optional[str] = None) -> None:
         """
         Transforms the system into quadratic-linear form using variable replacement technique.
 
         :param mode: auxiliary equation form.
         :param method: next replacement choice method.
         :param debug: printing mode while quadratic linearization is performed.
+        :param log_file: output file for evaluation logging. Must be in 'csv' format.
 
         Mode
         -----------------
@@ -206,36 +207,43 @@ class EquationSystem:
         if mode == "algebraic":
             self._quadratic_linearize_algebraic(debug=debug)
         elif mode == "differential":
-            self._quadratic_linearize_differential(method, debug=debug)
+            self._quadratic_linearize_differential(method, debug=debug, log_file=log_file)
         else:
             raise ValueError("mode must be 'algebraic' or 'differential'")
 
     def _quadratic_linearize_algebraic(self, debug=None):
         raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
 
-    def _quadratic_linearize_differential(self, method: str, debug=None):
+    def _quadratic_linearize_differential(self, method: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         log_rows_list = list()
         while not self.is_quadratic_linear():
             self._debug_system_print(debug)
-            log_dict = dict()
-            log_dict['from'] = self.equations_hash
+            hash_before, hash_after, replacement = self._ql_differential_iter(method)
+            if log_file:
+                self._ql_log_append(log_rows_list, hash_before, hash_after, replacement)
 
-            replacement = self._ql_choice_method_name_to_function(method)()
-            log_dict['replacement'] = replacement
+        if log_file:
+            log_df = pd.DataFrame(log_rows_list)
+            log_df.to_csv(log_file, index=False)
 
-            new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
-            self.replace_subexpression(replacement, new_symbol)
-            self._replacement_equations.append(sp.Eq(new_symbol, replacement))
-
-            self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
-            log_dict['name'] = self.equations_hash
-            log_dict['is_ql'] = False
-            log_rows_list.append(log_dict)
-        log_df = pd.DataFrame(log_rows_list)
-        log_df.at[len(log_df) - 1, 'is_ql'] = True
-        log_df.to_csv(r'C:\Users\а\IdeaProjects\QBee\PythonPackage\visuzalization\log.csv', index=False)
         if not (debug is None or debug == 'silent'):
             print('-' * 100)
+
+    def _ql_differential_iter(self, method: str):
+        hash_before = self.equations_hash
+
+        replacement = self._ql_choice_method_name_to_function(method)()
+        new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
+        self.replace_subexpression(replacement, new_symbol)
+        self._replacement_equations.append(sp.Eq(new_symbol, replacement))
+
+        self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
+        hash_after = self.equations_hash
+
+        return hash_before, hash_after, replacement
+
+    def _ql_log_append(self, row_list: List, hash_before, hash_after, replacement):
+        row_list.append({'from': hash_before, 'name': hash_after, 'replacement': replacement})
 
     def _ql_choice_method_name_to_function(self, method):
         if method == 'random':
