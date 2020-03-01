@@ -1,5 +1,5 @@
 import sympy as sp
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 from EquationSystem import EquationSystem
 
 
@@ -33,7 +33,8 @@ def quadratic_linearize(system: List[sp.Eq],
                         input_variables: Iterable[sp.Symbol] = None,
                         mode='differential',
                         method='sqrt-count-first',
-                        debug=None) -> List[sp.Eq]:
+                        debug: Optional[str] = None,
+                        log_file: Optional[str] = None) -> List[sp.Eq]:
     """
     Transforms the system into quadratic-linear form using variable replacement technique.
 
@@ -43,6 +44,7 @@ def quadratic_linearize(system: List[sp.Eq],
     :param mode: auxiliary equation form.
     :param method: next replacement choice method.
     :param debug: printing mode while quadratic linearization is performed.
+    :param log_file: output file for evaluation logging. Must be in 'csv' format.
 
 
     Mode
@@ -76,5 +78,5 @@ def quadratic_linearize(system: List[sp.Eq],
     eq_system = EquationSystem(system, parameter_variables, input_variables)
     if not eq_system.is_polynomial('full'):
         eq_system.polynomialize(mode)
-    eq_system.quadratic_linearize(mode, method, debug)
+    eq_system.quadratic_linearize(mode, method, debug, log_file)
     return eq_system.equations
