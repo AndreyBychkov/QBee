@@ -68,9 +68,9 @@ def quadratic_linearize(system: List[sp.Eq],
     **None** or **silent**
         prints nothing;
     **info**
-        prints equations in system each iteration;
+        prints replacement for each iteration;
     **debug**
-        prints equations in system with replacement equations each iteration;
+        prints equations in system with replacement for each iteration;
 
     """
     eq_system = EquationSystem(system, parameter_variables, input_variables)

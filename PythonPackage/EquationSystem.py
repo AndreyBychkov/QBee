@@ -190,9 +190,9 @@ class EquationSystem:
         **None** or **silent**
             prints nothing;
         **info**
-            prints equations in system each iteration;
+            prints replacement for each iteration;
         **debug**
-            prints equations in system with replacement equations each iteration;
+            prints equations in system with replacement for each iteration;
 
         """
         if not self.is_polynomial():
@@ -217,6 +217,8 @@ class EquationSystem:
             self._replacement_equations.append(sp.Eq(new_symbol, replacement))
 
             self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
+        if not (debug is None or debug == 'silent'):
+            print('-' * 100)
 
     def _ql_choice_method_name_to_function(self, method):
         if method == 'random':
@@ -265,13 +267,15 @@ class EquationSystem:
             pass
         elif level == 'info':
             print('-' * 100)
-            print(self.equations, end='\n\n')
+            print(f"Equations added: {len(self._replacement_equations)}")
+            print(f"Last replacement: {self._replacement_equations[-1]}")
         elif level == 'debug':
             print('-' * 100)
+            print(f"Equations added: {len(self._replacement_equations)}")
+            print(f"Last replacement: {self._replacement_equations[-1]}")
             print('Equations:')
-            print(self.equations, end='\n\n')
-            print('Replacement equations:')
-            print(self._replacement_equations, end='\n\n')
+            print(self.equations)
+
         else:
             raise ValueError("debug value must be 'silent', 'info' or debug'")
 
