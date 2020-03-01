@@ -1,5 +1,6 @@
-import sympy as sp
 import random
+import hashlib
+import sympy as sp
 
 from functools import reduce
 from typing import List, Iterable, Optional, Callable
@@ -23,6 +24,10 @@ class EquationSystem:
     @property
     def equations(self):
         return self._equations
+
+    @property
+    def equations_hash(self):
+        return hashlib.md5(str(self._equations).encode('utf-8')).digest()
 
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
