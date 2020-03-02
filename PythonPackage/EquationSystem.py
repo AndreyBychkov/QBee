@@ -217,14 +217,16 @@ class EquationSystem:
     def _quadratic_linearize_differential(self, method: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         log_rows_list = list()
         while not self.is_quadratic_linear():
-            self._debug_system_print(debug)
             hash_before, hash_after, replacement = self._ql_differential_iter(method)
+
+            self._debug_system_print(debug)
             if log_file:
                 self._ql_log_append(log_rows_list, hash_before, hash_after, replacement)
 
         if log_file:
             log_df = pd.DataFrame(log_rows_list)
             log_df.to_csv(log_file, index=False)
+
 
         if not (debug is None or debug == 'silent'):
             print('-' * 100)
