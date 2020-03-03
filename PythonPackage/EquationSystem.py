@@ -196,7 +196,7 @@ class EquationSystem:
         if not self.is_polynomial():
             raise RuntimeError("System is not polynomialized. Polynomize it first.")
         if mode == 'optimal':
-            return self._quadratic_linearize_optimal(auxiliary_eq_type)
+            return self._quadratic_linearize_optimal(auxiliary_eq_type, debug)
         elif mode == 'heuristic':
             return self._quadratic_linearize_heuristic(auxiliary_eq_type, heuristics, debug, log_file)
         else:
@@ -291,17 +291,25 @@ class EquationSystem:
         else:
             return possible_replacements[0].as_expr()
 
-    def _quadratic_linearize_optimal(self, auxiliary_eq_type: str):
+    def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, debug: Optional[str] = None):
+        initial_eq_number = len(self.equations)
+        disable_pbar = True if (debug is None or debug == 'silent') else False
+        progress_bar = tqdm(total=1, unit='node', desc="System nodes processed: ", disable=disable_pbar)
         system_queue = Queue()
         system_queue.put(self, block=True)
 
         ql_reached = False
         while not ql_reached:
             curr_system = system_queue.get()
+            progress_bar.update(-1)
+            progress_bar.postfix = f"Current depth level: {len(curr_system.equations) - initial_eq_number}"
+            progress_bar.total -= 1
             if curr_system.is_quadratic_linear():
+                progress_bar.close()
                 return curr_system
 
             possible_replacements = curr_system._get_possible_replacements()
+            progress_bar.total += len(possible_replacements)
             for replacement in map(sp.Poly.as_expr, possible_replacements):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
@@ -309,6 +317,7 @@ class EquationSystem:
                 equation_add_fun(new_symbol, replacement)
 
                 system_queue.put(new_system)
+                progress_bar.update(1)
 
     def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
         """Calculates Lie derivative using chain rule."""
