@@ -8,7 +8,7 @@ from typing import Tuple
 def visualize(log_file: str,
               figsize: Tuple[float, float] = (20, 20),
               node_size: int = 50,
-              edge_width: int = 0.2,
+              edge_width: float = 0.2,
               edge_label_font_size=5,
               ) -> None:
     log_df = pd.read_csv(log_file)
@@ -25,7 +25,7 @@ def visualize(log_file: str,
 
     shortest_path = nx.shortest_path(g, nodes[0], nodes[-1])
     shortest_path_edges = list(zip(shortest_path, shortest_path[1:]))
-    nx.draw_networkx_edges(g, pos, edgelist=shortest_path_edges, edge_color='r', width=edge_width * 2.5)
+    nx.draw_networkx_edges(g, pos, edgelist=shortest_path_edges, edge_color='r', width=edge_width * 2.5, arrowsize=10 * edge_width * 2.5)
 
     edge_labels = dict([((fr, to), data['replacement']) for fr, to, data in g.edges(data=True)])
     nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels, font_size=edge_label_font_size)
