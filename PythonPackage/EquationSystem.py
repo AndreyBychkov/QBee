@@ -169,23 +169,33 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearize(self, mode="differential", method='sqrt-count-first', debug=None, log_file: Optional[str] = None) -> None:
+    def quadratic_linearized(self, mode="heuristic", auxiliary_eq_type="differential", heuristics='sqrt-count-first', debug=None, log_file=None):
         """
         Transforms the system into quadratic-linear form using variable replacement technique.
 
-        :param mode: auxiliary equation form.
-        :param method: next replacement choice method.
+        :param mode: use 'optimal' to find optimal transformation.
+        :param auxiliary_eq_type: auxiliary equation form.
+        :param heuristics: next replacement choice method.
         :param debug: printing mode while quadratic linearization is performed.
         :param log_file: output file for evaluation logging. Must be in 'csv' format.
+        :returns: quadtaric-linearizaed system
+        :rtype: EquationSystem
 
         Mode
+        -----------------
+        **optimal**
+            find optimal transformation. The most time-consuming mode;
+        **heuristic**
+            find sub-optimal transformation. Works much faster than 'optimal'. You can choose heuristics in 'heuristics' parameter;
+
+        Auxiliary equations type
         -----------------
         **algebraic**
             adds auxiliary equations in form y = f(x, y)
         **differential**
              adds auxiliary equations in form y' = f(x, y)
 
-        Method
+        Heuristics
         -----------------
         **random**
             choose next possible replacement in random way;
@@ -208,24 +218,35 @@ class EquationSystem:
         """
         if not self.is_polynomial():
             raise RuntimeError("System is not polynomialized. Polynomize it first.")
-        if mode == "algebraic":
-            self._quadratic_linearize_algebraic(debug=debug)
-        elif mode == "differential":
-            self._quadratic_linearize_differential(method, debug=debug, log_file=log_file)
+        if mode == 'optimal':
+            if auxiliary_eq_type == 'algebraic':
+                return self._ql_algebraic_optimal()
+            elif auxiliary_eq_type == 'differential':
+                return self._ql_differential_optimal()
+            else:
+                raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+        elif mode == 'heuristic':
+            if auxiliary_eq_type == "algebraic":
+                return self._quadratic_linearize_algebraic(debug=debug)
+            elif auxiliary_eq_type == "differential":
+                return self._quadratic_linearize_differential(heuristics, debug=debug, log_file=log_file)
+            else:
+                raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
         else:
-            raise ValueError("mode must be 'algebraic' or 'differential'")
+            raise ValueError("mode must be 'optimal' or 'heuristic'")
 
     def _quadratic_linearize_algebraic(self, debug=None):
         raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
 
     def _quadratic_linearize_differential(self, method: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         log_rows_list = list()
-        while not self.is_quadratic_linear():
-            hash_before, hash_after, replacement = self._ql_differential_iter(method)
+        new_system = deepcopy(self)
+        while not new_system.is_quadratic_linear():
+            hash_before, hash_after, replacement = new_system._ql_differential_iter(method)
 
-            self._debug_system_print(debug)
+            new_system._debug_system_print(debug)
             if log_file:
-                self._ql_log_append(log_rows_list, hash_before, hash_after, replacement)
+                new_system._ql_log_append(log_rows_list, hash_before, hash_after, replacement)
 
         if log_file:
             log_df = pd.DataFrame(log_rows_list)
@@ -233,6 +254,8 @@ class EquationSystem:
 
         if not (debug is None or debug == 'silent'):
             print('-' * 100)
+
+        return new_system
 
     def _ql_differential_iter(self, method: str):
         hash_before = self.equations_hash
@@ -292,7 +315,10 @@ class EquationSystem:
         else:
             return possible_replacements[0].as_expr()
 
-    def _ql_optimal(self):
+    def _ql_algebraic_optimal(self):
+        raise NotImplementedError("Algebraic optimal quadratic-linearization is not implemented yet. ")
+
+    def _ql_differential_optimal(self):
         system_queue = Queue()
         system_queue.put(self, block=True)
         ql_reached = False

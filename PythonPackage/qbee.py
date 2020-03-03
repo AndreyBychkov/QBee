@@ -78,5 +78,5 @@ def quadratic_linearize(system: List[sp.Eq],
     eq_system = EquationSystem(system, parameter_variables, input_variables)
     if not eq_system.is_polynomial('full'):
         eq_system.polynomialize(mode)
-    eq_system.quadratic_linearize(mode, method, debug, log_file)
+    eq_system.quadratic_linearized(auxiliary_eq_type=mode, heuristics=method, debug=debug, log_file=log_file)
     return eq_system.equations
