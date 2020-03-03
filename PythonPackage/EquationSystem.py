@@ -207,7 +207,7 @@ class EquationSystem:
 
         """
         if not self.is_polynomial():
-            raise RuntimeError("System is not polynomized. Polynomize it first.")
+            raise RuntimeError("System is not polynomialized. Polynomize it first.")
         if mode == "algebraic":
             self._quadratic_linearize_algebraic(debug=debug)
         elif mode == "differential":
@@ -230,7 +230,6 @@ class EquationSystem:
         if log_file:
             log_df = pd.DataFrame(log_rows_list)
             log_df.to_csv(log_file, index=False)
-
 
         if not (debug is None or debug == 'silent'):
             print('-' * 100)
@@ -312,8 +311,8 @@ class EquationSystem:
                 new_symbol, new_symbol_dot = new_system.variables.create_symbol_with_derivative()
                 new_system.replace_subexpression(replacement, new_symbol)
                 new_system._replacement_equations.append(sp.Eq(new_symbol, replacement))
-
                 new_system._equations.append(sp.Eq(new_symbol_dot, new_system._calculate_Lie_derivative(replacement)).expand())
+
                 system_queue.put(new_system)
             counter += 1
 
