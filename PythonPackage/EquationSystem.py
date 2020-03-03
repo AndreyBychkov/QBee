@@ -1,8 +1,12 @@
+import os
 import random
 import hashlib
 import sympy as sp
 import pandas as pd
 
+from tqdm import tqdm
+from copy import copy, deepcopy
+from queue import Queue
 from functools import reduce
 from typing import List, Iterable, Optional, Callable
 from AST_walk import find_non_polynomial
@@ -288,6 +292,30 @@ class EquationSystem:
             return sqrt_replacements[0].as_expr()
         else:
             return possible_replacements[0].as_expr()
+
+    def _ql_optimal(self):
+        system_queue = Queue()
+        system_queue.put(self, block=True)
+        ql_reached = False
+        counter = 0
+        while not ql_reached:
+            if counter % 50 == 0:
+                os.system('cls')
+                print(f"Systems processed: {counter}")
+            curr_system = system_queue.get()
+            if curr_system.is_quadratic_linear():
+                return curr_system
+            right_equations = list(map(lambda eq: eq.args[1], curr_system.equations))
+            possible_replacements = get_possible_replacements(right_equations, count_sorted=False)
+            for replacement in map(sp.Poly.as_expr, possible_replacements):
+                new_system = deepcopy(curr_system)
+                new_symbol, new_symbol_dot = new_system.variables.create_symbol_with_derivative()
+                new_system.replace_subexpression(replacement, new_symbol)
+                new_system._replacement_equations.append(sp.Eq(new_symbol, replacement))
+
+                new_system._equations.append(sp.Eq(new_symbol_dot, new_system._calculate_Lie_derivative(replacement)).expand())
+                system_queue.put(new_system)
+            counter += 1
 
     def _debug_system_print(self, level: Optional[str]):
         if level is None or level == 'silent':
