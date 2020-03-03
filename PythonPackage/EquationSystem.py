@@ -8,7 +8,7 @@ from tqdm import tqdm
 from copy import copy, deepcopy
 from queue import Queue
 from functools import reduce
-from typing import List, Iterable, Optional, Callable
+from typing import List, Iterable, Optional, Callable, Tuple
 from AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 from util import polynomial_replace, get_possible_replacements
@@ -39,7 +39,7 @@ class EquationSystem:
         for i in range(len(self._equations)):
             self._equations[i] = self._equations[i].subs(old, new)
 
-    def replace_subexpression(self, old: sp.Expr, new: sp.Expr):
+    def replace_monomial(self, old: sp.Expr, new: sp.Expr):
         """If any expression in system is divisible on 'old', replace it with 'new'"""
         for i, eq in enumerate(self._equations):
             self._equations[i] = sp.Eq(eq.args[0], polynomial_replace(eq.args[1], old, new))
@@ -89,58 +89,35 @@ class EquationSystem:
 
         """
         if mode == 'algebraic':
-            self._polynomize_algebraic()
+            self._polynomialize_algebraic()
         elif mode == 'differential':
-            self._polynomize_differential()
+            self._polynomialize_differential()
         else:
             raise ValueError("mode must be 'algebraic' or 'differential")
 
-    def _polynomize_algebraic(self):
+    def _polynomialize_algebraic(self):
         while not self.is_polynomial():
-            self._replace_algebraic()
+            self._polynomialize_algebraic_iter()
 
-    def _replace_algebraic(self):
-        for i in self._original_equation_indexes:
-            non_poly_elem = find_non_polynomial(self.equations[i].args[1])
-            if non_poly_elem:
-                new_symbol = self.variables.create_symbol()
-                self.replace_expression(non_poly_elem, new_symbol)
-                self._replacement_equations.append(sp.Eq(new_symbol, non_poly_elem))
-                self._equations.append(sp.Eq(new_symbol, non_poly_elem))
-                break
-
-    def _polynomize_differential(self):
-        while not self.is_polynomial(mode="full"):
-            self._replace_differential()
-
-    def _replace_differential(self):
+    def _polynomialize_algebraic_iter(self):
         for eq in self._equations:
             non_poly_elem = find_non_polynomial(eq.args[1])
             if non_poly_elem:
-                new_symbol, new_symbol_der = self.variables.create_symbol_with_derivative()
-                self.replace_expression(non_poly_elem, new_symbol)
-                self._replacement_equations.append(sp.Eq(new_symbol, non_poly_elem))
-                self._equations.append(sp.Eq(new_symbol_der, self._calculate_Lie_derivative(non_poly_elem)))
+                new_symbol = self.variables.create_symbol()
+                self._algebraic_auxiliary_equation_add(new_symbol, non_poly_elem, is_polynomial_replacement=False)
                 break
 
-    def _calculate_Lie_derivative(self, expr: sp.Expr):
-        """Calculates Lie derivative using chain rule."""
-        result = sp.Integer(0)
-        for var in expr.free_symbols.difference(self._parameter_vars).difference(self._input_vars):
-            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
-            var_diff = var_diff_eq.args[1]
-            result += expr.diff(var) * var_diff
-        for input_var in expr.free_symbols.intersection(self._input_vars):
-            input_var_dot = make_derivative_symbol(input_var)
-            self.variables.add_symbols([input_var_dot])
-            result += expr.diff(input_var) * input_var_dot
-        return self._replace_from_replacement_equations(result)
+    def _polynomialize_differential(self):
+        while not self.is_polynomial(mode="full"):
+            self._polynomialize_differential_iter()
 
-    def _replace_from_replacement_equations(self, expr: sp.Expr):
-        new_expr = expr.copy()
-        for left, right in map(lambda eq: eq.args, self._replacement_equations):
-            new_expr = new_expr.subs(right, left)
-        return new_expr
+    def _polynomialize_differential_iter(self):
+        for eq in self._equations:
+            non_poly_elem = find_non_polynomial(eq.args[1])
+            if non_poly_elem:
+                new_symbol = self.variables.create_symbol()
+                self._differential_auxiliary_equation_add(new_symbol, non_poly_elem, is_polynomial_replacement=False)
+                break
 
     def is_quadratic_linear(self, mode='full') -> bool:
         if mode == 'original':
@@ -219,30 +196,18 @@ class EquationSystem:
         if not self.is_polynomial():
             raise RuntimeError("System is not polynomialized. Polynomize it first.")
         if mode == 'optimal':
-            if auxiliary_eq_type == 'algebraic':
-                return self._ql_algebraic_optimal()
-            elif auxiliary_eq_type == 'differential':
-                return self._ql_differential_optimal()
-            else:
-                raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+            return self._quadratic_linearize_optimal(auxiliary_eq_type)
         elif mode == 'heuristic':
-            if auxiliary_eq_type == "algebraic":
-                return self._quadratic_linearize_algebraic(debug=debug)
-            elif auxiliary_eq_type == "differential":
-                return self._quadratic_linearize_differential(heuristics, debug=debug, log_file=log_file)
-            else:
-                raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+            return self._quadratic_linearize_heuristic(auxiliary_eq_type, heuristics, debug, log_file)
         else:
             raise ValueError("mode must be 'optimal' or 'heuristic'")
 
-    def _quadratic_linearize_algebraic(self, debug=None):
-        raise NotImplementedError("Algebraic quadratic-linearization is not implemented yet")
-
-    def _quadratic_linearize_differential(self, method: str, debug: Optional[str] = None, log_file: Optional[str] = None):
+    def _quadratic_linearize_heuristic(self, auxiliary_eq_type: str, heuristics: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         log_rows_list = list()
         new_system = deepcopy(self)
         while not new_system.is_quadratic_linear():
-            hash_before, hash_after, replacement = new_system._ql_differential_iter(method)
+            iter_fun = new_system._ql_heuristic_iter_choose(auxiliary_eq_type)
+            hash_before, hash_after, replacement = iter_fun(heuristics)
 
             new_system._debug_system_print(debug)
             if log_file:
@@ -257,12 +222,20 @@ class EquationSystem:
 
         return new_system
 
-    def _ql_differential_iter(self, method: str):
+    def _ql_heuristic_iter_choose(self, auxiliary_eq_type: str) -> Callable:
+        if auxiliary_eq_type == 'differential':
+            return self._ql_heuristic_differential_iter
+        elif auxiliary_eq_type == 'algebraic':
+            return self._ql_heuristic_algebraic_iter
+        else:
+            raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+
+    def _ql_heuristic_differential_iter(self, method: str):
         hash_before = self.equations_hash
 
-        replacement = self._ql_choice_method_name_to_function(method)()
+        replacement = self._ql_heuristics_fun_choose(method)()
         new_symbol, new_symbol_dot = self.variables.create_symbol_with_derivative()
-        self.replace_subexpression(replacement, new_symbol)
+        self.replace_monomial(replacement, new_symbol)
         self._replacement_equations.append(sp.Eq(new_symbol, replacement))
 
         self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
@@ -270,10 +243,13 @@ class EquationSystem:
 
         return hash_before, hash_after, replacement
 
+    def _ql_heuristic_algebraic_iter(self, method: str):
+        raise NotImplementedError()
+
     def _ql_log_append(self, row_list: List, hash_before, hash_after, replacement):
         row_list.append({'from': hash_before, 'name': hash_after, 'replacement': replacement})
 
-    def _ql_choice_method_name_to_function(self, method):
+    def _ql_heuristics_fun_choose(self, method):
         if method == 'random':
             return self._ql_random_choice
         elif method == 'count-first':
@@ -315,34 +291,74 @@ class EquationSystem:
         else:
             return possible_replacements[0].as_expr()
 
-    def _ql_algebraic_optimal(self):
-        raise NotImplementedError("Algebraic optimal quadratic-linearization is not implemented yet. ")
-
-    def _ql_differential_optimal(self):
+    def _quadratic_linearize_optimal(self, auxiliary_eq_type: str):
         system_queue = Queue()
         system_queue.put(self, block=True)
+
         ql_reached = False
-        counter = 0
         while not ql_reached:
-            if counter % 50 == 0:
-                os.system('cls')
-                print(f"Systems processed: {counter}")
             curr_system = system_queue.get()
             if curr_system.is_quadratic_linear():
                 return curr_system
-            right_equations = list(map(lambda eq: eq.args[1], curr_system.equations))
-            possible_replacements = get_possible_replacements(right_equations, count_sorted=False)
+
+            possible_replacements = curr_system._get_possible_replacements()
             for replacement in map(sp.Poly.as_expr, possible_replacements):
                 new_system = deepcopy(curr_system)
-                new_symbol, new_symbol_dot = new_system.variables.create_symbol_with_derivative()
-                new_system.replace_subexpression(replacement, new_symbol)
-                new_system._replacement_equations.append(sp.Eq(new_symbol, replacement))
-                new_system._equations.append(sp.Eq(new_symbol_dot, new_system._calculate_Lie_derivative(replacement)).expand())
+                new_symbol = new_system.variables.create_symbol()
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
+                equation_add_fun(new_symbol, replacement)
 
                 system_queue.put(new_system)
-            counter += 1
 
-    def _debug_system_print(self, level: Optional[str]):
+    def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
+        """Calculates Lie derivative using chain rule."""
+        result = sp.Integer(0)
+        for var in expr.free_symbols.difference(self._parameter_vars).difference(self._input_vars):
+            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
+            var_diff = var_diff_eq.args[1]
+            result += expr.diff(var) * var_diff
+        for input_var in expr.free_symbols.intersection(self._input_vars):
+            input_var_dot = make_derivative_symbol(input_var)
+            self.variables.add_symbols([input_var_dot])
+            result += expr.diff(input_var) * input_var_dot
+        return self._replace_from_replacement_equations(result)
+
+    def _get_possible_replacements(self, count_sorted=False) -> Tuple[sp.Poly]:
+        right_equations = list(map(lambda eq: eq.args[1], self._equations))
+        return get_possible_replacements(right_equations, count_sorted=count_sorted)
+
+    def _replace_from_replacement_equations(self, expr: sp.Expr) -> sp.Expr:
+        new_expr = expr.copy()
+        for left, right in map(lambda eq: eq.args, self._replacement_equations):
+            new_expr = new_expr.subs(right, left)
+        return new_expr
+
+    def _auxiliary_equation_type_choose(self, auxiliary_eq_type: str) -> Callable:
+        if auxiliary_eq_type == 'differential':
+            return self._differential_auxiliary_equation_add
+        elif auxiliary_eq_type == 'algebraic':
+            return self._algebraic_auxiliary_equation_add
+        else:
+            raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+
+    def _differential_auxiliary_equation_add(self, new_symbol: sp.Symbol, replacement: sp.Expr, is_polynomial_replacement=True) -> None:
+        new_symbol_dot = make_derivative_symbol(new_symbol)
+        if is_polynomial_replacement:
+            self.replace_monomial(replacement, new_symbol)
+        else:
+            self.replace_expression(replacement, new_symbol)
+        self._replacement_equations.append(sp.Eq(new_symbol, replacement))
+        self._equations.append(sp.Eq(new_symbol_dot, self._calculate_Lie_derivative(replacement)).expand())
+
+    def _algebraic_auxiliary_equation_add(self, new_symbol: sp.Symbol, replacement: sp.Expr, is_polynomial_replacement=True) -> None:
+        if is_polynomial_replacement:
+            self.replace_monomial(replacement, new_symbol)
+        else:
+            self.replace_expression(replacement, new_symbol)
+        self._replacement_equations.append(sp.Eq(new_symbol, replacement))
+        self._equations.append(sp.Eq(new_symbol, replacement).expand())
+
+    def _debug_system_print(self, level: Optional[str]) -> None:
         if level is None or level == 'silent':
             pass
         elif level == 'info':
