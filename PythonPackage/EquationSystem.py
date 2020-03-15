@@ -22,6 +22,10 @@ class EquationSystem:
         self._original_equation_indexes = list(range(len(equations)))
         self._replacement_equations = list()
 
+        self._equations_poly_degrees = dict()
+        if self.is_polynomial():
+            self._compute_equations_poly_degrees()
+
         self.variables = SymbolsHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
         self._parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         self._input_vars = set(input_variables) if input_variables is not None else set()
@@ -182,6 +186,8 @@ class EquationSystem:
             choose next possible replacement within variables' squares in random way;
         **sqrt-count-first**
              choose most frequent square replacement as the next one;
+        **replacement-value**
+             choose the most valuable replacement according to replacement_degree_profit - auxiliary_equation_degree.
 
         Debug
         ---------------
@@ -258,24 +264,23 @@ class EquationSystem:
             return self._ql_sqrt_first_choice
         elif method == 'sqrt-count-first':
             return self._ql_sqrt_count_first_choice
+        elif method == 'replacement-value':
+            return self._ql_max_replacement_value()
         else:
             raise ValueError("Replacement method has wrong name.")
 
     def _ql_random_choice(self):
-        right_equations = list(map(lambda eq: eq.args[1], self._equations))
-        possible_replacements = get_possible_replacements(right_equations, count_sorted=False)
+        possible_replacements = self._get_possible_replacements(count_sorted=False)
         rand_replacement = random.choice(possible_replacements).as_expr()
         return rand_replacement
 
     def _ql_count_first_choice(self):
-        right_equations = list(map(lambda eq: eq.args[1], self._equations))
-        possible_replacements = get_possible_replacements(right_equations, count_sorted=True)
+        possible_replacements = self._get_possible_replacements(True)
         most_frequent_replacement = possible_replacements[0].as_expr()
         return most_frequent_replacement
 
     def _ql_sqrt_first_choice(self):
-        right_equations = list(map(lambda eq: eq.args[1], self._equations))
-        possible_replacements = get_possible_replacements(right_equations, count_sorted=False)
+        possible_replacements = self._get_possible_replacements(count_sorted=False)
         sqrt_replacements = tuple(filter(lambda x: len(x.free_symbols) == 1, possible_replacements))
         if sqrt_replacements:
             return sqrt_replacements[0].as_expr()
@@ -283,13 +288,28 @@ class EquationSystem:
             return possible_replacements[0].as_expr()
 
     def _ql_sqrt_count_first_choice(self):
-        right_equations = list(map(lambda eq: eq.args[1], self._equations))
-        possible_replacements = get_possible_replacements(right_equations, count_sorted=True)
+        possible_replacements = self._get_possible_replacements(count_sorted=True)
         sqrt_replacements = tuple(filter(lambda x: len(x.free_symbols) == 1, possible_replacements))
         if sqrt_replacements:
             return sqrt_replacements[0].as_expr()
         else:
             return possible_replacements[0].as_expr()
+
+    def _ql_max_replacement_value(self):
+        self._compute_equations_poly_degrees()  # Optimization can be performed here
+        possible_replacements = self._get_possible_replacements(count_sorted=False)
+        value_sorted_replacements = sorted(possible_replacements, key=self._compute_replacement_value, reverse=True)
+        return value_sorted_replacements[0].as_expr()
+
+    def _compute_replacement_value(self, replacement: sp.Poly) -> int:
+        replacement_profit = replacement.total_degree() - 2
+
+        used_equations_subs = list(map(make_derivative_symbol, replacement.free_symbols))
+        subs_degrees = list(map(lambda subs: self._equations_poly_degrees[subs], used_equations_subs))
+        auxiliary_equation_degree = max(subs_degrees) + replacement.total_degree() - 1
+
+        return replacement_profit - auxiliary_equation_degree
+
 
     def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         initial_eq_number = len(self.equations)
@@ -376,6 +396,10 @@ class EquationSystem:
             self.replace_expression(replacement, new_symbol)
         self._replacement_equations.append(sp.Eq(new_symbol, replacement))
         self._equations.append(sp.Eq(new_symbol, replacement).expand())
+
+    def _compute_equations_poly_degrees(self):
+        for var_dot, right_expr in map(lambda eq: eq.args, self._equations):
+            self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
 
     def _debug_system_print(self, level: Optional[str]) -> None:
         if level is None or level == 'silent':
