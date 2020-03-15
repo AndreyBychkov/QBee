@@ -1,4 +1,5 @@
 import os
+import math
 import random
 import hashlib
 import sympy as sp
@@ -7,6 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from copy import copy, deepcopy
 from queue import Queue
+from collections import deque
 from functools import reduce
 from typing import List, Iterable, Optional, Callable, Tuple
 from AST_walk import find_non_polynomial
@@ -150,16 +152,19 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearized(self, mode="heuristic", auxiliary_eq_type="differential", heuristics='sqrt-count-first', debug=None, log_file=None):
+    def quadratic_linearized(self, mode="heuristic", auxiliary_eq_type="differential", heuristics='sqrt-count-first', initial_max_depth: int = 3,
+                             debug=None, log_file=None):
         """
         Transforms the system into quadratic-linear form using variable replacement technique.
 
         :param mode: use 'optimal' to find optimal transformation.
         :param auxiliary_eq_type: auxiliary equation form.
         :param heuristics: next replacement choice method.
+        :param initial_max_depth: for some methods checks all systems where the number of replacements does not exceed this number.
+                                  Put here your assumption of how long a chain of optimal replacements might be.
         :param debug: printing mode while quadratic linearization is performed.
         :param log_file: output file for evaluation logging. Must be in 'csv' format.
-        :returns: quadtaric-linearizaed system
+        :returns: quadratic-linearized system
         :rtype: EquationSystem
 
         Mode
@@ -200,9 +205,9 @@ class EquationSystem:
 
         """
         if not self.is_polynomial():
-            raise RuntimeError("System is not polynomialized. Polynomize it first.")
+            raise RuntimeError("System is not polynomialized. Polynomialize it first.")
         if mode == 'optimal':
-            return self._quadratic_linearize_optimal(auxiliary_eq_type, debug, log_file)
+            return self._quadratic_linearize_optimal(auxiliary_eq_type, initial_max_depth=initial_max_depth, debug=debug, log_file=log_file)
         elif mode == 'heuristic':
             return self._quadratic_linearize_heuristic(auxiliary_eq_type, heuristics, debug, log_file)
         else:
@@ -310,13 +315,14 @@ class EquationSystem:
 
         return replacement_profit - auxiliary_equation_degree
 
-    def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, debug: Optional[str] = None, log_file: Optional[str] = None):
+    def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, method="bfs", initial_max_depth: int = 3, debug=None,
+                                     log_file: Optional[str] = None):
         initial_eq_number = len(self.equations)
         disable_pbar = True if (debug is None or debug == 'silent') else False
         progress_bar = tqdm(total=1, unit='node', desc="System nodes processed: ", disable=disable_pbar)
 
         log_rows_list = list()
-        solution = self._ql_optimal_bfs(auxiliary_eq_type, progress_bar, initial_eq_number, log_rows_list)
+        solution = self._ql_optimal_method_choose(method, auxiliary_eq_type, initial_max_depth, initial_eq_number, progress_bar, log_rows_list)
 
         if log_file:
             log_df = pd.DataFrame(log_rows_list)
@@ -351,6 +357,54 @@ class EquationSystem:
                 progress_bar.update(1)
                 if log_rows_list is not None:
                     self._ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
+
+    def _ql_optimal_iddfs(self, auxiliary_eq_type: str, initial_max_depth: int, progress_bar: tqdm, log_rows_list: Optional[List]):
+        system_stack = deque()
+        system_high_depth_stack = deque()
+        system_stack.append((self, 0))
+
+        curr_max_depth = initial_max_depth
+
+        ql_reached = False
+        while not ql_reached:
+            curr_system, curr_depth = system_stack.pop()
+
+            progress_bar.update(-1)
+            progress_bar.postfix = f"Current max depth level: {curr_max_depth}"
+            progress_bar.total -= 1
+
+            if curr_system.is_quadratic_linear():
+                progress_bar.close()
+                return curr_system
+
+            possible_replacements = curr_system._get_possible_replacements()
+            for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
+                new_system = deepcopy(curr_system)
+                new_symbol = new_system.variables.create_symbol()
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
+                equation_add_fun(new_symbol, replacement)
+
+                progress_bar.update(1)
+                if curr_depth < curr_max_depth:
+                    system_stack.append((new_system, curr_depth + 1))
+                else:
+                    system_high_depth_stack.append((new_system, curr_depth + 1))
+
+                if log_rows_list is not None:
+                    self._ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
+
+            if len(system_stack) == 0:
+                system_stack = system_high_depth_stack
+                system_high_depth_stack = deque()
+                curr_max_depth += int(math.ceil(curr_depth / math.log(curr_depth)))
+
+    def _ql_optimal_method_choose(self, method: str, auxiliary_eq_type, initial_max_depth, initial_eq_number, progress_bar, log_rows_list):
+        if method == "bfs":
+            return self._ql_optimal_bfs(auxiliary_eq_type, progress_bar, initial_eq_number, log_rows_list)
+        elif method == "iddfs":
+            return self._ql_optimal_iddfs(auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list)
+        else:
+            raise ValueError("Optimal method must be 'bfs' of 'iddfs'")
 
     def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
         """Calculates Lie derivative using chain rule."""
@@ -402,7 +456,10 @@ class EquationSystem:
 
     def _compute_equations_poly_degrees(self):
         for var_dot, right_expr in map(lambda eq: eq.args, self._equations):
-            self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
+            if right_expr.is_Number:
+                self._equations_poly_degrees[var_dot] = 0
+            else:
+                self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
 
     def _debug_system_print(self, level: Optional[str]) -> None:
         if level is None or level == 'silent':
