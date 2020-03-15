@@ -310,13 +310,20 @@ class EquationSystem:
 
         return replacement_profit - auxiliary_equation_degree
 
-
     def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         initial_eq_number = len(self.equations)
         disable_pbar = True if (debug is None or debug == 'silent') else False
         progress_bar = tqdm(total=1, unit='node', desc="System nodes processed: ", disable=disable_pbar)
 
         log_rows_list = list()
+        solution = self._ql_optimal_bfs(auxiliary_eq_type, progress_bar, initial_eq_number, log_rows_list)
+
+        if log_file:
+            log_df = pd.DataFrame(log_rows_list)
+            log_df.to_csv(log_file, index=False)
+        return solution
+
+    def _ql_optimal_bfs(self, auxiliary_eq_type: str, progress_bar: tqdm, initial_eq_number: int, log_rows_list: Optional[List]):
         system_queue = Queue()
         system_queue.put(self, block=True)
 
@@ -342,12 +349,8 @@ class EquationSystem:
 
                 system_queue.put(new_system)
                 progress_bar.update(1)
-                if log_file:
+                if log_rows_list is not None:
                     self._ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
-
-            if log_file:
-                log_df = pd.DataFrame(log_rows_list)
-                log_df.to_csv(log_file, index=False)
 
     def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
         """Calculates Lie derivative using chain rule."""
