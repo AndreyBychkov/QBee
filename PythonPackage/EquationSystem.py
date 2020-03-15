@@ -270,7 +270,7 @@ class EquationSystem:
         elif method == 'sqrt-count-first':
             return self._ql_sqrt_count_first_choice
         elif method == 'replacement-value':
-            return self._ql_max_replacement_value()
+            return self._ql_max_replacement_value_choice()
         else:
             raise ValueError("Replacement method has wrong name.")
 
@@ -300,11 +300,14 @@ class EquationSystem:
         else:
             return possible_replacements[0].as_expr()
 
-    def _ql_max_replacement_value(self):
+    def _ql_max_replacement_value_all(self) -> List[sp.Poly]:
         self._compute_equations_poly_degrees()  # Optimization can be performed here
         possible_replacements = self._get_possible_replacements(count_sorted=False)
         value_sorted_replacements = sorted(possible_replacements, key=self._compute_replacement_value, reverse=True)
-        return value_sorted_replacements[0].as_expr()
+        return value_sorted_replacements
+
+    def _ql_max_replacement_value_choice(self):
+        return self._ql_max_replacement_value_all()[0].as_expr()
 
     def _compute_replacement_value(self, replacement: sp.Poly) -> int:
         replacement_profit = replacement.total_degree() - 2
@@ -377,7 +380,7 @@ class EquationSystem:
                 progress_bar.close()
                 return curr_system
 
-            possible_replacements = curr_system._get_possible_replacements()
+            possible_replacements = curr_system._ql_max_replacement_value_all()
             for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
