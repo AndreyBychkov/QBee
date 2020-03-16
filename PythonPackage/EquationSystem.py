@@ -152,14 +152,15 @@ class EquationSystem:
                 return False
         return True
 
-    def quadratic_linearized(self, mode="heuristic", auxiliary_eq_type="differential", heuristics='sqrt-count-first', initial_max_depth: int = 3,
-                             debug=None, log_file=None):
+    def quadratic_linearized(self, mode="heuristic", auxiliary_eq_type="differential", heuristics='sqrt-count-first', method_optimal="iddfs",
+                             initial_max_depth=3, debug: int = None, log_file=None):
         """
         Transforms the system into quadratic-linear form using variable replacement technique.
 
-        :param mode: use 'optimal' to find optimal transformation.
+        :param mode: type of search.
         :param auxiliary_eq_type: auxiliary equation form.
         :param heuristics: next replacement choice method.
+        :param method_optimal: graph search algorithm in the optimal mode.
         :param initial_max_depth: for some methods checks all systems where the number of replacements does not exceed this number.
                                   Put here your assumption of how long a chain of optimal replacements might be.
         :param debug: printing mode while quadratic linearization is performed.
@@ -194,6 +195,13 @@ class EquationSystem:
         **replacement-value**
              choose the most valuable replacement according to replacement_degree_profit - auxiliary_equation_degree.
 
+        Method Optimal
+        -----------------
+        **bfs**
+            Breadth-First Search
+        **iddfs**
+            Iterative Deepening Depth-First Search
+
         Debug
         ---------------
         **None** or **silent**
@@ -207,7 +215,7 @@ class EquationSystem:
         if not self.is_polynomial():
             raise RuntimeError("System is not polynomialized. Polynomialize it first.")
         if mode == 'optimal':
-            return self._quadratic_linearize_optimal(auxiliary_eq_type, initial_max_depth=initial_max_depth, debug=debug, log_file=log_file)
+            return self._quadratic_linearize_optimal(auxiliary_eq_type, method_optimal, initial_max_depth, debug, log_file)
         elif mode == 'heuristic':
             return self._quadratic_linearize_heuristic(auxiliary_eq_type, heuristics, debug, log_file)
         else:

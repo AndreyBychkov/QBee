@@ -28,25 +28,25 @@ def polynomialize(system: List[sp.Eq],
     return eq_system.equations
 
 
-def quadratic_linearize(system: List[sp.Eq],
-                        parameter_variables: Iterable[sp.Symbol] = None,
-                        input_variables: Iterable[sp.Symbol] = None,
-                        mode: str = 'heuristic',
-                        auxiliary_eq_type: str = 'differential',
-                        heuristics: str = 'sqrt-count-first',
-                        debug: Optional[str] = None,
-                        log_file: Optional[str] = None) -> List[sp.Eq]:
+def quadratic_linearize(system: List[sp.Eq], parameter_variables: Iterable[sp.Symbol] = None, input_variables: Iterable[sp.Symbol] = None,
+                        mode: str = 'heuristic', auxiliary_eq_type: str = 'differential', heuristics: str = 'sqrt-count-first',
+                        method_optimal="iddfs", initial_max_depth=3, debug=None, log_file=None) -> List[sp.Eq]:
     """
     Transforms the system into quadratic-linear form using variable replacement technique.
 
     :param system: system of differential equations in form x' = f(x)
     :param parameter_variables: constant parameter variables
     :param input_variables: variables representing input functions
-    :param mode: use 'optimal' to find optimal transformation.
+    :param mode: type of search.
     :param auxiliary_eq_type: auxiliary equation form.
     :param heuristics: next replacement choice method.
+    :param method_optimal: graph search algorithm in the optimal mode.
+    :param initial_max_depth: for some methods checks all systems where the number of replacements does not exceed this number.
+                              Put here your assumption of how long a chain of optimal replacements might be.
     :param debug: printing mode while quadratic linearization is performed.
     :param log_file: output file for evaluation logging. Must be in 'csv' format.
+    :returns: quadratic-linearized system
+    :rtype: List[sp.Eq]
 
 
     Mode
@@ -74,6 +74,13 @@ def quadratic_linearize(system: List[sp.Eq],
     **sqrt-count-first**
          choose most frequent square replacement as the next one;
 
+    Method Optimal
+    -----------------
+        **bfs**
+            Breadth-First Search
+        **iddfs**
+            Iterative Deepening Depth-First Search
+
     Debug
     ---------------
     **None** or **silent**
@@ -86,4 +93,4 @@ def quadratic_linearize(system: List[sp.Eq],
     eq_system = EquationSystem(system, parameter_variables, input_variables)
     if not eq_system.is_polynomial('full'):
         eq_system.polynomialize(auxiliary_eq_type)
-    return eq_system.quadratic_linearized(mode, auxiliary_eq_type, heuristics, debug, log_file).equations
+    return eq_system.quadratic_linearized(mode, auxiliary_eq_type, heuristics, method_optimal, initial_max_depth, debug, log_file).equations
