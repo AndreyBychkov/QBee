@@ -14,6 +14,7 @@ from typing import List, Iterable, Optional, Callable, Tuple
 from AST_walk import find_non_polynomial
 from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 from util import polynomial_replace, get_possible_replacements
+from statistics import *
 
 
 class EquationSystem:
@@ -31,6 +32,8 @@ class EquationSystem:
         self.variables = SymbolsHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
         self._parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         self._input_vars = set(input_variables) if input_variables is not None else set()
+
+        self.statistics: EvaluationStatistics = EvaluationStatistics(0, 0, "empty")
 
     @property
     def equations(self):
@@ -224,11 +227,14 @@ class EquationSystem:
     def _quadratic_linearize_heuristic(self, auxiliary_eq_type: str, heuristics: str, debug: Optional[str] = None, log_file: Optional[str] = None):
         log_rows_list = list()
         new_system = deepcopy(self)
+        new_system.statistics = EvaluationStatistics(0, 0, heuristics)
+
         while not new_system.is_quadratic_linear():
             iter_fun = new_system._ql_heuristic_iter_choose(auxiliary_eq_type)
             hash_before, hash_after, replacement = iter_fun(heuristics)
 
             new_system._debug_system_print(debug)
+            new_system.statistics.steps += 1
             if log_file:
                 new_system._ql_log_append(log_rows_list, hash_before, hash_after, replacement)
 
@@ -239,6 +245,7 @@ class EquationSystem:
         if not (debug is None or debug == 'silent'):
             print('-' * 100)
 
+        new_system.statistics.depth = len(new_system.equations) - len(self.equations)
         return new_system
 
     def _ql_heuristic_iter_choose(self, auxiliary_eq_type: str) -> Callable:
@@ -278,7 +285,7 @@ class EquationSystem:
         elif method == 'sqrt-count-first':
             return self._ql_sqrt_count_first_choice
         elif method == 'replacement-value':
-            return self._ql_max_replacement_value_choice()
+            return self._ql_max_replacement_value_choice
         else:
             raise ValueError("Replacement method has wrong name.")
 
@@ -328,40 +335,45 @@ class EquationSystem:
 
     def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, method="bfs", initial_max_depth: int = 3, debug=None,
                                      log_file: Optional[str] = None):
-        initial_eq_number = len(self.equations)
         disable_pbar = True if (debug is None or debug == 'silent') else False
         progress_bar = tqdm(total=1, unit='node', desc="System nodes processed: ", disable=disable_pbar)
 
         log_rows_list = list()
-        solution = self._ql_optimal_method_choose(method, auxiliary_eq_type, initial_max_depth, initial_eq_number, progress_bar, log_rows_list)
+        solution = self._ql_optimal_method_choose(method, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list)
 
         if log_file:
             log_df = pd.DataFrame(log_rows_list)
             log_df.to_csv(log_file, index=False)
         return solution
 
-    def _ql_optimal_bfs(self, auxiliary_eq_type: str, progress_bar: tqdm, initial_eq_number: int, log_rows_list: Optional[List]):
+    def _ql_optimal_bfs(self, auxiliary_eq_type: str, progress_bar: tqdm, log_rows_list: Optional[List]):
         system_queue = Queue()
         system_queue.put(self, block=True)
+        initial_eq_number = len(self.equations)
+        statistics = EvaluationStatistics(depth=0, steps=0, method_name='BFS')
 
         ql_reached = False
         while not ql_reached:
             curr_system = system_queue.get()
+            curr_depth = len(curr_system.equations) - initial_eq_number
 
             progress_bar.update(-1)
-            progress_bar.postfix = f"Current depth level: {len(curr_system.equations) - initial_eq_number}"
+            progress_bar.postfix = f"Current depth level: {curr_depth}"
+            statistics.steps += 1
             progress_bar.total -= 1
 
             if curr_system.is_quadratic_linear():
+                statistics.depth = curr_depth
+                curr_system.statistics = statistics
                 progress_bar.close()
                 return curr_system
 
-            possible_replacements = curr_system._get_possible_replacements()
+            possible_replacements = curr_system._get_possible_replacements() # noqa
             progress_bar.total += len(possible_replacements)
             for replacement in map(sp.Poly.as_expr, possible_replacements):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
-                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type) # noqa
                 equation_add_fun(new_symbol, replacement)
 
                 system_queue.put(new_system)
@@ -374,7 +386,10 @@ class EquationSystem:
         system_high_depth_stack = deque()
         system_stack.append((self, 0))
 
+        initial_eq_number = len(self.equations)
         curr_max_depth = initial_max_depth
+
+        statistics = EvaluationStatistics(depth=0, steps=0, method_name='IDDFS')
 
         ql_reached = False
         while not ql_reached:
@@ -382,17 +397,20 @@ class EquationSystem:
 
             progress_bar.update(-1)
             progress_bar.postfix = f"Current max depth level: {curr_max_depth}"
+            statistics.steps += 1
             progress_bar.total -= 1
 
             if curr_system.is_quadratic_linear():
                 progress_bar.close()
+                statistics.depth = len(curr_system.equations) - initial_eq_number
+                curr_system.statistics = statistics
                 return curr_system
 
-            possible_replacements = curr_system._ql_max_replacement_value_all()
+            possible_replacements = curr_system._ql_max_replacement_value_all() # noqa
             for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
-                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type) # noqa
                 equation_add_fun(new_symbol, replacement)
 
                 progress_bar.update(1)
@@ -409,9 +427,9 @@ class EquationSystem:
                 system_high_depth_stack = deque()
                 curr_max_depth += int(math.ceil(curr_depth / math.log(curr_depth)))
 
-    def _ql_optimal_method_choose(self, method: str, auxiliary_eq_type, initial_max_depth, initial_eq_number, progress_bar, log_rows_list):
+    def _ql_optimal_method_choose(self, method: str, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list):
         if method == "bfs":
-            return self._ql_optimal_bfs(auxiliary_eq_type, progress_bar, initial_eq_number, log_rows_list)
+            return self._ql_optimal_bfs(auxiliary_eq_type, progress_bar, log_rows_list)
         elif method == "iddfs":
             return self._ql_optimal_iddfs(auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list)
         else:
