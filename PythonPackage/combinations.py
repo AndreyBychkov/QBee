@@ -1,14 +1,15 @@
 import itertools
 import sympy as sp
 
+from sympy.polys.orderings import monomial_key
 from functools import reduce, partial
 from operator import mul
 from typing import Tuple, Set, Optional, List
 
 
-def get_decompositions(monomial: sp.Poly) -> Set[Tuple]:
+def get_minimal_decompositions(monomial: sp.Poly) -> Set[Tuple]:
     r"""
-    Returns all decompositions of monomial into submonomials with total degree <= 2.
+    Returns decompositions of monomial into submonomials with total degree <= 2.
 
     Example:
         .. math::
@@ -16,8 +17,24 @@ def get_decompositions(monomial: sp.Poly) -> Set[Tuple]:
 
     """
     res = _get_decompositions_rec(monomial, [], set())
-    res = res if res is not None else {(monomial, )}
-    res = map(lambda s: sorted(s, key=sp.polys.orderings.monomial_key('grlex', monomial.free_symbols)), res)
+    res = res if res is not None else {(monomial,)}
+    res = map(lambda s: sorted(s, key=monomial_key('grlex', monomial.free_symbols)), res)
+    res = map(lambda b: list(map(lambda m: m.as_expr(), b)), res)  # For convenient representation. Can be removed if necessary.
+    res = set(tuple(s) for s in res)
+    return res
+
+
+def get_all_decompositions(monomial: sp.Poly) -> Set[Tuple]:
+    r"""
+    Returns all decompositions of monomial into meaning submonomials.
+
+    Example:
+        .. math::
+            x^2y^3 \rightarrow (x, xy^3), (xy, xy^2), (x^2 y^3), (y, x^2 y^2), (y, x^2, y^2), (x, xy, y^2), (y^2, x^2 y), (y, xy, xy)
+
+    """
+    res = _get_compele_decompositions_rec(monomial, [], set())
+    res = res if res is not None else {(monomial,)}
     res = map(lambda b: list(map(lambda m: m.as_expr(), b)), res)  # For convenient representation. Can be removed if necessary.
     res = set(tuple(s) for s in res)
     return res
@@ -48,3 +65,32 @@ def _get_possible_squares(expr: sp.Poly) -> List:
     res = map(lambda var: var ** 2, res)
     res = map(sp.poly, res)
     return list(res)
+
+
+def _get_compele_decompositions_rec(monomial: sp.Poly, decomposition: list, result: set) -> Optional[Set]:
+    if decomposition:
+        result.add(tuple([monomial] + decomposition))
+
+    if monomial.total_degree() <= 2:
+        return
+
+    divisors = list(sp.itermonomials(monomial.gens, monomial.degree_list(), [0] * len(monomial.gens)))
+    divisors = list(filter(lambda d: not d.is_Number, divisors))
+    divisors = list(map(sp.Poly, divisors))
+    divisors = list(filter(lambda d: 1 < d.total_degree() < monomial.total_degree(), divisors))
+
+    for divisor in divisors:
+        _get_compele_decompositions_rec(sp.div(monomial, divisor)[0], decomposition + [divisor], result)
+
+    # Long operation. TODO(try optimize)
+    unique_decompositions = set(tuple(sorted(d, key=monomial_key('grlex', monomial.free_symbols))) for d in result)
+    return unique_decompositions
+
+
+if __name__ == '__main__':
+    x, y, z = sp.symbols('x, y, z')
+    monomial = sp.Poly(x ** 2 * y ** 3)
+
+    dec = get_all_decompositions(monomial)
+    print(f"Number of decompositions: {len(dec)}")
+    list(map(print, dec))

@@ -318,20 +318,18 @@ class EquationSystem:
     def _ql_max_replacement_value_all(self) -> List[sp.Poly]:
         self._compute_equations_poly_degrees()  # Optimization can be performed here
         possible_replacements = self._get_possible_replacements(count_sorted=False)
-        value_sorted_replacements = sorted(possible_replacements, key=self._compute_replacement_value, reverse=True)
+        value_sorted_replacements = sorted(possible_replacements, key=self._compute_replacement_value)
         return value_sorted_replacements
 
     def _ql_max_replacement_value_choice(self):
         return self._ql_max_replacement_value_all()[0].as_expr()
 
     def _compute_replacement_value(self, replacement: sp.Poly) -> int:
-        replacement_profit = replacement.total_degree() - 2
-
         used_equations_subs = list(map(make_derivative_symbol, replacement.free_symbols))
         subs_degrees = list(map(lambda subs: self._equations_poly_degrees[subs], used_equations_subs))
-        auxiliary_equation_degree = max(subs_degrees) + replacement.total_degree() - 1
+        auxiliary_equation_degree = max(subs_degrees)
 
-        return replacement_profit - auxiliary_equation_degree
+        return auxiliary_equation_degree
 
     def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, method="bfs", initial_max_depth: int = 3, debug=None,
                                      log_file: Optional[str] = None):
@@ -368,12 +366,12 @@ class EquationSystem:
                 progress_bar.close()
                 return curr_system
 
-            possible_replacements = curr_system._get_possible_replacements() # noqa
+            possible_replacements = curr_system._get_possible_replacements()  # noqa
             progress_bar.total += len(possible_replacements)
             for replacement in map(sp.Poly.as_expr, possible_replacements):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
-                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type) # noqa
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)  # noqa
                 equation_add_fun(new_symbol, replacement)
 
                 system_queue.put(new_system)
@@ -406,11 +404,11 @@ class EquationSystem:
                 curr_system.statistics = statistics
                 return curr_system
 
-            possible_replacements = curr_system._ql_max_replacement_value_all() # noqa
+            possible_replacements = curr_system._ql_max_replacement_value_all()  # noqa
             for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
-                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type) # noqa
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)  # noqa
                 equation_add_fun(new_symbol, replacement)
 
                 progress_bar.update(1)
@@ -425,7 +423,7 @@ class EquationSystem:
             if len(system_stack) == 0:
                 system_stack = system_high_depth_stack
                 system_high_depth_stack = deque()
-                curr_max_depth += int(math.ceil(curr_depth / math.log(curr_depth)))
+                curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
 
     def _ql_optimal_method_choose(self, method: str, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list):
         if method == "bfs":

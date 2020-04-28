@@ -1,6 +1,6 @@
 import sympy as sp
 
-from combinations import get_decompositions
+from combinations import *
 from functools import reduce, partial
 from typing import List, Tuple
 from operator import add
@@ -10,7 +10,7 @@ from collections import Counter
 def get_possible_replacements(poly_list: List[sp.Expr], count_sorted=True) -> Tuple[sp.Poly]:
     combined_poly = sum(poly_list)
     terms = list(map(lambda m: sp.Poly(m), sp.Add.make_args(combined_poly.expand())))
-    decompositions = list(map(get_decompositions, terms))
+    decompositions = list(map(get_all_decompositions, terms))
 
     possible_replacements = list()
     for dec in decompositions:
