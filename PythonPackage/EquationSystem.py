@@ -334,7 +334,7 @@ class EquationSystem:
     def _quadratic_linearize_optimal(self, auxiliary_eq_type: str, method="bfs", initial_max_depth: int = 3, debug=None,
                                      log_file: Optional[str] = None):
         disable_pbar = True if (debug is None or debug == 'silent') else False
-        progress_bar = tqdm(total=1, unit='node', desc="System nodes processed: ", disable=disable_pbar)
+        progress_bar = tqdm(total=1, unit='node', desc="System nodes queued: ", disable=disable_pbar)
 
         log_rows_list = list()
         solution = self._ql_optimal_method_choose(method, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list)
@@ -405,6 +405,7 @@ class EquationSystem:
                 return curr_system
 
             possible_replacements = curr_system._ql_max_replacement_value_all()  # noqa
+            progress_bar.total += len(possible_replacements)
             for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
                 new_system = deepcopy(curr_system)
                 new_symbol = new_system.variables.create_symbol()
