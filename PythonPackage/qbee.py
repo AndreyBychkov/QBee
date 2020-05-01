@@ -1,6 +1,7 @@
 import sympy as sp
 from typing import List, Iterable, Optional
 from EquationSystem import EquationSystem
+from SymbolsHolder import SymbolsHolder, make_derivative_symbol
 
 
 def polynomialize(system: List[sp.Eq],
