@@ -4,10 +4,11 @@ import random
 import hashlib
 import sympy as sp
 import pandas as pd
+import multiprocessing as mp
 
 from tqdm import tqdm
 from copy import copy, deepcopy
-from queue import Queue
+from queue import Queue, Empty
 from collections import deque
 from functools import reduce
 from typing import List, Iterable, Optional, Callable, Tuple
@@ -378,6 +379,36 @@ class EquationSystem:
                 progress_bar.update(1)
                 if log_rows_list is not None:
                     self._ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
+
+    def _ql_optimal_bfs_parallel(self, auxiliary_eq_type: str):
+        system_queue = Queue()
+        system_queue.put_nowait(self)
+        initial_eq_number = len(self.equations)
+
+        ql_reached = False
+        while not ql_reached:
+            curr_system = system_queue.get()
+
+            if curr_system.is_quadratic_linear():
+                return curr_system
+
+            possible_replacements = curr_system._get_possible_replacements()  # noqa
+            for replacement in map(sp.Poly.as_expr, possible_replacements):
+                new_system = deepcopy(curr_system)
+                new_symbol = new_system.variables.create_symbol()
+                equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)  # noqa
+                equation_add_fun(new_symbol, replacement)
+
+                system_queue.put(new_system)
+
+    def _ql_optimal_bfs_parallel_worker(self, system_queue: Queue, auxiliary_eq_type: str):
+        while True:
+            try:
+                curr_system = system_queue.get_nowait()
+            except Empty:
+                break
+            else:
+                pass
 
     def _ql_optimal_iddfs(self, auxiliary_eq_type: str, initial_max_depth: int, progress_bar: tqdm, log_rows_list: Optional[List]):
         system_stack = deque()
