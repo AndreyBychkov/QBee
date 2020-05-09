@@ -1,6 +1,6 @@
 import sympy as sp
 
-from SymbolsHolder import SymbolsHolder
+from structures import SymbolsHolder
 
 
 def test_symbols_creation():
