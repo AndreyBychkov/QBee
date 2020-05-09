@@ -60,9 +60,9 @@ def _compute_replacement_value(system: EquationSystem, replacement: sp.Poly) -> 
 _heuristics_name_to_function = \
     {
         'random'           : random,
-        'sqrt_first'       : sqrt_first,
-        'sqrt_count_first' : sqrt_count_first,
-        'replacement_value': max_replacement_value,
+        'sqrt-first'       : sqrt_first,
+        'sqrt-count-first' : sqrt_count_first,
+        'replacement-value': max_replacement_value,
         'default'          : max_replacement_value
     }
 
