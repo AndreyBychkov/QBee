@@ -9,8 +9,7 @@ from tqdm import tqdm
 from copy import deepcopy
 from queue import Queue, Empty
 from collections import deque
-from functools import reduce, partial
-from typing import List, Iterable, Optional, Callable, Tuple
+from typing import List, Optional, Callable
 from statistics import *
 
 
@@ -93,7 +92,7 @@ def _quadratic_linearize_heuristic(system: EquationSystem, auxiliary_eq_type: st
 
     while not new_system.is_quadratic_linear():
         iter_fun = _heuristic_iter_choose(auxiliary_eq_type)
-        hash_before, hash_after, replacement = iter_fun(heuristics)
+        hash_before, hash_after, replacement = iter_fun(new_system, heuristics)
 
         new_system._debug_system_print(debug)
         new_system.statistics.steps += 1
