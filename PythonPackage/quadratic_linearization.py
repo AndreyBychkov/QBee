@@ -3,7 +3,7 @@ import sympy as sp
 import pandas as pd
 import multiprocessing as mp
 
-from structures import EquationSystem
+from structures import *
 from replacement_heuristics import get_heuristics, max_replacement_value_list
 from tqdm import tqdm
 from copy import deepcopy

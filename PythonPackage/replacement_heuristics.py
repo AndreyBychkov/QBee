@@ -2,10 +2,9 @@ import sys
 import sympy as sp
 import random as rand
 
-from structures import EquationSystem
+from structures import *
 from functools import partial
 from typing import List
-from SymbolsHolder import make_derivative_symbol
 
 
 def random(system: EquationSystem) -> sp.Expr:
