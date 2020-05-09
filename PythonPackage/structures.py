@@ -178,6 +178,14 @@ class EquationSystem:
                 return False
         return True
 
+    def auxiliary_equation_type_choose(self, auxiliary_eq_type: str) -> Callable:
+        if auxiliary_eq_type == 'differential':
+            return self.differential_auxiliary_equation_add
+        elif auxiliary_eq_type == 'algebraic':
+            return self.algebraic_auxiliary_equation_add
+        else:
+            raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+
     def differential_auxiliary_equation_add(self, new_symbol: sp.Symbol, replacement: sp.Expr, is_polynomial_replacement=True) -> None:
         new_symbol_dot = make_derivative_symbol(new_symbol)
         if is_polynomial_replacement:

@@ -39,10 +39,10 @@ def sqrt_count_first(system: EquationSystem) -> sp.Expr:
 
 
 def max_replacement_value(system: EquationSystem) -> sp.Expr:
-    return _max_replacement_value_list(system)[0].as_expr()
+    return max_replacement_value_list(system)[0].as_expr()
 
 
-def _max_replacement_value_list(system: EquationSystem) -> List[sp.Poly]:
+def max_replacement_value_list(system: EquationSystem) -> List[sp.Poly]:
     system.update_poly_degrees()  # Optimization can be performed here
     possible_replacements = system.get_possible_replacements(count_sorted=False)
     value_sorted_replacements = sorted(possible_replacements, key=partial(_compute_replacement_value, system))
