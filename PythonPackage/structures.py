@@ -97,12 +97,19 @@ class EquationSystem:
         self.statistics: EvaluationStatistics = EvaluationStatistics(0, 0, "empty")
 
     @property
-    def equations(self):
+    def equations(self) -> List[sp.Eq]:
         return self._equations
 
     @property
-    def equations_hash(self):
+    def equations_hash(self) -> bytes:
         return hashlib.md5(str(self._equations).encode('utf-8')).digest()
+
+    @property
+    def monomials(self) -> Tuple[sp.Expr]:
+        """Sequential non-unique monomials of system"""
+        assert self.is_polynomial("full")
+
+        return reduce(lambda a, b: a+b, map(sp.Add.make_args, self._get_right_equations()))
 
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
@@ -123,7 +130,7 @@ class EquationSystem:
         self._compute_equations_poly_degrees()
 
     def get_possible_replacements(self, count_sorted=False) -> Tuple[sp.Poly]:
-        right_equations = list(map(lambda eq: eq.args[1], self._equations))
+        right_equations = self._get_right_equations()
         return get_possible_replacements(right_equations, count_sorted=count_sorted)
 
     def is_polynomial(self, mode="original") -> bool:
@@ -245,6 +252,9 @@ class EquationSystem:
 
         else:
             raise ValueError("debug value must be 'silent', 'info' or debug'")
+
+    def _get_right_equations(self):
+        return list(map(lambda eq: eq.args[1], self._equations))
 
     def __len__(self):
         return len(self._equations)
