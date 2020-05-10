@@ -4,7 +4,7 @@ import pandas as pd
 import multiprocessing as mp
 
 from structures import *
-from replacement_heuristics import get_heuristics, max_replacement_value_list
+from replacement_heuristics import get_heuristics, get_heuristic_sorter
 from tqdm import tqdm
 from copy import deepcopy
 from queue import Queue, Empty
@@ -13,9 +13,8 @@ from typing import List, Optional, Callable
 from statistics import *
 
 
-def quadratic_linearize(system: EquationSystem, mode="heuristic", auxiliary_eq_type="differential", heuristics='sqrt-count-first',
-                        method_optimal="iddfs",
-                        initial_max_depth=3, debug: int = None, log_file=None) -> EquationSystem:
+def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
+                        method_optimal: str = "iddfs", initial_max_depth: int = 3, debug: str = None, log_file=None) -> EquationSystem:
     """
     Transforms the system into quadratic-linear form using variable replacement technique.
 
@@ -77,7 +76,7 @@ def quadratic_linearize(system: EquationSystem, mode="heuristic", auxiliary_eq_t
     if not system.is_polynomial():
         raise RuntimeError("System is not polynomialized. Polynomialize it first.")
     if mode == 'optimal':
-        return _quadratic_linearize_optimal(system, auxiliary_eq_type, method_optimal, initial_max_depth, debug, log_file)
+        return _quadratic_linearize_optimal(system, auxiliary_eq_type, heuristics, method_optimal, initial_max_depth, debug, log_file)
     elif mode == 'heuristic':
         return _quadratic_linearize_heuristic(system, auxiliary_eq_type, heuristics, debug, log_file)
     else:
@@ -137,13 +136,13 @@ def _heuristic_algebraic_iter(system: EquationSystem, method: str):
     raise NotImplementedError()
 
 
-def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str, method="bfs", initial_max_depth: int = 3, debug=None,
-                                 log_file: Optional[str] = None) -> EquationSystem:
+def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristics: str = "default", method="iddfs",
+                                 initial_max_depth: int = 1, debug=None, log_file: Optional[str] = None) -> EquationSystem:
     disable_pbar = True if (debug is None or debug == 'silent') else False
     progress_bar = tqdm(total=1, unit='node', desc="System nodes queued: ", disable=disable_pbar)
 
     log_rows_list = list()
-    solution = _optimal_method_choose(system, method, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list)
+    solution = _optimal_method_choose(system, auxiliary_eq_type, heuristics, method, initial_max_depth, progress_bar, log_rows_list)
 
     if log_file:
         log_df = pd.DataFrame(log_rows_list)
@@ -151,11 +150,11 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
     return solution
 
 
-def _optimal_method_choose(system: EquationSystem, method: str, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list):
+def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics, method: str, initial_max_depth, progress_bar, log_rows_list):
     if method == "bfs":
         return _optimal_bfs(system, auxiliary_eq_type, progress_bar, log_rows_list)
     elif method == "iddfs":
-        return _optimal_iddfs(system, auxiliary_eq_type, initial_max_depth, progress_bar, log_rows_list)
+        return _optimal_iddfs(system, auxiliary_eq_type, heuristics, initial_max_depth, progress_bar, log_rows_list)
     else:
         raise ValueError("Optimal method must be 'bfs' of 'iddfs'")
 
@@ -228,8 +227,9 @@ def _optimal_bfs_parallel_worker(system: EquationSystem, system_queue: Queue, au
             pass
 
 
-def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, initial_max_depth: int, progress_bar: tqdm,
+def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, progress_bar: tqdm,
                    log_rows_list: Optional[List]) -> EquationSystem:
+    heuristic_sorter = get_heuristic_sorter(heuristics)
     system_stack = deque()
     system_high_depth_stack = deque()
     system_stack.append((system, 0))
@@ -254,7 +254,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, initial_max_d
             curr_system.statistics = statistics
             return curr_system
 
-        possible_replacements = max_replacement_value_list(curr_system)
+        possible_replacements = heuristic_sorter(curr_system)
         progress_bar.total += len(possible_replacements)
         for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
             new_system = deepcopy(curr_system)
