@@ -53,7 +53,7 @@ def _polynomialize_differential(system: EquationSystem) -> EquationSystem:
     return result_system
 
 
-def _polynomialize_differential_iter(system: EquationSystem) -> EquationSystem:
+def _polynomialize_differential_iter(system: EquationSystem):
     for eq in system.equations:
         non_poly_elem = find_non_polynomial(eq.args[1])
         if non_poly_elem:
