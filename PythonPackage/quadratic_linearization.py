@@ -27,7 +27,6 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
     :param debug: printing mode while quadratic linearization is performed.
     :param log_file: output file for evaluation logging. Must be in 'csv' format.
     :returns: quadratic-linearized system
-    :rtype: EquationSystem
 
     Mode
     -----------------
@@ -47,14 +46,16 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
     -----------------
     **random**
         choose next possible replacement in random way;
-    **count-first**
+    **frequent-first**
         choose most frequent possible replacement as the next one;
-    **sqrt-first**
-        choose next possible replacement within variables' squares in random way;
-    **sqrt-count-first**
-         choose most frequent square replacement as the next one;
-    **replacement-value**
-         choose the most valuable replacement according to replacement_degree_profit - auxiliary_equation_degree.
+    **free-variables-count**
+        choose a replacement with the least free variables;
+    **auxiliary-equation-degree**
+        choose a monomial replacement with the least generated auxiliary equation degree;
+    **auxiliary-equation-ql-discrepancy**
+        choose a monomial replacement which generated auxiliary equation is closest to quadratic form;
+    **summary-monomial-degree**
+        choose a monomial replacement with maximal reduction of system's degree;
 
     Method Optimal
     -----------------
@@ -237,7 +238,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
     initial_eq_number = len(system.equations)
     curr_max_depth = initial_max_depth
 
-    statistics = EvaluationStatistics(depth=0, steps=0, method_name='IDDFS')
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DFS')
 
     ql_reached = False
     while not ql_reached:
