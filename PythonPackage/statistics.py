@@ -1,5 +1,11 @@
 class EvaluationStatistics:
+    """Statistics structure for quadratic linearization"""
     def __init__(self, steps: int, depth: int, method_name: str):
+        """
+        :param steps: number of computed systems
+        :param depth: number of replacements to make system quadratic linear
+        :param method_name: name of the algorithm
+        """
         self.steps = steps
         self.method_name = method_name
         self.depth = depth
