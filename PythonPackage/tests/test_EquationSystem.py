@@ -4,7 +4,7 @@ from pytest import raises
 from structures import *
 
 x = sp.symbols('x')
-x_dot = make_derivative_symbol(x)
+x_dot = derivatives(x)
 
 
 def test_monomial_extraction():

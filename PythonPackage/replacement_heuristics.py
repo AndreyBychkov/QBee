@@ -49,7 +49,7 @@ def auxiliary_equation_degree(system: EquationSystem) -> sp.Expr:
 
 
 def _compute_auxiliary_equation_degree(system: EquationSystem, replacement: sp.Poly) -> int:
-    used_equations_subs = list(map(make_derivative_symbol, replacement.free_symbols))
+    used_equations_subs = derivatives(replacement.free_symbols)
     subs_degrees = list(map(lambda subs: system._equations_poly_degrees[subs], used_equations_subs))
 
     return max(subs_degrees)
@@ -66,7 +66,7 @@ def auxiliary_equation_ql_discrepancy(system: EquationSystem) -> sp.Expr:
 
 
 def _compute_auxiliary_equation_ql_discrepancy(system: EquationSystem, replacement: sp.Poly) -> int:
-    used_equations_subs = map(make_derivative_symbol, replacement.free_symbols)
+    used_equations_subs = derivatives(replacement.free_symbols)
     monomial_degrees = map(lambda subs: system._equations_poly_degrees[subs] + replacement.total_degree() - 1, used_equations_subs)
     ql_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, monomial_degrees))
     return sum(ql_discrepancies)

@@ -8,7 +8,7 @@ from replacement_heuristics import _compute_monomials_affected, \
     _compute_auxiliary_equation_ql_discrepancy
 
 x, y, z = sp.symbols('x, y, z')
-x_dot, y_dot, z_dot = list(map(make_derivative_symbol, [x, y, z]))
+x_dot, y_dot, z_dot = derivatives('x, y, z')
 
 
 def test_free_variables_count_sorted():

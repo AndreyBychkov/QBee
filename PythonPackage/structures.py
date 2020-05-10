@@ -7,6 +7,20 @@ from util import polynomial_replace, get_possible_replacements
 from statistics import *
 
 
+def derivatives(names) -> Tuple[sp.Symbol]:
+    if not isinstance(names, Iterable) and isinstance(names, sp.Symbol):
+        return (make_derivative_symbol(names))
+
+    if isinstance(names, Iterable) and reduce(lambda a, b: a and b, map(lambda elem: isinstance(elem, sp.Symbol), names)):
+        return tuple(map(make_derivative_symbol, names))
+
+    symbols_output = sp.symbols(names)
+    if isinstance(symbols_output, sp.Symbol):
+        return make_derivative_symbol(symbols_output)
+    else:
+        return tuple(map(make_derivative_symbol, sp.symbols(names)))
+
+
 def make_derivative_symbol(symbol) -> sp.Symbol:
     """
     Makes symbol with the dot from input symbol.
@@ -109,7 +123,7 @@ class EquationSystem:
         """Sequential non-unique monomials of system"""
         assert self.is_polynomial("full")
 
-        return reduce(lambda a, b: a+b, map(sp.Add.make_args, self._get_right_equations()))
+        return reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_right_equations()))
 
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
