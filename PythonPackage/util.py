@@ -39,5 +39,9 @@ def monomial_replace(monomial: sp.Expr, old: sp.Expr, new: sp.Expr) -> sp.Expr:
         return monomial
 
 
+def is_monomial_divisor(numerator: sp.Expr, denominator: sp.Expr) -> bool:
+    return sp.gcd(numerator, denominator) == denominator
+
+
 def sorted_square_first(monomials: List[sp.Poly]) -> List[sp.Poly]:
     return sorted(monomials, key=lambda m: len(m.free_symbols) / m.total_degree())
