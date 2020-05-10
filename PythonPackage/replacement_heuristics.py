@@ -55,6 +55,23 @@ def _compute_auxiliary_equation_degree(system: EquationSystem, replacement: sp.P
     return max(subs_degrees)
 
 
+def auxiliary_equation_ql_discrepancy_sorted(system: EquationSystem) -> List[sp.Poly]:
+    system.update_poly_degrees()
+    possible_replacements = system.get_possible_replacements(count_sorted=False)
+    return sorted(possible_replacements, key=partial(_compute_auxiliary_equation_ql_discrepancy, system))
+
+
+def auxiliary_equation_ql_discrepancy(system: EquationSystem) -> sp.Expr:
+    return auxiliary_equation_ql_discrepancy_sorted(system)[0].as_expr()
+
+
+def _compute_auxiliary_equation_ql_discrepancy(system: EquationSystem, replacement: sp.Poly) -> int:
+    used_equations_subs = map(make_derivative_symbol, replacement.free_symbols)
+    monomial_degrees = map(lambda subs: system._equations_poly_degrees[subs] + replacement.total_degree() - 1, used_equations_subs)
+    ql_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, monomial_degrees))
+    return sum(ql_discrepancies)
+
+
 def summary_monomial_degree_sorted(system: EquationSystem) -> List[sp.Poly]:
     possible_replacements = system.get_possible_replacements(count_sorted=False)
     return sorted(possible_replacements, key=partial(_compute_replacement_value_for_all_monomials, system), reverse=True)
@@ -78,22 +95,24 @@ def _compute_replacement_value_for_all_monomials(system: EquationSystem, replace
 
 _heuristics_name_to_function = \
     {
-        'random'                   : random,
-        'frequent-first'           : frequent_first,
-        'free-variables-count'     : free_variables_count,
-        'auxiliary-equation-degree': auxiliary_equation_degree,
-        'summary-monomial-degree'  : summary_monomial_degree,
-        'default'                  : summary_monomial_degree
+        'random'                           : random,
+        'frequent-first'                   : frequent_first,
+        'free-variables-count'             : free_variables_count,
+        'auxiliary-equation-degree'        : auxiliary_equation_degree,
+        'auxiliary-equation-ql-discrepancy': auxiliary_equation_ql_discrepancy,
+        'summary-monomial-degree'          : summary_monomial_degree,
+        'default'                          : summary_monomial_degree
     }
 
 _heuristics_name_to_sorter = \
     {
-        'random'                   : random_sorted,
-        'frequent-first'           : frequent_first_sorted,
-        'free-variables-count'     : free_variables_count_sorted,
-        'auxiliary-equation-degree': auxiliary_equation_degree_sorted,
-        'summary-monomial-degree'  : summary_monomial_degree_sorted,
-        'default'                  : summary_monomial_degree_sorted
+        'random'                           : random_sorted,
+        'frequent-first'                   : frequent_first_sorted,
+        'free-variables-count'             : free_variables_count_sorted,
+        'auxiliary-equation-degree'        : auxiliary_equation_degree_sorted,
+        'auxiliary-equation-ql-discrepancy': auxiliary_equation_ql_discrepancy_sorted,
+        'summary-monomial-degree'          : summary_monomial_degree_sorted,
+        'default'                          : summary_monomial_degree_sorted
     }
 
 
