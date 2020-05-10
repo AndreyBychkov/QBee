@@ -5,6 +5,9 @@ import random as rand
 from structures import *
 from functools import partial
 from typing import List
+from collections import Counter
+
+from util import is_monomial_divisor
 
 
 def random(system: EquationSystem) -> sp.Expr:
@@ -56,13 +59,35 @@ def _compute_replacement_value(system: EquationSystem, replacement: sp.Poly) -> 
     return auxiliary_equation_degree
 
 
+def summary_monomial_degree(system: EquationSystem) -> sp.Expr:
+    return summary_monomial_degree(system)[0].as_expr()
+
+
+def summary_monomial_degree_list(system: EquationSystem) -> List[sp.Poly]:
+    possible_replacements = system.get_possible_replacements(count_sorted=False)
+    return sorted(possible_replacements, key=partial(_compute_replacement_value_for_all_monomials, system), reverse=False)
+
+
+def _compute_monomials_affected(system: EquationSystem, replacement: sp.Poly, unique=False) -> int:
+    divisible_monomials = filter(partial(is_monomial_divisor, denominator=replacement), system.monomials)
+    if unique:
+        return len(set(divisible_monomials))
+    else:
+        return len(list(divisible_monomials))
+
+
+def _compute_replacement_value_for_all_monomials(system: EquationSystem, replacement: sp.Poly) -> int:
+    return replacement.total_degree() * _compute_monomials_affected(system, replacement)
+
+
 _heuristics_name_to_function = \
     {
-        'random'           : random,
-        'sqrt-first'       : sqrt_first,
-        'sqrt-count-first' : sqrt_count_first,
-        'replacement-value': max_replacement_value,
-        'default'          : max_replacement_value
+        'random'                 : random,
+        'sqrt-first'             : sqrt_first,
+        'sqrt-count-first'       : sqrt_count_first,
+        'replacement-value'      : max_replacement_value,
+        'summary-monomial-degree': summary_monomial_degree,
+        'default'                : max_replacement_value
     }
 
 
