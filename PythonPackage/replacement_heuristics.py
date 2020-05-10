@@ -56,7 +56,7 @@ def auxiliary_equation_degree_sorted(system: EquationSystem) -> List[sp.Poly]:
 
 
 def auxiliary_equation_degree(system: EquationSystem) -> sp.Expr:
-    """Choose a monomial replacement with the least generated auxiliary degree"""
+    """Choose a monomial replacement with the least generated auxiliary equation degree"""
     return auxiliary_equation_degree_sorted(system)[0].as_expr()
 
 
@@ -87,13 +87,13 @@ def _compute_auxiliary_equation_ql_discrepancy(system: EquationSystem, replaceme
 
 
 def summary_monomial_degree_sorted(system: EquationSystem) -> List[sp.Poly]:
-    """Monomial replacements which strongly reduce the dimension of the system are at the begging"""
+    """Monomial replacements which strongly reduce the degree of the system are at the begging"""
     possible_replacements = system.get_possible_replacements(count_sorted=False)
     return sorted(possible_replacements, key=partial(_compute_replacement_value_for_all_monomials, system), reverse=True)
 
 
 def summary_monomial_degree(system: EquationSystem) -> sp.Expr:
-    """Choose a monomial replacement with maximal reduction of system's dimension"""
+    """Choose a monomial replacement with maximal reduction of system's degree"""
     return summary_monomial_degree(system)[0].as_expr()
 
 
