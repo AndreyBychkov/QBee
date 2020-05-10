@@ -141,7 +141,7 @@ class EquationSystem:
         """Sequential non-unique monomials of system"""
         assert self.is_polynomial("full")
 
-        return reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_right_equations()))
+        return sum(map(sp.Add.make_args, self._get_right_equations()))
 
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
