@@ -8,6 +8,24 @@ from statistics import *
 
 
 def derivatives(names) -> Tuple[sp.Symbol]:
+    """
+    Add dot to input symbols.
+
+    :param names: input symbols. Can be represented in different ways.
+    :return: Input symbols wrapper with dots.
+
+    Example:
+        .. math:: \dot{x}, \dot{y} = derivatives([x, y])
+
+    Names variants
+    -----------------
+    **symbol**
+        derivatives('x'), derivatives(x: Symbol)
+    **string with decimeters**
+        derivatives('x, y, z'), derivatives('x y z')
+    **iterable of symbols**
+        derivatives([x, y, z]), derivatives(['x', 'y', 'z'])
+    """
     if not isinstance(names, Iterable) and isinstance(names, sp.Symbol):
         return (make_derivative_symbol(names))
 
