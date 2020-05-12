@@ -21,7 +21,7 @@ def derivatives(names) -> Tuple[sp.Symbol]:
     -----------------
     **symbol**
         derivatives('x'), derivatives(x: Symbol)
-    **string with decimeters**
+    **string with delimiters**
         derivatives('x, y, z'), derivatives('x y z')
     **iterable of symbols**
         derivatives([x, y, z]), derivatives(['x', 'y', 'z'])
