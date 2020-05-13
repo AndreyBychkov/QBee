@@ -164,7 +164,7 @@ class EquationSystem:
 
     def get_possible_replacements(self, count_sorted=False) -> Tuple[sp.Poly]:
         right_equations = self._get_right_equations()
-        return get_possible_replacements(right_equations, count_sorted=count_sorted)
+        return get_possible_replacements(right_equations, self._parameter_vars, count_sorted=count_sorted)
 
     def is_polynomial(self, mode="original") -> bool:
         """
@@ -214,7 +214,7 @@ class EquationSystem:
     def _is_poly_quadratic_linear(self, poly: sp.Expr) -> bool:
         monomials = sp.Add.make_args(poly)
         for mon in monomials:
-            if sp.total_degree(mon) > 2:
+            if sp.total_degree(mon, *poly.free_symbols.difference(self._parameter_vars)) > 2:
                 return False
         return True
 

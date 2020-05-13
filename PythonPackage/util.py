@@ -7,15 +7,16 @@ from operator import add
 from collections import Counter
 
 
-def get_possible_replacements(poly_list: List[sp.Expr], count_sorted=True) -> Tuple[sp.Poly]:
+def get_possible_replacements(poly_list: List[sp.Expr], excluded_variables: Set[sp.Symbol], count_sorted=True) -> Tuple[sp.Poly]:
     combined_poly = sum(poly_list)
-    terms = list(map(lambda m: sp.Poly(m), sp.Add.make_args(combined_poly.expand())))
+    gens = combined_poly.free_symbols.difference(excluded_variables)
+    terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
     decompositions = list(map(get_all_decompositions, terms))
 
     possible_replacements = list()
     for dec in decompositions:
         all_replacements = reduce(set.union, map(set, dec))
-        possible_replacements += list(filter(lambda p: p.total_degree() > 1, map(sp.Poly, all_replacements)))
+        possible_replacements += list(filter(lambda p: p.total_degree() > 1, all_replacements))
     possible_replacements = set(possible_replacements)
 
     if count_sorted:
