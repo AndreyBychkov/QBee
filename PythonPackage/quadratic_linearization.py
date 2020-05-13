@@ -12,6 +12,7 @@ from queue import Queue, Empty
 from collections import deque
 from typing import List, Optional, Callable
 from statistics import *
+from util import reset_progress_bar
 
 
 def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
@@ -145,13 +146,12 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
                                  initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug=None,
                                  log_file: Optional[str] = None) -> EquationSystem:
     disable_pbar = True if (debug is None or debug == 'silent') else False
-    progress_bar = tqdm(total=1, unit='node', desc="System nodes queued: ", disable=disable_pbar)
 
     if limit_depth is None:
         limit_depth = sys.maxsize
 
     log_rows_list = list()
-    solution = _optimal_method_choose(system, auxiliary_eq_type, heuristics, method, initial_max_depth, limit_depth, progress_bar, log_rows_list)
+    solution = _optimal_method_choose(system, auxiliary_eq_type, heuristics, method, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
 
     if log_file:
         log_df = pd.DataFrame(log_rows_list)
@@ -159,17 +159,20 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
     return solution
 
 
-def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics, method: str, initial_max_depth, limit_depth, progress_bar,
+def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics, method: str, initial_max_depth, limit_depth, disable_pbar,
                            log_rows_list):
     if method == "bfs":
-        return _optimal_bfs(system, auxiliary_eq_type, limit_depth, progress_bar, log_rows_list)
+        return _optimal_bfs(system, auxiliary_eq_type, limit_depth, disable_pbar, log_rows_list)
     elif method == "iddfs":
-        return _optimal_iddfs(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, progress_bar, log_rows_list)
+        return _optimal_iddfs(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
     else:
         raise ValueError("Optimal method must be 'bfs' of 'iddfs'")
 
 
-def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, progress_bar: tqdm, log_rows_list: Optional[List]) -> EquationSystem:
+def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, disable_pbar: tqdm, log_rows_list: Optional[List]) -> EquationSystem:
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
+    queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
+
     system_queue = Queue()
     system_queue.put(system, block=True)
     initial_eq_number = len(system.equations)
@@ -182,22 +185,25 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, pr
         curr_system = system_queue.get_nowait()
         curr_depth = len(curr_system.equations) - initial_eq_number
 
-        progress_bar.update(-1)
-        progress_bar.postfix = f"Current depth level: {curr_depth}"
+        queue_pbar.update(-1)
         statistics.steps += 1
-        progress_bar.total -= 1
+
+        processed_systems_pbar.update(1)
+        processed_systems_pbar.postfix = f"Current depth level: {curr_depth}"
 
         if curr_system.is_quadratic_linear():
             statistics.depth = curr_depth
             curr_system.statistics = statistics
-            progress_bar.close()
+            processed_systems_pbar.refresh()
+            queue_pbar.refresh()
+            processed_systems_pbar.close()
+            queue_pbar.close()
             return curr_system
 
         if curr_depth == limit_depth:
             continue
 
         possible_replacements = curr_system.get_possible_replacements()
-        progress_bar.total += len(possible_replacements)
         for replacement in map(sp.Poly.as_expr, possible_replacements):
             new_system = deepcopy(curr_system)
             new_symbol = new_system.variables.create_symbol()
@@ -205,7 +211,8 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, pr
             equation_add_fun(new_symbol, replacement)
 
             system_queue.put(new_system)
-            progress_bar.update(1)
+
+            queue_pbar.update(1)
             if log_rows_list is not None:
                 _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
 
@@ -242,16 +249,20 @@ def _optimal_bfs_parallel_worker(system: EquationSystem, system_queue: Queue, au
             pass
 
 
-def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, progress_bar: tqdm,
+def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: tqdm,
                    log_rows_list: Optional[List]) -> EquationSystem:
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
+    stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
+    high_depth_stack_pbar = tqdm(unit="node", desc="Nodes in higher depth queue: ", position=2, disable=disable_pbar)
+
     heuristic_sorter = get_heuristic_sorter(heuristics)
     system_stack = deque()
     system_high_depth_stack = deque()
 
-    initial_eq_number = len(system.equations)
     curr_depth = 0
     curr_max_depth = initial_max_depth
     system_stack.append((system, curr_depth))
+    stack_pbar.update(1)
 
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DFS')
 
@@ -264,40 +275,49 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             system_high_depth_stack = deque()
             curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
 
+            reset_progress_bar(stack_pbar, len(system_stack))
+            reset_progress_bar(high_depth_stack_pbar, 0)
+
         curr_system, curr_depth = system_stack.pop()
 
-        progress_bar.update(-1)
-        progress_bar.postfix = f"Current max depth level: {curr_max_depth}"
+        stack_pbar.update(-1)
+        stack_pbar.refresh()
         statistics.steps += 1
-        progress_bar.total -= 1
+
+        processed_systems_pbar.update(1)
+        processed_systems_pbar.postfix = f"Current max depth level: {curr_max_depth} / {limit_depth}"
 
         if curr_system.is_quadratic_linear():
-            progress_bar.close()
             statistics.depth = curr_depth
             curr_system.statistics = statistics
+
+            processed_systems_pbar.refresh()
+            stack_pbar.refresh()
+            high_depth_stack_pbar.refresh()
+            processed_systems_pbar.close()
+            stack_pbar.close()
+            high_depth_stack_pbar.close()
             return curr_system
 
         if curr_depth == limit_depth:
             continue
 
         possible_replacements = heuristic_sorter(curr_system)
-        progress_bar.total += len(possible_replacements)
         for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
             new_system = deepcopy(curr_system)
             new_symbol = new_system.variables.create_symbol()
             equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
             equation_add_fun(new_symbol, replacement)
 
-            progress_bar.update(1)
             if curr_depth < curr_max_depth:
                 system_stack.append((new_system, curr_depth + 1))
+                stack_pbar.update(1)
             else:
                 system_high_depth_stack.append((new_system, curr_depth + 1))
+                high_depth_stack_pbar.update(1)
 
             if log_rows_list is not None:
                 _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
-
-
 
 
 def _ql_log_append(row_list: List, hash_before, hash_after, replacement):
