@@ -14,7 +14,7 @@ from statistics import *
 
 
 def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
-                        method_optimal: str = "iddfs", initial_max_depth: int = 3, debug: str = None, log_file=None) -> EquationSystem:
+                        method_optimal: str = "iddfs", initial_max_depth: int = 1, debug: str = None, log_file=None) -> EquationSystem:
     """
     Transforms the system into quadratic-linear form using variable replacement technique.
 
