@@ -7,7 +7,7 @@ from operator import mul
 from typing import Tuple, Set, Optional, List
 
 
-def get_minimal_decompositions(monomial: sp.Poly) -> Set[Tuple]:
+def get_minimal_decompositions(monomial: sp.Poly) -> Set[Tuple[sp.Poly]]:
     r"""
     Returns decompositions of monomial into submonomials with total degree <= 2.
 
@@ -19,12 +19,11 @@ def get_minimal_decompositions(monomial: sp.Poly) -> Set[Tuple]:
     res = _get_decompositions_rec(monomial, [], set())
     res = res if res is not None else {(monomial,)}
     res = map(lambda s: sorted(s, key=monomial_key('grlex', monomial.free_symbols)), res)
-    res = map(lambda b: list(map(lambda m: m.as_expr(), b)), res)  # For convenient representation. Can be removed if necessary.
     res = set(tuple(s) for s in res)
     return res
 
 
-def get_all_decompositions(monomial: sp.Poly) -> Set[Tuple]:
+def get_all_decompositions(monomial: sp.Poly) -> Set[Tuple[sp.Poly]]:
     r"""
     Returns all decompositions of monomial into meaning submonomials.
 
@@ -35,7 +34,6 @@ def get_all_decompositions(monomial: sp.Poly) -> Set[Tuple]:
     """
     res = _get_compele_decompositions_rec(monomial, [], set())
     res = res if res is not None else {(monomial,)}
-    res = map(lambda b: list(map(lambda m: m.as_expr(), b)), res)  # For convenient representation. Can be removed if necessary.
     res = set(tuple(s) for s in res)
     return res
 
