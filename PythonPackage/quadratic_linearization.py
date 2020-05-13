@@ -12,7 +12,7 @@ from queue import Queue, Empty
 from collections import deque
 from typing import List, Optional, Callable
 from statistics import *
-from util import reset_progress_bar
+from util import reset_progress_bar, refresh_and_close_progress_bars
 
 
 def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
@@ -187,17 +187,13 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
 
         queue_pbar.update(-1)
         statistics.steps += 1
-
         processed_systems_pbar.update(1)
-        processed_systems_pbar.postfix = f"Current depth level: {curr_depth}"
+        processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
 
         if curr_system.is_quadratic_linear():
             statistics.depth = curr_depth
             curr_system.statistics = statistics
-            processed_systems_pbar.refresh()
-            queue_pbar.refresh()
-            processed_systems_pbar.close()
-            queue_pbar.close()
+            refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
             return curr_system
 
         if curr_depth == limit_depth:
@@ -205,14 +201,10 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
 
         possible_replacements = curr_system.get_possible_replacements()
         for replacement in map(sp.Poly.as_expr, possible_replacements):
-            new_system = deepcopy(curr_system)
-            new_symbol = new_system.variables.create_symbol()
-            equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
-            equation_add_fun(new_symbol, replacement)
-
+            new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
             system_queue.put(new_system)
-
             queue_pbar.update(1)
+
             if log_rows_list is not None:
                 _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
 
@@ -283,20 +275,13 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
         stack_pbar.update(-1)
         stack_pbar.refresh()
         statistics.steps += 1
-
         processed_systems_pbar.update(1)
         processed_systems_pbar.postfix = f"Current max depth level: {curr_max_depth} / {limit_depth}"
 
         if curr_system.is_quadratic_linear():
             statistics.depth = curr_depth
             curr_system.statistics = statistics
-
-            processed_systems_pbar.refresh()
-            stack_pbar.refresh()
-            high_depth_stack_pbar.refresh()
-            processed_systems_pbar.close()
-            stack_pbar.close()
-            high_depth_stack_pbar.close()
+            refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar, high_depth_stack_pbar)
             return curr_system
 
         if curr_depth == limit_depth:
@@ -304,10 +289,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
         possible_replacements = heuristic_sorter(curr_system)
         for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
-            new_system = deepcopy(curr_system)
-            new_symbol = new_system.variables.create_symbol()
-            equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
-            equation_add_fun(new_symbol, replacement)
+            new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
 
             if curr_depth < curr_max_depth:
                 system_stack.append((new_system, curr_depth + 1))
@@ -318,6 +300,14 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
             if log_rows_list is not None:
                 _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
+
+
+def _make_new_system(system, auxiliary_eq_type, replacement) -> EquationSystem:
+    new_system = deepcopy(system)
+    new_symbol = new_system.variables.create_symbol()
+    equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
+    equation_add_fun(new_symbol, replacement)
+    return new_system
 
 
 def _ql_log_append(row_list: List, hash_before, hash_after, replacement):

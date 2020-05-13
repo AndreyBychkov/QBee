@@ -54,3 +54,9 @@ def reset_progress_bar(pbar: tqdm, value):
     pbar.n = pbar.last_print_n = value
     pbar.start_t = pbar.last_print_t = time()
     pbar.refresh()
+
+
+def refresh_and_close_progress_bars(*pbars: tqdm):
+    for bar in pbars:
+        bar.refresh()
+        bar.close()
