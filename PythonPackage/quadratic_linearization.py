@@ -20,7 +20,7 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
     """
     Transforms the system into quadratic-linear form using variable replacement technique.
 
-    :param limit_depth:
+    :param system: polynomialized system of DAE
     :param mode: type of search.
     :param auxiliary_eq_type: auxiliary equation form.
     :param heuristics: next replacement choice method.
