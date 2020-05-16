@@ -173,8 +173,10 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
+    replacements_chains = set()
+
     system_queue = Queue()
-    system_queue.put(system, block=True)
+    system_queue.put((system, frozenset()), block=True)
     initial_eq_number = len(system.equations)
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='BFS')
 
@@ -182,7 +184,7 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     while not ql_reached:
         if system_queue.empty():
             raise RuntimeError("Limit depth passed. No quadratic-linear system is found.")
-        curr_system = system_queue.get_nowait()
+        curr_system, curr_replacements = system_queue.get_nowait()
         curr_depth = len(curr_system.equations) - initial_eq_number
 
         queue_pbar.update(-1)
@@ -200,9 +202,11 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
             continue
 
         possible_replacements = curr_system.get_possible_replacements()
+        possible_replacements = list(filter(lambda repl: curr_replacements.union({repl}) not in replacements_chains, possible_replacements))
+        replacements_chains.update(list(map(lambda repl: curr_replacements.union({repl}), possible_replacements)))
         for replacement in map(sp.Poly.as_expr, possible_replacements):
             new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
-            system_queue.put(new_system)
+            system_queue.put((new_system, curr_replacements.union({replacement})))
             queue_pbar.update(1)
 
             if log_rows_list is not None:
