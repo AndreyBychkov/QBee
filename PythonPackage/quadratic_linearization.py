@@ -202,11 +202,14 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
             continue
 
         possible_replacements = curr_system.get_possible_replacements()
-        possible_replacements = list(filter(lambda repl: curr_replacements.union({repl}) not in replacements_chains, possible_replacements))
-        replacements_chains.update(list(map(lambda repl: curr_replacements.union({repl}), possible_replacements)))
         for replacement in map(sp.Poly.as_expr, possible_replacements):
+            supplemented_replacements = curr_replacements.union({replacement})
+            if supplemented_replacements in replacements_chains:
+                continue
+
             new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
-            system_queue.put((new_system, curr_replacements.union({replacement})))
+            system_queue.put((new_system, supplemented_replacements))
+            replacements_chains.add(supplemented_replacements)
             queue_pbar.update(1)
 
             if log_rows_list is not None:
@@ -294,16 +297,19 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             continue
 
         possible_replacements = heuristic_sorter(curr_system)
-        possible_replacements = list(filter(lambda repl: curr_replacements.union({repl}) not in replacements_chains, possible_replacements))
-        replacements_chains.update(list(map(lambda repl: curr_replacements.union({repl}), possible_replacements)))
         for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
+            supplemented_replacements = curr_replacements.union({replacement})
+            if supplemented_replacements in replacements_chains:
+                continue
+
             new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
+            replacements_chains.add(supplemented_replacements)
 
             if curr_depth < curr_max_depth:
-                system_stack.append((new_system, curr_depth + 1, curr_replacements.union({replacement})))
+                system_stack.append((new_system, curr_depth + 1, supplemented_replacements))
                 stack_pbar.update(1)
             else:
-                system_high_depth_stack.append((new_system, curr_depth + 1, curr_replacements.union({replacement})))
+                system_high_depth_stack.append((new_system, curr_depth + 1, supplemented_replacements))
                 high_depth_stack_pbar.update(1)
 
             if log_rows_list is not None:
