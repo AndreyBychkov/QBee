@@ -154,6 +154,7 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
     solution = _optimal_method_choose(system, auxiliary_eq_type, heuristics, method, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
 
     if log_file:
+        log_rows_list.append({'from': system.equations_hash, 'name': solution.equations_hash, 'replacement': solution._get_right_replacement_equations()})
         log_df = pd.DataFrame(log_rows_list)
         log_df.to_csv(log_file, index=False)
     return solution

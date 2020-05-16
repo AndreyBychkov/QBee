@@ -311,6 +311,9 @@ class EquationSystem:
     def _get_right_equations(self):
         return list(map(lambda eq: eq.args[1], self._equations))
 
+    def _get_right_replacement_equations(self):
+        return list(map(lambda eq: eq.args[1], self._replacement_equations))
+
     def __len__(self):
         return len(self._equations)
 
