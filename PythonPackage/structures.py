@@ -126,8 +126,6 @@ class EquationSystem:
         self._parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         self._input_vars = set(input_variables) if input_variables is not None else set()
 
-        self.statistics: EvaluationStatistics = EvaluationStatistics(0, 0, "empty")
-
     @property
     def equations(self) -> List[sp.Eq]:
         return self._equations
@@ -325,7 +323,7 @@ class EquationSystem:
 
 
 class QuadraticLinearizationResult:
-    def __init__(self, system: EquationSystem, statistics: EvaluationStatistics, replacements: Set[sp.Eq]):
+    def __init__(self, system: EquationSystem, statistics: EvaluationStatistics, replacements: Tuple[sp.Expr]):
         self.system = system
         self.statistics = statistics
         self.replacements = replacements
