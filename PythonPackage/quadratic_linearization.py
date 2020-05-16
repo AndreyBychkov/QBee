@@ -251,9 +251,11 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
     system_stack = deque()
     system_high_depth_stack = deque()
 
+    replacements_chains = set()
+
     curr_depth = 0
     curr_max_depth = initial_max_depth
-    system_stack.append((system, curr_depth))
+    system_stack.append((system, curr_depth, frozenset()))
     stack_pbar.update(1)
 
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DFS')
@@ -270,7 +272,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             reset_progress_bar(stack_pbar, len(system_stack))
             reset_progress_bar(high_depth_stack_pbar, 0)
 
-        curr_system, curr_depth = system_stack.pop()
+        curr_system, curr_depth, curr_replacements = system_stack.pop()
 
         stack_pbar.update(-1)
         stack_pbar.refresh()
@@ -288,14 +290,16 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             continue
 
         possible_replacements = heuristic_sorter(curr_system)
+        possible_replacements = list(filter(lambda repl: curr_replacements.union({repl}) not in replacements_chains, possible_replacements))
+        replacements_chains.update(list(map(lambda repl: curr_replacements.union({repl}), possible_replacements)))
         for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
             new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
 
             if curr_depth < curr_max_depth:
-                system_stack.append((new_system, curr_depth + 1))
+                system_stack.append((new_system, curr_depth + 1, curr_replacements.union({replacement})))
                 stack_pbar.update(1)
             else:
-                system_high_depth_stack.append((new_system, curr_depth + 1))
+                system_high_depth_stack.append((new_system, curr_depth + 1, curr_replacements.union({replacement})))
                 high_depth_stack_pbar.update(1)
 
             if log_rows_list is not None:
