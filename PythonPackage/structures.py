@@ -2,7 +2,7 @@ import sympy as sp
 import hashlib
 
 from functools import reduce
-from typing import List, Iterable, Optional, Callable, Tuple
+from typing import List, Iterable, Optional, Callable, Tuple, Set
 from util import polynomial_replace, get_possible_replacements
 from statistics import *
 
@@ -319,3 +319,10 @@ class EquationSystem:
 
     def __str__(self):
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
+
+
+class QuadraticLinearizationResult:
+    def __init__(self, system: EquationSystem, statistics: EvaluationStatistics, replacements: Set[sp.Eq]):
+        self.system = system
+        self.statistics = statistics
+        self.replacements = replacements
