@@ -21,8 +21,8 @@ def visualize(log_file: str,
 
     nodes = list(g.nodes)
     node_color = [10] * len(nodes)
-    node_color[0] = 0
-    node_color[-1] = 20
+    node_color[nodes.index(start_node)] = 0
+    node_color[nodes.index(end_node)] = 20
 
     plt.figure(figsize=figsize)
     nx.draw(g, pos=pos, node_size=node_size, width=edge_width, node_color=node_color)

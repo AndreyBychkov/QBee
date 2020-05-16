@@ -157,7 +157,7 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
 
     if log_file:
         log_rows_list.append(
-            {'from': system.equations_hash, 'name': result.system.equations_hash, 'replacement': result.system._get_right_replacement_equations()})
+            {'from': system.equations_hash, 'name': result.system.equations_hash, 'replacement': list(result.replacements)})
         log_df = pd.DataFrame(log_rows_list)
         log_df.to_csv(log_file, index=False)
     return result
