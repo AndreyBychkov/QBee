@@ -32,7 +32,7 @@ def get_all_decompositions(monomial: sp.Poly) -> Set[Tuple[sp.Poly]]:
             x^2y^3 \rightarrow (x, xy^3), (xy, xy^2), (x^2 y^3), (y, x^2 y^2), (y, x^2, y^2), (x, xy, y^2), (y^2, x^2 y), (y, xy, xy)
 
     """
-    res = _get_compele_decompositions_rec(monomial, [], set())
+    res = _get_complete_decompositions_rec(monomial, [], set())
     res = res if res is not None else {(monomial,)}
     res = set(tuple(s) for s in res)
     return res
@@ -65,7 +65,7 @@ def _get_possible_squares(expr: sp.Poly) -> List:
     return list(res)
 
 
-def _get_compele_decompositions_rec(monomial: sp.Poly, decomposition: list, result: set) -> Optional[Set]:
+def _get_complete_decompositions_rec(monomial: sp.Poly, decomposition: list, result: set) -> Optional[Set]:
     if decomposition:
         result.add(tuple([monomial] + decomposition))
 
@@ -78,7 +78,7 @@ def _get_compele_decompositions_rec(monomial: sp.Poly, decomposition: list, resu
     divisors = list(filter(lambda d: 1 < d.total_degree() < monomial.total_degree(), divisors))
 
     for divisor in divisors:
-        _get_compele_decompositions_rec(sp.div(monomial, divisor)[0], decomposition + [divisor], result)
+        _get_complete_decompositions_rec(sp.div(monomial, divisor)[0], decomposition + [divisor], result)
 
     # Long operation. TODO(try optimize)
     unique_decompositions = set(tuple(sorted(d, key=monomial_key('grlex', monomial.free_symbols))) for d in result)
