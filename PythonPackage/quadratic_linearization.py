@@ -130,11 +130,11 @@ def _heuristic_differential_iter(system: EquationSystem, method: str):
     hash_before = system.equations_hash
 
     replacement = get_heuristics(method)(system)
-    new_symbol, new_symbol_dot = system.variables.create_variable_with_derivative()
-    system.replace_monomial(replacement, new_symbol)
-    system._replacement_equations.append(sp.Eq(new_symbol, replacement))
+    new_variable, new_variable_dot = system.variables.create_variable_with_derivative()
+    system.replace_monomial(replacement, new_variable)
+    system._replacement_equations.append(sp.Eq(new_variable, replacement))
 
-    system._equations.append(sp.Eq(new_symbol_dot, system._calculate_Lie_derivative(replacement)).expand())
+    system._equations.append(sp.Eq(new_variable_dot, system._calculate_Lie_derivative(replacement)).expand())
     hash_after = system.equations_hash
 
     return hash_before, hash_after, replacement
@@ -235,9 +235,9 @@ def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
         possible_replacements = curr_system.get_possible_replacements()
         for replacement in map(sp.Poly.as_expr, possible_replacements):
             new_system = deepcopy(curr_system)
-            new_symbol = new_system.variables.create_variable()
+            new_variable = new_system.variables.create_variable()
             equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
-            equation_add_fun(new_symbol, replacement)
+            equation_add_fun(new_variable, replacement)
 
             system_queue.put(new_system)
 
@@ -321,9 +321,9 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
 def _make_new_system(system, auxiliary_eq_type, replacement) -> EquationSystem:
     new_system = deepcopy(system)
-    new_symbol = new_system.variables.create_variable()
+    new_variable = new_system.variables.create_variable()
     equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
-    equation_add_fun(new_symbol, replacement)
+    equation_add_fun(new_variable, replacement)
     return new_system
 
 
