@@ -62,32 +62,46 @@ class VariablesHolder:
     Class that manages variable storage.
     """
 
-    def __init__(self, symbols: Iterable):
-        self._original_symbols = list(symbols)
-        self._added_symbols = list()
+    def __init__(self, variables: Iterable[sp.Symbol],
+                 parameter_variables: Optional[Set[sp.Symbol]] = None,
+                 input_variables: Optional[Set[sp.Symbol]] = None):
+        if parameter_variables is None:
+            parameter_variables = set()
+        if input_variables is None:
+            input_variables = set()
+
+        self._variables = list(variables)
+        self._parameter_variables = parameter_variables
+        self._input_variables = input_variables
+        self._generated_variables = list()
         self._base_name = "y_"
 
     @property
     def variables(self):
-        return self._original_symbols + self._added_symbols
+        return self._variables
+
+    @property
+    def parameter_variables(self):
+        return self._parameter_variables
+
+    @property
+    def input_variables(self):
+        return self._input_variables
 
     def create_variable(self) -> sp.Symbol:
         """
         Creates a new variable and stores it within itself.
 
         Example:
-            .. math:: y_1 = holder.create\_symbol()
+            .. math:: y_1 = holder.create\_variable()
 
         :return: Created variable
         """
-        if not self._added_symbols:
-            new_variable = sp.Symbol(self._base_name + "{0}")
-        else:
-            last = str(self._added_symbols[-1])
-            new_index = int(last.split("_")[1][1:-1]) + 1
-            new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
+        new_index = len(self._generated_variables)
+        new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
-        self._added_symbols.append(new_variable)
+        self._variables.append(new_variable)
+        self._generated_variables.append(new_variable)
         return new_variable
 
     def create_variable_with_derivative(self) -> Tuple[sp.Symbol, sp.Symbol]:
@@ -95,7 +109,7 @@ class VariablesHolder:
         Creates new a variable with its derivative and stores them within itself.
 
         Example:
-            .. math:: y_1, \dot{y}_1 = holder.create\_symbol\_with\_derivative()
+            .. math:: y_1, \dot{y}_1 = holder.create\_variable\_with\_derivative()
 
         :returns: Created variable with derivative
         """
@@ -116,9 +130,11 @@ class EquationSystem:
         if self.is_polynomial():
             self._compute_equations_poly_degrees()
 
-        self.variables = VariablesHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
-        self._parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
-        self._input_vars = set(input_variables) if input_variables is not None else set()
+        _symbols = reduce(set.union, map(lambda e: e.free_symbols, equations))
+        _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
+        _input_vars = set(input_variables) if input_variables is not None else set()
+        _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
+        self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
     @property
     def equations(self) -> List[sp.Eq]:
@@ -156,7 +172,7 @@ class EquationSystem:
 
     def get_possible_replacements(self, count_sorted=False) -> Tuple[sp.Poly]:
         right_equations = self._get_right_equations()
-        return get_possible_replacements(right_equations, self._parameter_vars, count_sorted=count_sorted)
+        return get_possible_replacements(right_equations, self.variables.parameter_variables, count_sorted=count_sorted)
 
     def is_polynomial(self, mode="original") -> bool:
         """
@@ -206,7 +222,7 @@ class EquationSystem:
     def _is_poly_quadratic_linear(self, poly: sp.Expr) -> bool:
         monomials = sp.Add.make_args(poly)
         for mon in monomials:
-            if sp.total_degree(mon, *poly.free_symbols.difference(self._parameter_vars)) > 2:
+            if sp.total_degree(mon, *poly.free_symbols.difference(self.variables.parameter_variables)) > 2:
                 return False
         return True
 
@@ -260,11 +276,11 @@ class EquationSystem:
     def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
         """Calculates Lie derivative using chain rule."""
         result = sp.Integer(0)
-        for var in expr.free_symbols.difference(self._parameter_vars).difference(self._input_vars):
+        for var in expr.free_symbols.difference(self.variables.parameter_variables).difference(self.variables.input_variables):
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
             var_diff = var_diff_eq.args[1]
             result += expr.diff(var) * var_diff
-        for input_var in expr.free_symbols.intersection(self._input_vars):
+        for input_var in expr.free_symbols.intersection(self.variables.input_variables):
             input_var_dot = make_derivative_symbol(input_var)
             result += expr.diff(input_var) * input_var_dot
         return self._replace_from_replacement_equations(result)
