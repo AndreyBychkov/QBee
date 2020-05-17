@@ -130,7 +130,7 @@ def _heuristic_differential_iter(system: EquationSystem, method: str):
     hash_before = system.equations_hash
 
     replacement = get_heuristics(method)(system)
-    new_symbol, new_symbol_dot = system.variables.create_symbol_with_derivative()
+    new_symbol, new_symbol_dot = system.variables.create_variable_with_derivative()
     system.replace_monomial(replacement, new_symbol)
     system._replacement_equations.append(sp.Eq(new_symbol, replacement))
 
@@ -235,7 +235,7 @@ def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
         possible_replacements = curr_system.get_possible_replacements()
         for replacement in map(sp.Poly.as_expr, possible_replacements):
             new_system = deepcopy(curr_system)
-            new_symbol = new_system.variables.create_symbol()
+            new_symbol = new_system.variables.create_variable()
             equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
             equation_add_fun(new_symbol, replacement)
 
@@ -321,7 +321,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
 def _make_new_system(system, auxiliary_eq_type, replacement) -> EquationSystem:
     new_system = deepcopy(system)
-    new_symbol = new_system.variables.create_symbol()
+    new_symbol = new_system.variables.create_variable()
     equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
     equation_add_fun(new_symbol, replacement)
     return new_system

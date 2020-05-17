@@ -57,9 +57,9 @@ def make_derivative_symbol(symbol) -> sp.Symbol:
         return sp.Symbol(rf'\dot {str_symbol}')
 
 
-class SymbolsHolder:
+class VariablesHolder:
     """
-    Class that manages symbol storage.
+    Class that manages variable storage.
     """
 
     def __init__(self, symbols: Iterable):
@@ -67,47 +67,41 @@ class SymbolsHolder:
         self._added_symbols = list()
         self._base_name = "y_"
 
-    def create_symbol(self) -> sp.Symbol:
+    @property
+    def variables(self):
+        return self._original_symbols + self._added_symbols
+
+    def create_variable(self) -> sp.Symbol:
         """
-        Creates a new symbol and stores it within itself.
+        Creates a new variable and stores it within itself.
 
         Example:
             .. math:: y_1 = holder.create\_symbol()
 
-        :return: Created symbol
+        :return: Created variable
         """
         if not self._added_symbols:
-            new_symbol = sp.Symbol(self._base_name + "{0}")
+            new_variable = sp.Symbol(self._base_name + "{0}")
         else:
-            last = str(self.get_last_added())
+            last = str(self._added_symbols[-1])
             new_index = int(last.split("_")[1][1:-1]) + 1
-            new_symbol = sp.Symbol(self._base_name + "{%d}" % new_index)
+            new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
-        self._added_symbols.append(new_symbol)
-        return new_symbol
+        self._added_symbols.append(new_variable)
+        return new_variable
 
-    def create_symbol_with_derivative(self) -> Tuple[sp.Symbol, sp.Symbol]:
+    def create_variable_with_derivative(self) -> Tuple[sp.Symbol, sp.Symbol]:
         """
-        Creates new a symbol with its derivative and stores them within itself.
+        Creates new a variable with its derivative and stores them within itself.
 
         Example:
             .. math:: y_1, \dot{y}_1 = holder.create\_symbol\_with\_derivative()
 
-        :returns: Created symbol with derivative
+        :returns: Created variable with derivative
         """
-        new_symbol = self.create_symbol()
-        new_symbol_der = make_derivative_symbol(new_symbol)
-        return new_symbol, new_symbol_der
-
-    def add_symbols(self, symbols: Iterable):
-        for new_symbol in symbols:
-            self._added_symbols.append(new_symbol)
-
-    def get_last_added(self) -> sp.Symbol:
-        return self._added_symbols[-1]
-
-    def get_symbols(self) -> List[sp.Symbol]:
-        return self._original_symbols + self._added_symbols
+        new_variable = self.create_variable()
+        new_variable_der = make_derivative_symbol(new_variable)
+        return new_variable, new_variable_der
 
 
 class EquationSystem:
@@ -122,7 +116,7 @@ class EquationSystem:
         if self.is_polynomial():
             self._compute_equations_poly_degrees()
 
-        self.variables = SymbolsHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
+        self.variables = VariablesHolder(reduce(set.union, map(lambda e: e.free_symbols, equations)))
         self._parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         self._input_vars = set(input_variables) if input_variables is not None else set()
 
@@ -272,7 +266,6 @@ class EquationSystem:
             result += expr.diff(var) * var_diff
         for input_var in expr.free_symbols.intersection(self._input_vars):
             input_var_dot = make_derivative_symbol(input_var)
-            self.variables.add_symbols([input_var_dot])
             result += expr.diff(input_var) * input_var_dot
         return self._replace_from_replacement_equations(result)
 
