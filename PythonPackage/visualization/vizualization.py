@@ -27,9 +27,9 @@ def visualize(log_file: str,
     plt.figure(figsize=figsize)
     nx.draw(g, pos=pos, node_size=node_size, width=edge_width, node_color=node_color)
 
-    ql_path = filter(lambda e: e[2] in replacements, g.edges.data('replacement'))
-    ql_path = list(map(lambda e: (e[0], e[1]), ql_path))
-    nx.draw_networkx_edges(g, pos, edgelist=ql_path, edge_color='r', width=edge_width * 2.5, arrowsize=10 * edge_width * 2.5)
+    shortest_path = nx.shortest_path(g, start_node, end_node)
+    shortest_path_edges = list(zip(shortest_path, shortest_path[1:]))
+    nx.draw_networkx_edges(g, pos, edgelist=shortest_path_edges, edge_color='r', width=edge_width * 2.5, arrowsize=10 * edge_width * 2.5)
 
     edge_labels = dict([((fr, to), data['replacement']) for fr, to, data in g.edges(data=True)])
     nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels, font_size=edge_label_font_size)
