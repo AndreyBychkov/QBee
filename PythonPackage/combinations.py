@@ -74,14 +74,14 @@ def _get_complete_decompositions_rec(monomial: sp.Poly, decomposition: list, res
 
     divisors = list(sp.itermonomials(monomial.gens, monomial.degree_list(), [0] * len(monomial.gens)))
     divisors = list(filter(lambda d: not d.is_Number, divisors))
-    divisors = list(map(sp.Poly, divisors))
+    divisors = list(map(lambda d: sp.Poly(d, *monomial.gens), divisors))
     divisors = list(filter(lambda d: 1 < d.total_degree() < monomial.total_degree(), divisors))
 
     for divisor in divisors:
-        _get_complete_decompositions_rec(sp.div(monomial, divisor)[0], decomposition + [divisor], result)
+        _get_complete_decompositions_rec(sp.div(monomial, divisor, monomial.gens)[0], decomposition + [divisor], result)
 
-    # Long operation. TODO(try optimize)
-    unique_decompositions = set(tuple(sorted(d, key=monomial_key('grlex', monomial.free_symbols))) for d in result)
+    # Long operation. TODO(try optimize: mb should remove sorting)
+    unique_decompositions = set(tuple(sorted(d, key=monomial_key('grlex', monomial.gens))) for d in result)
     return unique_decompositions
 
 

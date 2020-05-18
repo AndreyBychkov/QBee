@@ -9,9 +9,8 @@ from operator import add
 from collections import Counter
 
 
-def get_possible_replacements(poly_list: List[sp.Expr], excluded_variables: Set[sp.Symbol], count_sorted=True) -> Tuple[sp.Poly]:
+def get_possible_replacements(poly_list: List[sp.Expr], gens: Set[sp.Symbol], count_sorted=True) -> Tuple[sp.Poly]:
     combined_poly = sum(poly_list)
-    gens = combined_poly.free_symbols.difference(excluded_variables)
     terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
     decompositions = list(map(get_all_decompositions, terms))
 
@@ -43,7 +42,7 @@ def monomial_replace(monomial: sp.Expr, old: sp.Expr, new: sp.Expr) -> sp.Expr:
 
 
 def is_monomial_divisor(numerator: sp.Expr, denominator: sp.Expr) -> bool:
-    return sp.gcd(numerator, denominator) == denominator
+    return sp.gcd(numerator.as_expr(), denominator.as_expr()) == denominator.as_expr()
 
 
 def sorted_square_first(monomials: List[sp.Poly]) -> List[sp.Poly]:

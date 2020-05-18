@@ -134,6 +134,7 @@ class EquationSystem:
         _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         _input_vars = set(input_variables) if input_variables is not None else set()
         _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
+        _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
     @property
@@ -172,7 +173,7 @@ class EquationSystem:
 
     def get_possible_replacements(self, count_sorted=False) -> Tuple[sp.Poly]:
         right_equations = self._get_right_equations()
-        return get_possible_replacements(right_equations, self.variables.parameter_variables, count_sorted=count_sorted)
+        return get_possible_replacements(right_equations, set(self.variables.variables), count_sorted=count_sorted)
 
     def is_polynomial(self, mode="original") -> bool:
         """
