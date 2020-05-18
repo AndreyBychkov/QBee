@@ -15,8 +15,7 @@ from util import is_monomial_divisor
 def random_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
     """Shuffles monomial replacements"""
     possible_replacements = system.get_possible_replacements(count_sorted=False)
-    rand.shuffle(possible_replacements)
-    return possible_replacements
+    return rand.sample(possible_replacements, len(possible_replacements))
 
 
 def random(system: EquationSystem) -> sp.Expr:
