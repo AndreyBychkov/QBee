@@ -137,6 +137,8 @@ class EquationSystem:
         _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
+        self.expand_equations()
+
     @property
     def equations(self) -> List[sp.Eq]:
         return self._equations
@@ -287,7 +289,7 @@ class EquationSystem:
         return self._replace_from_replacement_equations(result)
 
     def _replace_from_replacement_equations(self, expr: sp.Expr) -> sp.Expr:
-        new_expr = expr.copy()
+        new_expr = expr.expand()
         for left, right in map(lambda eq: eq.args, self._replacement_equations):
             new_expr = new_expr.subs(right, left)
         return new_expr
