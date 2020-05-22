@@ -125,9 +125,7 @@ class EquationSystem:
         self._original_equation_indexes = list(range(len(equations)))
         self._replacement_equations = list()
 
-        self._equations_poly_degrees = dict()
-        if self.is_polynomial():
-            self._compute_equations_poly_degrees()
+        self.expand_equations()
 
         _symbols = reduce(set.union, map(lambda e: e.free_symbols, equations))
         _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
@@ -136,7 +134,9 @@ class EquationSystem:
         _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
-        self.expand_equations()
+        self._equations_poly_degrees = dict()
+        if self.is_polynomial():
+            self._compute_equations_poly_degrees()
 
     @property
     def equations(self) -> List[sp.Eq]:
@@ -191,13 +191,13 @@ class EquationSystem:
 
     def _is_polynomial_original(self) -> bool:
         for i in self._original_equation_indexes:
-            if not self.equations[i].args[1].is_polynomial():
+            if not self.equations[i].args[1].is_polynomial(*self.variables.variables):
                 return False
         return True
 
     def _is_polynomial_full(self) -> bool:
         for eq in self._equations:
-            if not eq.args[1].is_polynomial():
+            if not eq.args[1].is_polynomial(*self.variables.variables):
                 return False
         return True
 
