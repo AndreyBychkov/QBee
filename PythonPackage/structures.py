@@ -4,7 +4,6 @@ import hashlib
 from functools import reduce
 from typing import List, Iterable, Optional, Callable, Tuple, Set
 from util import polynomial_replace, get_possible_replacements
-from statistics import *
 
 
 def derivatives(names) -> Tuple[sp.Symbol]:
@@ -332,6 +331,27 @@ class EquationSystem:
 
     def __str__(self):
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
+
+
+class EvaluationStatistics:
+    """Statistics structure for quadratic linearization"""
+
+    def __init__(self, steps: int, depth: int, method_name: str):
+        """
+        :param steps: number of computed systems
+        :param depth: number of replacements to make system quadratic linear
+        :param method_name: name of the algorithm
+        """
+        self.steps = steps
+        self.method_name = method_name
+        self.depth = depth
+
+    def __repr__(self):
+        return '\n'.join([
+            f"steps: {self.steps}",
+            f"Method's name: {self.method_name}",
+            f"depth: {self.depth}"
+        ])
 
 
 class QuadraticLinearizationResult:

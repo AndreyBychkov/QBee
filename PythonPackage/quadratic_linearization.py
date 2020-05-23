@@ -11,7 +11,6 @@ from copy import deepcopy
 from queue import Queue, Empty
 from collections import deque
 from typing import List, Optional, Callable
-from statistics import *
 from util import reset_progress_bar, refresh_and_close_progress_bars
 
 
