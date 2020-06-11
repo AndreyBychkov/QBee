@@ -288,7 +288,7 @@ class EquationSystem:
         return self._replace_from_replacement_equations(result)
 
     def _replace_from_replacement_equations(self, expr: sp.Expr) -> sp.Expr:
-        new_expr = expr.expand()  # TODO(bug: sometimes expand make things worse)
+        new_expr = expr.copy()
         for left, right in map(lambda eq: eq.args, self._replacement_equations):
             new_expr = new_expr.subs(right, left)
         return new_expr
