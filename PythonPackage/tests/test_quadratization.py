@@ -51,5 +51,5 @@ def test_rabinovich_fabrikant():
         sp.Eq(dot_z, -2 * z * (b + x * y))
     ], parameter_variables=[a, b])
 
-    ql_res = quadratic_linearize(system, initial_max_depth=3, limit_depth=3)
+    ql_res = quadratic_linearize(system, initial_max_depth=3, limit_depth=3, heuristics='auxiliary-equation-ql-discrepancy')
     assert len(ql_res.system.equations) == 6
