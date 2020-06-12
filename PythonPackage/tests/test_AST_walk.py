@@ -21,8 +21,7 @@ def test_AST_walk_rational_expr():
 
 def test_AST_walk_general_expr():
     x, y = sp.symbols(["x", "y"])
-    sin = sp.Function("sin")
 
-    expr = x ** 2 - y + (x + y) * sin(x)
+    expr = x ** 2 - y + (x + y) * sp.sin(x)
     found = find_non_polynomial(expr)
-    assert found == sin(x)
+    assert found == sp.sin(x)
