@@ -22,12 +22,18 @@ Then a list of new variables
 is said to be a *quadratization* of ODEs system if there exists polynomials ![h_1, \ldots, h_{m + n} \in \mathbb{C}\[\bar{x}, \bar{y}\]](https://render.githubusercontent.com/render/math?math=h_1%2C%20%5Cldots%2C%20h_%7Bm%20%2B%20n%7D%20%5Cin%20%5Cmathbb%7BC%7D%5B%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D%5D)
 of degree at most two such that
 
-* ![\dot{x}_i = h_i(\bar{x}, \bar{y})$ for every $1 \leqslant i \leqslant n](https://render.githubusercontent.com/render/math?math=%5Cdot%7Bx%7D_i%20%3D%20h_i(%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D)%24%20for%20every%20%241%20%5Cleqslant%20i%20%5Cleqslant%20n)
-* ![\dot{y}_j = h_{j + n}(\bar{x}, \bar{y})$ for every $1 \leqslant j \leqslant m](https://render.githubusercontent.com/render/math?math=%5Cdot%7By%7D_j%20%3D%20h_%7Bj%20%2B%20n%7D(%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D)%24%20for%20every%20%241%20%5Cleqslant%20j%20%5Cleqslant%20m)
+* ![\dot{x}_i = h_i(\bar{x}, \bar{y})](https://render.githubusercontent.com/render/math?math=%5Cdot%7Bx%7D_i%20%3D%20h_i(%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D))
+for every ![\dot{x}_i = h_i(\bar{x}, \bar{y})$ for every $1 \leqslant i \leqslant n](https://render.githubusercontent.com/render/math?math=%5Cdot%7Bx%7D_i%20%3D%20h_i(%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D)%24%20for%20every%20%241%20%5Cleqslant%20i%20%5Cleqslant%20n)
+* ![\dot{y}_j = h_{j + n}(\bar{x}, \bar{y})](https://render.githubusercontent.com/render/math?math=%5Cdot%7By%7D_j%20%3D%20h_%7Bj%20%2B%20n%7D(%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D))
+for every ![\dot{y}_j = h_{j + n}(\bar{x}, \bar{y})$ for every $1 \leqslant j \leqslant m](https://render.githubusercontent.com/render/math?math=%5Cdot%7By%7D_j%20%3D%20h_%7Bj%20%2B%20n%7D(%5Cbar%7Bx%7D%2C%20%5Cbar%7By%7D)%24%20for%20every%20%241%20%5Cleqslant%20j%20%5Cleqslant%20m)
 
 The number *m* will be called *the order of quadratization*.
 
 A quadratization of the smallest possible order will be called  *an optimal quadratization*.
+
+If all the polynomials ![g_1, \ldots, g_m](https://render.githubusercontent.com/render/math?math=g_1%2C%20%5Cldots%2C%20g_m)
+are monomials, the quadratization is called *a monomial quadratization*.
+If a monomial quadratization of a system has the smallest possible order among all the monomial quadratizations of the system, it is called an *optimal monomial quadratization*.
 
 
 
