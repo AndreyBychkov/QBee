@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/AndreyBychkov/QBee.svg?branch=master)](https://travis-ci.com/AndreyBychkov/QBee)
+
 # QBee
 Python library for converting an ODE system into a quadratic form.
 
