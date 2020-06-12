@@ -285,13 +285,12 @@ class EquationSystem:
         for input_var in expr.free_symbols.intersection(self.variables.input_variables):
             input_var_dot = make_derivative_symbol(input_var)
             result += expr.diff(input_var) * input_var_dot
-        return self._replace_from_replacement_equations(result)
+        return self._apply_substitutions(self._apply_substitutions(result).expand())
 
-    def _replace_from_replacement_equations(self, expr: sp.Expr) -> sp.Expr:
-        new_expr = expr.copy()
+    def _apply_substitutions(self, expr: sp.Expr) -> sp.Expr:
         for left, right in map(lambda eq: eq.args, self._replacement_equations):
-            new_expr = new_expr.subs(right, left)
-        return new_expr
+            expr = expr.subs(right, left)
+        return expr
 
     def _compute_equations_poly_degrees(self):
         for var_dot, right_expr in map(lambda eq: eq.args, self._equations):
