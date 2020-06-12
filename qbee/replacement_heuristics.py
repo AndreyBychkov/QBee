@@ -6,10 +6,10 @@ import sys
 import sympy as sp
 import random as rand
 
-from structures import *
+from .structures import *
 from functools import partial
 from typing import List, Tuple
-from util import is_monomial_divisor
+from .util import is_monomial_divisor
 
 
 def random_sorted(system: EquationSystem) -> Tuple[sp.Poly]:

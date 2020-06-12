@@ -1,6 +1,7 @@
+import pytest
 import sympy as sp
 
-from structures import VariablesHolder
+from qbee.structures import VariablesHolder
 
 
 def test_symbols_creation():

@@ -1,6 +1,7 @@
+import pytest
 import sympy as sp
 
-from AST_walk import find_non_polynomial
+from qbee.AST_walk import find_non_polynomial
 
 
 def test_AST_walk_polynomial_expr():

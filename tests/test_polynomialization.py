@@ -1,7 +1,7 @@
 import pytest
+import sympy as sp
 
-from structures import *
-from polynomialization import polynomialize
+from qbee import EquationSystem, derivatives, polynomialize
 
 x, y, z = sp.symbols('x, y, z')
 dot_x, dot_y, dot_z = derivatives('x, y, z')

@@ -2,7 +2,7 @@ import sympy as sp
 
 from time import time
 from tqdm import tqdm
-from combinations import *
+from .combinations import *
 from functools import reduce, partial
 from typing import List, Tuple
 from operator import add

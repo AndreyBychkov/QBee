@@ -3,7 +3,7 @@ import hashlib
 
 from functools import reduce
 from typing import List, Iterable, Optional, Callable, Tuple, Set
-from util import polynomial_replace, get_possible_replacements
+from .util import polynomial_replace, get_possible_replacements
 
 
 def derivatives(names) -> Tuple[sp.Symbol]:

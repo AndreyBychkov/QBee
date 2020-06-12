@@ -1,9 +1,9 @@
 import pytest
 import sympy as sp
 
-from qbee import *
-from replacement_heuristics import *
-from replacement_heuristics import _compute_monomials_affected, \
+from qbee import EquationSystem, derivatives
+from qbee.replacement_heuristics import free_variables_count_sorted, \
+    _compute_monomials_affected, \
     _compute_replacement_value_for_all_monomials, \
     _compute_auxiliary_equation_ql_discrepancy
 

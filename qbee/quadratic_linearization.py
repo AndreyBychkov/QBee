@@ -4,14 +4,14 @@ import sympy as sp
 import pandas as pd
 import multiprocessing as mp
 
-from structures import *
-from replacement_heuristics import get_heuristics, get_heuristic_sorter
+from .structures import *
+from .replacement_heuristics import get_heuristics, get_heuristic_sorter
 from tqdm.autonotebook import tqdm
 from copy import deepcopy
 from queue import Queue, Empty
 from collections import deque
 from typing import List, Optional, Callable
-from util import reset_progress_bar, refresh_and_close_progress_bars
+from .util import reset_progress_bar, refresh_and_close_progress_bars
 
 
 def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",

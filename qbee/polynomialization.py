@@ -1,8 +1,8 @@
 import sympy as sp
 
 from copy import deepcopy
-from structures import EquationSystem
-from AST_walk import find_non_polynomial
+from .structures import EquationSystem
+from .AST_walk import find_non_polynomial
 
 
 def polynomialize(system: EquationSystem, mode='differential') -> EquationSystem:

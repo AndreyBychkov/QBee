@@ -1,7 +1,8 @@
 import pytest
+import sympy as sp
 
 from pytest import raises
-from structures import *
+from qbee import EquationSystem, derivatives
 
 x = sp.symbols('x')
 x_dot = derivatives(x)

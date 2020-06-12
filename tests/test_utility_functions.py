@@ -1,7 +1,7 @@
 import pytest
 import sympy as sp
 
-from util import *
+from qbee.util import is_monomial_divisor
 
 x, y, z = sp.symbols('x, y, z')
 
