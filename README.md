@@ -22,11 +22,11 @@ leading to the following ODE
 
 ![\dot{y} = x_2 y - 2y^2](https://render.githubusercontent.com/render/math?math=%5Cdot%7By%7D%20%3D%20x_2%20y%20-%202y%5E2)
 
-Thus, we attained system with quadratic right-hand side
+Thus, we attained the system with quadratic right-hand side
 
 ![\begin{cases} \dot{x}_1 = x_1 x_2 \\ \dot{x}_2 = -x_2 y \\ \dot{y} = x_2 y - 2y^2 \end{cases}](https://render.githubusercontent.com/render/math?math=%5Cbegin%7Bcases%7D%20%5Cdot%7Bx%7D_1%20%3D%20x_1%20x_2%20%5C%5C%20%5Cdot%7Bx%7D_2%20%3D%20-x_2%20y%20%5C%5C%20%5Cdot%7By%7D%20%3D%20x_2%20y%20-%202y%5E2%20%5Cend%7Bcases%7D)
 
-We used only one new variable, so we achieved an *optimal* quadratization.  
+We used only one new variable, so we achieved an *optimal* quadratization. 
 
 
 
