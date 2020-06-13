@@ -318,7 +318,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
                 _quad_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
-def _make_new_system(system, auxiliary_eq_type, substitution) -> EquationSystem:
+def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:
     new_system = deepcopy(system)
     new_variable = new_system.free.create_variable()
     equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
