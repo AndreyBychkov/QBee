@@ -47,7 +47,7 @@ def test_compute_replacement_value_for_all_monomials():
     assert _compute_monomials_affected(system, substitution) == 0
 
 
-def test_compute_auxiliary_equation_ql_discrepancy():
+def test_compute_auxiliary_equation_quadratic_discrepancy():
     system = EquationSystem([
         sp.Eq(x_dot, x ** 2 + x ** 2 * y ** 2),
         sp.Eq(y_dot, -y)

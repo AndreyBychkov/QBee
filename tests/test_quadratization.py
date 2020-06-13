@@ -12,8 +12,8 @@ def test_sigmoid():
         sp.Eq(dot_x, 1 / (1 + sp.exp(x)))
     ])
     poly_system = polynomialize(system)
-    ql_result = quadratize(poly_system)
-    assert len(ql_result.system.equations) == 4
+    quad_result = quadratize(poly_system)
+    assert len(quad_result.system.equations) == 4
 
 
 def test_zero_system():
@@ -28,9 +28,9 @@ def test_zero_system():
     ])
 
     poly_system = polynomialize(system)
-    ql_result = quadratize(poly_system)
+    quad_result = quadratize(poly_system)
 
-    assert len(ql_result.system.equations) == 5
+    assert len(quad_result.system.equations) == 5
 
 
 def test_x_sigmoid():
@@ -38,8 +38,8 @@ def test_x_sigmoid():
         sp.Eq(dot_x, x / (1 + sp.exp(x)))
     ])
     poly_system = polynomialize(system)
-    ql_result = quadratize(poly_system, limit_depth=2, initial_max_depth=2)
-    assert len(ql_result.system.equations) == 5
+    quad_result = quadratize(poly_system, limit_depth=2, initial_max_depth=2)
+    assert len(quad_result.system.equations) == 5
 
 
 def test_rabinovich_fabrikant():
@@ -51,5 +51,5 @@ def test_rabinovich_fabrikant():
         sp.Eq(dot_z, -2 * z * (b + x * y))
     ], parameter_variables=[a, b])
 
-    ql_res = quadratize(system, initial_max_depth=3, limit_depth=3, heuristics='auxiliary-equation-ql-discrepancy')
-    assert len(ql_res.system.equations) == 6
+    quad_result = quadratize(system, initial_max_depth=3, limit_depth=3, heuristics='AEQD')
+    assert len(quad_result.system.equations) == 6
