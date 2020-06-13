@@ -11,7 +11,7 @@ def test_symbols_creation():
     holder.create_variable()
     holder.create_variable()
 
-    symbols_names = set(map(lambda x: str(x), holder.variables))
+    symbols_names = set(map(lambda x: str(x), holder.free))
     expected_names = {"a", "b", "c", "y_{0}", "y_{1}"}
     assert not symbols_names.symmetric_difference(expected_names)
 

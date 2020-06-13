@@ -234,7 +234,7 @@ def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
         possible_substitutions = curr_system.get_possible_substitutions()
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
             new_system = deepcopy(curr_system)
-            new_variable = new_system.variables.create_variable()
+            new_variable = new_system.free.create_variable()
             equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
             equation_add_fun(new_variable, substitution)
 
@@ -320,7 +320,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
 def _make_new_system(system, auxiliary_eq_type, substitution) -> EquationSystem:
     new_system = deepcopy(system)
-    new_variable = new_system.variables.create_variable()
+    new_variable = new_system.free.create_variable()
     equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
     equation_add_fun(new_variable, substitution)
     return new_system

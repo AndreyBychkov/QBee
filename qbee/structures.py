@@ -69,22 +69,22 @@ class VariablesHolder:
         if input_variables is None:
             input_variables = set()
 
-        self._variables = list(variables)
+        self._free_variables = list(variables)
         self._parameter_variables = parameter_variables
         self._input_variables = input_variables
         self._generated_variables = list()
         self._base_name = "y_"
 
     @property
-    def variables(self):
-        return self._variables
+    def free(self):
+        return self._free_variables
 
     @property
-    def parameter_variables(self):
+    def parameter(self):
         return self._parameter_variables
 
     @property
-    def input_variables(self):
+    def input(self):
         return self._input_variables
 
     def create_variable(self) -> sp.Symbol:
@@ -99,7 +99,7 @@ class VariablesHolder:
         new_index = len(self._generated_variables)
         new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
-        self._variables.append(new_variable)
+        self._free_variables.append(new_variable)
         self._generated_variables.append(new_variable)
         return new_variable
 
@@ -174,7 +174,7 @@ class EquationSystem:
 
     def get_possible_substitutions(self, count_sorted=False) -> Tuple[sp.Poly]:
         right_equations = self._get_right_equations()
-        return get_possible_substitutions(right_equations, set(self.variables.variables), count_sorted=count_sorted)
+        return get_possible_substitutions(right_equations, set(self.variables.free), count_sorted=count_sorted)
 
     def is_polynomial(self, mode="original") -> bool:
         """
@@ -191,13 +191,13 @@ class EquationSystem:
 
     def _is_polynomial_original(self) -> bool:
         for i in self._original_equation_indexes:
-            if not self.equations[i].args[1].is_polynomial(*self.variables.variables):
+            if not self.equations[i].args[1].is_polynomial(*self.variables.free):
                 return False
         return True
 
     def _is_polynomial_full(self) -> bool:
         for eq in self._equations:
-            if not eq.args[1].is_polynomial(*self.variables.variables):
+            if not eq.args[1].is_polynomial(*self.variables.free):
                 return False
         return True
 
@@ -224,7 +224,7 @@ class EquationSystem:
     def _is_poly_quadratic(self, poly: sp.Expr) -> bool:
         monomials = sp.Add.make_args(poly)
         for mon in monomials:
-            if sp.total_degree(mon, *poly.free_symbols.difference(self.variables.parameter_variables)) > 2:
+            if sp.total_degree(mon, *poly.free_symbols.difference(self.variables.parameter)) > 2:
                 return False
         return True
 
@@ -278,11 +278,11 @@ class EquationSystem:
     def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
         """Calculates Lie derivative using chain rule."""
         result = sp.Integer(0)
-        for var in expr.free_symbols.difference(self.variables.parameter_variables).difference(self.variables.input_variables):
+        for var in expr.free_symbols.difference(self.variables.parameter).difference(self.variables.input):
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
             var_diff = var_diff_eq.args[1]
             result += expr.diff(var) * var_diff
-        for input_var in expr.free_symbols.intersection(self.variables.input_variables):
+        for input_var in expr.free_symbols.intersection(self.variables.input):
             input_var_dot = make_derivative_symbol(input_var)
             result += expr.diff(input_var) * input_var_dot
         return self._apply_substitutions(self._apply_substitutions(result).expand())

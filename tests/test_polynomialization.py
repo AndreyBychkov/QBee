@@ -32,7 +32,7 @@ def test_sigmoid_diff():
 
     poly_system = polynomialize(system)
 
-    _, y0, y1 = poly_system.variables.variables
+    _, y0, y1 = poly_system.variables.free
     dot_y0, dot_y1 = derivatives([y0, y1])
     expected_system = EquationSystem([
         sp.Eq(dot_x, y1),
@@ -53,7 +53,7 @@ def test_parameter():
 
     poly_system = polynomialize(system)
 
-    _, y0 = poly_system.variables.variables
+    _, y0 = poly_system.variables.free
     dot_y0 = derivatives(y0)
     expected_system = EquationSystem([
         sp.Eq(dot_x, y0),
