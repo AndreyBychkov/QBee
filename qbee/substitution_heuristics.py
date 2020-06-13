@@ -116,6 +116,11 @@ _heuristics_name_to_function = \
         'auxiliary-equation-degree'               : auxiliary_equation_degree,
         'auxiliary-equation-quadratic-discrepancy': auxiliary_equation_quadratic_discrepancy,
         'summary-monomial-degree'                 : summary_monomial_degree,
+        'FF'                                      : frequent_first,
+        'FVC'                                     : free_variables_count,
+        'AED'                                     : auxiliary_equation_degree,
+        'AEQD'                                    : auxiliary_equation_quadratic_discrepancy,
+        'SMD'                                     : summary_monomial_degree,
         'default'                                 : summary_monomial_degree
     }
 
@@ -127,6 +132,11 @@ _heuristics_name_to_sorter = \
         'auxiliary-equation-degree'               : auxiliary_equation_degree_sorted,
         'auxiliary-equation-quadratic-discrepancy': auxiliary_equation_quadratic_discrepancy_sorted,
         'summary-monomial-degree'                 : summary_monomial_degree_sorted,
+        'FF'                                      : frequent_first_sorted,
+        'FVC'                                     : free_variables_count_sorted,
+        'AED'                                     : auxiliary_equation_degree_sorted,
+        'AEQD'                                    : auxiliary_equation_quadratic_discrepancy_sorted,
+        'SMD'                                     : summary_monomial_degree_sorted,
         'default'                                 : summary_monomial_degree_sorted
     }
 
