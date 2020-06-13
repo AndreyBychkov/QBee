@@ -45,10 +45,6 @@ def is_monomial_divisor(numerator: sp.Expr, denominator: sp.Expr) -> bool:
     return sp.gcd(numerator.as_expr(), denominator.as_expr()) == denominator.as_expr()
 
 
-def sorted_square_first(monomials: List[sp.Poly]) -> List[sp.Poly]:
-    return sorted(monomials, key=lambda m: len(m.free_symbols) / m.total_degree())
-
-
 def reset_progress_bar(pbar: tqdm, value):
     pbar.n = pbar.last_print_n = value
     pbar.start_t = pbar.last_print_t = time()
