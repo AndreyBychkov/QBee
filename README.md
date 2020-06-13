@@ -30,6 +30,56 @@ Thus, we attained the system with quadratic right-hand side
 
 We used only one new variable, so we achieved an *optimal* quadratization. 
 
+# Qbee usage
+
+QBee implements algorithms that **take** system of ODEs with elementary functions right-hand side and
+**return** *optimal monomial quadratization* - optimal quadratization constructed from monomial substitutions.
+
+We will demonstrate usage of QBee on the example below. Other interactive examples you can find in [examples section](examples). 
+
+### 1. Importing QBee
+
+```python
+import sympy
+from qbee import EquationSystem, polynomialize, quadratize, derivatives
+
+sympy.init_printing()  # If you work in Jupyter notebook 
+```
+
+### 2. ODEs system definition
+
+First, we introduce variables, we will use
+```python
+x = sympy.symbols('x')
+dot_x = derivatives(x)
+```
+
+Then we build a ODEs system with elementary function right-hand side
+```python
+system = EquationSystem([
+    sympy.Eq(dot_x, 1 / (1 + sympy.exp(x)))
+])
+```
+
+This system is not polynomial, so we need to polynomialize it.
+
+### 3. Polynomialization
+
+We can convert equations right-hand side to polynomials
+```python
+poly_system = polynomialize(system)
+```
+
+**Note:** our implementation of polynomialization is **not** optimal yet. 
+
+### 4. Quadratization
+
+Now, convert polynomial system to quadratic form
+
+```python
+quad_result = quadratize(poly_system)
+quad_system = quad_result.system
+```
 
 
 
