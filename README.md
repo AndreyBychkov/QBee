@@ -48,7 +48,7 @@ sympy.init_printing()  # If you work in Jupyter notebook
 
 ### 2. ODEs system definition
 
-First, we introduce variables, we will use
+First, we introduce variables, using SymPy framework
 ```python
 x = sympy.symbols('x')
 dot_x = derivatives(x)
@@ -68,6 +68,13 @@ This system is not polynomial, so we need to polynomialize it.
 We can convert equations right-hand side to polynomials
 ```python
 poly_system = polynomialize(system)
+poly_system.print()
+```
+Output:
+```
+x' = y_{1}
+y_{0}' = y_{0}*y_{1}
+y_{1}' = -y_{0}*y_{1}**3
 ```
 
 **Note:** our implementation of polynomialization is **not** optimal yet. 
@@ -79,6 +86,15 @@ Now, convert polynomial system to quadratic form
 ```python
 quad_result = quadratize(poly_system)
 quad_system = quad_result.system
+quad_system.print()
+```
+
+Output:
+```
+x' = y_{1}
+y_{0}' = y_{0}*y_{1}
+y_{1}' = -y_{1}*y_{2}
+y_{2}' = y_{1}*y_{2} - 2*y_{2}**2
 ```
 
 
