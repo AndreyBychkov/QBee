@@ -7,7 +7,7 @@ from .AST_walk import find_non_polynomial
 
 def polynomialize(system: EquationSystem, mode='differential') -> EquationSystem:
     """
-    Transforms the system into polynomial form using variable replacement techniques.
+    Transforms the system into polynomial form using variable substitution techniques.
 
     :param system: non-linear ODEs system
     :param mode: auxiliary equation form.
@@ -41,7 +41,7 @@ def _polynomialize_algebraic_iter(system: EquationSystem):
         non_poly_elem = find_non_polynomial(eq.args[1])
         if non_poly_elem:
             new_variable = system.variables.create_variable()
-            system.algebraic_auxiliary_equation_add(new_variable, non_poly_elem, is_polynomial_replacement=False)
+            system.algebraic_auxiliary_equation_add(new_variable, non_poly_elem, is_polynomial_substitution=False)
             break
 
 
@@ -59,5 +59,5 @@ def _polynomialize_differential_iter(system: EquationSystem):
         if non_poly_elem:
 
             new_variable = system.variables.create_variable()
-            system.differential_auxiliary_equation_add(new_variable, non_poly_elem, is_polynomial_replacement=False)
+            system.differential_auxiliary_equation_add(new_variable, non_poly_elem, is_polynomial_substitution=False)
             break

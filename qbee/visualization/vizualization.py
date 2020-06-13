@@ -12,11 +12,11 @@ def visualize(log_file: str,
               edge_label_font_size=5,
               ) -> None:
     log_df = pd.read_csv(log_file)
-    start_node, end_node, replacements = log_df.tail(1).values[0]
-    replacements = replacements.strip('[]').split(', ')
+    start_node, end_node, substitutions = log_df.tail(1).values[0]
+    substitutions = substitutions.strip('[]').split(', ')
     log_df.drop(log_df.tail(1).index, inplace=True)
 
-    g = nx.from_pandas_edgelist(log_df, 'from', 'name', create_using=nx.DiGraph, edge_attr='replacement')
+    g = nx.from_pandas_edgelist(log_df, 'from', 'name', create_using=nx.DiGraph, edge_attr='substitution')
     pos = nx.spring_layout(g, scale=5, k=2)
 
     nodes = list(g.nodes)
@@ -31,7 +31,7 @@ def visualize(log_file: str,
     shortest_path_edges = list(zip(shortest_path, shortest_path[1:]))
     nx.draw_networkx_edges(g, pos, edgelist=shortest_path_edges, edge_color='r', width=edge_width * 2.5, arrowsize=10 * edge_width * 2.5)
 
-    edge_labels = dict([((fr, to), data['replacement']) for fr, to, data in g.edges(data=True)])
+    edge_labels = dict([((fr, to), data['substitution']) for fr, to, data in g.edges(data=True)])
     nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels, font_size=edge_label_font_size)
 
     plt.show()

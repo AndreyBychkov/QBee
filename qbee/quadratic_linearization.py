@@ -5,7 +5,7 @@ import pandas as pd
 import multiprocessing as mp
 
 from .structures import *
-from .replacement_heuristics import get_heuristics, get_heuristic_sorter
+from .substitution_heuristics import get_heuristics, get_heuristic_sorter
 from tqdm.autonotebook import tqdm
 from copy import deepcopy
 from queue import Queue, Empty
@@ -18,16 +18,16 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
                         method_optimal: str = "iddfs", initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None,
                         log_file=None) -> QuadraticLinearizationResult:
     """
-    Transforms the system into quadratic-linear form using variable replacement technique.
+    Transforms the system into quadratic-linear form using variable substitution technique.
 
     :param system: polynomialized system of DAE
     :param mode: type of search.
     :param auxiliary_eq_type: auxiliary equation form.
-    :param heuristics: next replacement choice method.
+    :param heuristics: next substitution choice method.
     :param method_optimal: graph search algorithm in the optimal mode.
-    :param initial_max_depth: for some methods checks all systems where the number of replacements does not exceed this number.
-                              Put here your assumption of how long a chain of optimal replacements might be.
-    :param limit_depth: maximum number of replacements. Raise error if no quadratic-linear system is found within limit depth.
+    :param initial_max_depth: for some methods checks all systems where the number of substitutions does not exceed this number.
+                              Put here your assumption of how long a chain of optimal substitutions might be.
+    :param limit_depth: maximum number of substitutions. Raise error if no quadratic-linear system is found within limit depth.
     :param debug: printing mode while quadratic linearization is performed.
     :param log_file: output file for evaluation logging. Must be in 'csv' format.
     :returns: quadratic-linearized system
@@ -49,17 +49,17 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
     Heuristics
     -----------------
     **random**
-        choose next possible replacement in random way;
+        choose next possible substitution in random way;
     **frequent-first**
-        choose most frequent possible replacement as the next one;
+        choose most frequent possible substitution as the next one;
     **free-variables-count**
-        choose a replacement with the least free variables;
+        choose a substitution with the least free variables;
     **auxiliary-equation-degree**
-        choose a monomial replacement with the least generated auxiliary equation degree;
+        choose a monomial substitution with the least generated auxiliary equation degree;
     **auxiliary-equation-ql-discrepancy**
-        choose a monomial replacement which generated auxiliary equation is closest to quadratic form;
+        choose a monomial substitution which generated auxiliary equation is closest to quadratic form;
     **summary-monomial-degree**
-        choose a monomial replacement with maximal reduction of system's degree;
+        choose a monomial substitution with maximal reduction of system's degree;
 
     Method Optimal
     -----------------
@@ -73,9 +73,9 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
     **None** or **silent**
         prints nothing;
     **info**
-        prints replacement for each iteration;
+        prints substitution for each iteration;
     **debug**
-        prints equations in system with replacement for each iteration;
+        prints equations in system with substitution for each iteration;
 
     """
     if not system.is_polynomial():
@@ -93,17 +93,17 @@ def _quadratic_linearize_heuristic(system: EquationSystem, auxiliary_eq_type: st
     log_rows_list = list()
     new_system = deepcopy(system)
     statistics = EvaluationStatistics(0, 0, heuristics)
-    replacements = list()
+    substitutions = list()
 
     while not new_system.is_quadratic_linear():
         iter_fun = _heuristic_iter_choose(auxiliary_eq_type)
-        hash_before, hash_after, replacement = iter_fun(new_system, heuristics)
+        hash_before, hash_after, substitution = iter_fun(new_system, heuristics)
 
         new_system._debug_system_print(debug)
-        replacements.append(replacement)
+        substitutions.append(substitution)
         statistics.steps += 1
         if log_file:
-            _ql_log_append(log_rows_list, hash_before, hash_after, replacement)
+            _ql_log_append(log_rows_list, hash_before, hash_after, substitution)
 
     if log_file:
         log_df = pd.DataFrame(log_rows_list)
@@ -113,7 +113,7 @@ def _quadratic_linearize_heuristic(system: EquationSystem, auxiliary_eq_type: st
         print('-' * 100)
 
     statistics.depth = len(new_system.equations) - len(system.equations)
-    return QuadraticLinearizationResult(new_system, statistics, tuple(replacements))
+    return QuadraticLinearizationResult(new_system, statistics, tuple(substitutions))
 
 
 def _heuristic_iter_choose(auxiliary_eq_type: str) -> Callable:
@@ -128,15 +128,15 @@ def _heuristic_iter_choose(auxiliary_eq_type: str) -> Callable:
 def _heuristic_differential_iter(system: EquationSystem, method: str):
     hash_before = system.equations_hash
 
-    replacement = get_heuristics(method)(system)
+    substitution = get_heuristics(method)(system)
     new_variable, new_variable_dot = system.variables.create_variable_with_derivative()
-    system.replace_monomial(replacement, new_variable)
-    system._replacement_equations.append(sp.Eq(new_variable, replacement))
+    system.replace_monomial(substitution, new_variable)
+    system._substitution_equations.append(sp.Eq(new_variable, substitution))
 
-    system._equations.append(sp.Eq(new_variable_dot, system._calculate_Lie_derivative(replacement)).expand())
+    system._equations.append(sp.Eq(new_variable_dot, system._calculate_Lie_derivative(substitution)).expand())
     hash_after = system.equations_hash
 
-    return hash_before, hash_after, replacement
+    return hash_before, hash_after, substitution
 
 
 def _heuristic_algebraic_iter(system: EquationSystem, method: str):
@@ -156,7 +156,7 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
 
     if log_file:
         log_rows_list.append(
-            {'from': system.equations_hash, 'name': result.system.equations_hash, 'replacement': list(result.replacements)})
+            {'from': system.equations_hash, 'name': result.system.equations_hash, 'substitution': list(result.substitutions)})
         log_df = pd.DataFrame(log_rows_list)
         log_df.to_csv(log_file, index=False)
     return result
@@ -177,7 +177,7 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
-    replacements_chains = set()
+    substitution_chains = set()
 
     system_queue = Queue()
     system_queue.put((system, frozenset()), block=True)
@@ -188,7 +188,7 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     while not ql_reached:
         if system_queue.empty():
             raise RuntimeError("Limit depth passed. No quadratic-linear system is found.")
-        curr_system, curr_replacements = system_queue.get_nowait()
+        curr_system, curr_substitutions = system_queue.get_nowait()
         curr_depth = len(curr_system.equations) - initial_eq_number
 
         queue_pbar.update(-1)
@@ -199,24 +199,24 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
         if curr_system.is_quadratic_linear():
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
-            return QuadraticLinearizationResult(curr_system, statistics, tuple(curr_replacements))
+            return QuadraticLinearizationResult(curr_system, statistics, tuple(curr_substitutions))
 
         if curr_depth == limit_depth:
             continue
 
-        possible_replacements = curr_system.get_possible_replacements()
-        for replacement in map(sp.Poly.as_expr, possible_replacements):
-            supplemented_replacements = curr_replacements.union({replacement})
-            if supplemented_replacements in replacements_chains:
+        possible_substitutions = curr_system.get_possible_substitutions()
+        for substitution in map(sp.Poly.as_expr, possible_substitutions):
+            supplemented_substitutions = curr_substitutions.union({substitution})
+            if supplemented_substitutions in substitution_chains:
                 continue
 
-            new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
-            system_queue.put((new_system, supplemented_replacements))
-            replacements_chains.add(supplemented_replacements)
+            new_system = _make_new_system(curr_system, auxiliary_eq_type, substitution)
+            system_queue.put((new_system, supplemented_substitutions))
+            substitution_chains.add(supplemented_substitutions)
             queue_pbar.update(1)
 
             if log_rows_list is not None:
-                _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
+                _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
 def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
@@ -231,12 +231,12 @@ def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
         if curr_system.is_quadratic_linear():
             return curr_system
 
-        possible_replacements = curr_system.get_possible_replacements()
-        for replacement in map(sp.Poly.as_expr, possible_replacements):
+        possible_substitutions = curr_system.get_possible_substitutions()
+        for substitution in map(sp.Poly.as_expr, possible_substitutions):
             new_system = deepcopy(curr_system)
             new_variable = new_system.variables.create_variable()
             equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
-            equation_add_fun(new_variable, replacement)
+            equation_add_fun(new_variable, substitution)
 
             system_queue.put(new_system)
 
@@ -261,7 +261,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
     system_stack = deque()
     system_high_depth_stack = deque()
 
-    replacements_chains = set()
+    substitution_chains = set()
 
     curr_depth = 0
     curr_max_depth = initial_max_depth
@@ -282,7 +282,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             reset_progress_bar(stack_pbar, len(system_stack))
             reset_progress_bar(high_depth_stack_pbar, 0)
 
-        curr_system, curr_depth, curr_replacements = system_stack.pop()
+        curr_system, curr_depth, curr_substitutions = system_stack.pop()
 
         stack_pbar.update(-1)
         stack_pbar.refresh()
@@ -293,38 +293,38 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
         if curr_system.is_quadratic_linear():
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar, high_depth_stack_pbar)
-            return QuadraticLinearizationResult(curr_system, statistics, tuple(curr_replacements))
+            return QuadraticLinearizationResult(curr_system, statistics, tuple(curr_substitutions))
 
         if curr_depth == limit_depth:
             continue
 
-        possible_replacements = heuristic_sorter(curr_system)
-        for replacement in map(sp.Poly.as_expr, possible_replacements[::-1]):
-            supplemented_replacements = curr_replacements.union({replacement})
-            if supplemented_replacements in replacements_chains:
+        possible_substitutions = heuristic_sorter(curr_system)
+        for substitution in map(sp.Poly.as_expr, possible_substitutions[::-1]):
+            supplemented_substitutions = curr_substitutions.union({substitution})
+            if supplemented_substitutions in substitution_chains:
                 continue
 
-            new_system = _make_new_system(curr_system, auxiliary_eq_type, replacement)
-            replacements_chains.add(supplemented_replacements)
+            new_system = _make_new_system(curr_system, auxiliary_eq_type, substitution)
+            substitution_chains.add(supplemented_substitutions)
 
             if curr_depth < curr_max_depth:
-                system_stack.append((new_system, curr_depth + 1, supplemented_replacements))
+                system_stack.append((new_system, curr_depth + 1, supplemented_substitutions))
                 stack_pbar.update(1)
             else:
-                system_high_depth_stack.append((new_system, curr_depth + 1, supplemented_replacements))
+                system_high_depth_stack.append((new_system, curr_depth + 1, supplemented_substitutions))
                 high_depth_stack_pbar.update(1)
 
             if log_rows_list is not None:
-                _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, replacement)
+                _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
-def _make_new_system(system, auxiliary_eq_type, replacement) -> EquationSystem:
+def _make_new_system(system, auxiliary_eq_type, substitution) -> EquationSystem:
     new_system = deepcopy(system)
     new_variable = new_system.variables.create_variable()
     equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
-    equation_add_fun(new_variable, replacement)
+    equation_add_fun(new_variable, substitution)
     return new_system
 
 
-def _ql_log_append(row_list: List, hash_before, hash_after, replacement):
-    row_list.append({'from': hash_before, 'name': hash_after, 'replacement': replacement})
+def _ql_log_append(row_list: List, hash_before, hash_after, substitution):
+    row_list.append({'from': hash_before, 'name': hash_after, 'substitution': substitution})
