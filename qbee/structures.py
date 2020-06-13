@@ -3,7 +3,7 @@ import hashlib
 
 from functools import reduce
 from typing import List, Iterable, Optional, Callable, Tuple, Set
-from .util import polynomial_subs, get_possible_substitutions
+from .util import polynomial_subs, get_possible_substitutions, symbol_from_derivative
 
 
 def derivatives(names) -> Tuple[sp.Symbol]:
@@ -321,6 +321,26 @@ class EquationSystem:
 
     def _get_right_substitution_equations(self):
         return list(map(lambda eq: eq.args[1], self._substitution_equations))
+
+    def print(self, mode: str = 'simple'):
+        if mode == "simple":
+            self._print_simple()
+        elif mode == 'latex':
+            self._print_latex()
+        elif mode == 'sympy':
+            print(str(self))
+        else:
+            raise AttributeError(f"mode {mode} is not valid. Use correct mode.")
+
+    def _print_latex(self):
+        print(r'\begin{array}{ll}')
+        for eq in self._equations:
+            print('\t' + rf"{eq.args[0]} = {sp.latex(sp.collect(eq.args[1], self.variables.free))}" + r'\\')
+        print(r'\end{array}')
+
+    def _print_simple(self):
+        for eq in self.equations:
+            print(rf"{symbol_from_derivative(eq.args[0])}' = {sp.collect(eq.args[1], self.variables.free)}")
 
     def __len__(self):
         return len(self._equations)

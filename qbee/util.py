@@ -55,3 +55,7 @@ def refresh_and_close_progress_bars(*pbars: tqdm):
     for bar in pbars:
         bar.refresh()
         bar.close()
+
+
+def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
+    return sp.Symbol(str(derivative).replace(r"\dot ", '', 1))
