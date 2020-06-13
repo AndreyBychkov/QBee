@@ -1,5 +1,5 @@
 """
-Heuristics choice of monomial substitution for quadratic linearization.
+Heuristics choice of monomial substitution for quadratization.
 """
 
 import sys
@@ -66,23 +66,23 @@ def _compute_auxiliary_equation_degree(system: EquationSystem, substitution: sp.
     return max(subs_degrees)
 
 
-def auxiliary_equation_ql_discrepancy_sorted(system: EquationSystem) -> List[sp.Poly]:
+def auxiliary_equation_quadratic_discrepancy_sorted(system: EquationSystem) -> List[sp.Poly]:
     """Monomial substitutions which generated auxiliary equation are closer to quadratic form are at the beginning"""
     system.update_poly_degrees()
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return sorted(possible_substitutions, key=partial(_compute_auxiliary_equation_ql_discrepancy, system))
+    return sorted(possible_substitutions, key=partial(_compute_auxiliary_equation_quadratic_discrepancy, system))
 
 
-def auxiliary_equation_ql_discrepancy(system: EquationSystem) -> sp.Expr:
+def auxiliary_equation_quadratic_discrepancy(system: EquationSystem) -> sp.Expr:
     """Choose a monomial substitution which generated auxiliary equation is closest to quadratic form"""
-    return auxiliary_equation_ql_discrepancy_sorted(system)[0].as_expr()
+    return auxiliary_equation_quadratic_discrepancy_sorted(system)[0].as_expr()
 
 
-def _compute_auxiliary_equation_ql_discrepancy(system: EquationSystem, substitution: sp.Poly) -> int:
+def _compute_auxiliary_equation_quadratic_discrepancy(system: EquationSystem, substitution: sp.Poly) -> int:
     used_equations_subs = derivatives(substitution.free_symbols)
     monomial_degrees = map(lambda subs: system._equations_poly_degrees[subs] + substitution.total_degree() - 1, used_equations_subs)
-    ql_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, monomial_degrees))
-    return sum(ql_discrepancies)
+    quad_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, monomial_degrees))
+    return sum(quad_discrepancies)
 
 
 def summary_monomial_degree_sorted(system: EquationSystem) -> List[sp.Poly]:
@@ -110,24 +110,24 @@ def _compute_substitution_value_for_all_monomials(system: EquationSystem, substi
 
 _heuristics_name_to_function = \
     {
-        'random'                           : random,
-        'frequent-first'                   : frequent_first,
-        'free-variables-count'             : free_variables_count,
-        'auxiliary-equation-degree'        : auxiliary_equation_degree,
-        'auxiliary-equation-ql-discrepancy': auxiliary_equation_ql_discrepancy,
-        'summary-monomial-degree'          : summary_monomial_degree,
-        'default'                          : summary_monomial_degree
+        'random'                                  : random,
+        'frequent-first'                          : frequent_first,
+        'free-variables-count'                    : free_variables_count,
+        'auxiliary-equation-degree'               : auxiliary_equation_degree,
+        'auxiliary-equation-quadratic-discrepancy': auxiliary_equation_quadratic_discrepancy,
+        'summary-monomial-degree'                 : summary_monomial_degree,
+        'default'                                 : summary_monomial_degree
     }
 
 _heuristics_name_to_sorter = \
     {
-        'random'                           : random_sorted,
-        'frequent-first'                   : frequent_first_sorted,
-        'free-variables-count'             : free_variables_count_sorted,
-        'auxiliary-equation-degree'        : auxiliary_equation_degree_sorted,
-        'auxiliary-equation-ql-discrepancy': auxiliary_equation_ql_discrepancy_sorted,
-        'summary-monomial-degree'          : summary_monomial_degree_sorted,
-        'default'                          : summary_monomial_degree_sorted
+        'random'                                  : random_sorted,
+        'frequent-first'                          : frequent_first_sorted,
+        'free-variables-count'                    : free_variables_count_sorted,
+        'auxiliary-equation-degree'               : auxiliary_equation_degree_sorted,
+        'auxiliary-equation-quadratic-discrepancy': auxiliary_equation_quadratic_discrepancy_sorted,
+        'summary-monomial-degree'                 : summary_monomial_degree_sorted,
+        'default'                                 : summary_monomial_degree_sorted
     }
 
 

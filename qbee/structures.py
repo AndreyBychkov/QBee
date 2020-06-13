@@ -201,27 +201,27 @@ class EquationSystem:
                 return False
         return True
 
-    def is_quadratic_linear(self, mode='full') -> bool:
+    def is_quadratic(self, mode='full') -> bool:
         if mode == 'original':
-            return self._is_quadratic_linear_original()
+            return self._is_quadratic_original()
         elif mode == 'full':
-            return self._is_quadratic_linear_full()
+            return self._is_quadratic_full()
         else:
             raise ValueError("mode must be 'original' or 'full'.")
 
-    def _is_quadratic_linear_full(self) -> bool:
+    def _is_quadratic_full(self) -> bool:
         for eq in self._equations:
-            if not self._is_poly_quadratic_linear(eq.args[1]):
+            if not self._is_poly_quadratic(eq.args[1]):
                 return False
         return True
 
-    def _is_quadratic_linear_original(self) -> bool:
+    def _is_quadratic_original(self) -> bool:
         for i in self._original_equation_indexes:
-            if not self._is_poly_quadratic_linear(self._equations[i].args[1]):
+            if not self._is_poly_quadratic(self._equations[i].args[1]):
                 return False
         return True
 
-    def _is_poly_quadratic_linear(self, poly: sp.Expr) -> bool:
+    def _is_poly_quadratic(self, poly: sp.Expr) -> bool:
         monomials = sp.Add.make_args(poly)
         for mon in monomials:
             if sp.total_degree(mon, *poly.free_symbols.difference(self.variables.parameter_variables)) > 2:
@@ -333,12 +333,12 @@ class EquationSystem:
 
 
 class EvaluationStatistics:
-    """Statistics structure for quadratic linearization"""
+    """Statistics structure for quadratization"""
 
     def __init__(self, steps: int, depth: int, method_name: str):
         """
         :param steps: number of computed systems
-        :param depth: number of substitutions to make system quadratic linear
+        :param depth: number of substitutions to make system quadratic
         :param method_name: name of the algorithm
         """
         self.steps = steps
@@ -353,7 +353,7 @@ class EvaluationStatistics:
         ])
 
 
-class QuadraticLinearizationResult:
+class QuadratizationResult:
     def __init__(self, system: EquationSystem, statistics: EvaluationStatistics, substitutions: Tuple[sp.Expr]):
         self.system = system
         self.statistics = statistics

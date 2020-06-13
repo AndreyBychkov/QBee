@@ -14,23 +14,23 @@ from typing import List, Optional, Callable
 from .util import reset_progress_bar, refresh_and_close_progress_bars
 
 
-def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
-                        method_optimal: str = "iddfs", initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None,
-                        log_file=None) -> QuadraticLinearizationResult:
+def quadratize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
+               method_optimal: str = "iddfs", initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None,
+               log_file=None) -> QuadratizationResult:
     """
-    Transforms the system into quadratic-linear form using variable substitution technique.
+    Transforms the system into quadratic form using variable substitution technique.
 
-    :param system: polynomialized system of DAE
+    :param system: polynomial system of DAE
     :param mode: type of search.
     :param auxiliary_eq_type: auxiliary equation form.
     :param heuristics: next substitution choice method.
     :param method_optimal: graph search algorithm in the optimal mode.
     :param initial_max_depth: for some methods checks all systems where the number of substitutions does not exceed this number.
                               Put here your assumption of how long a chain of optimal substitutions might be.
-    :param limit_depth: maximum number of substitutions. Raise error if no quadratic-linear system is found within limit depth.
-    :param debug: printing mode while quadratic linearization is performed.
+    :param limit_depth: maximum number of substitutions. Raise error if no quadratic system is found within limit depth.
+    :param debug: printing mode while quadratization is performed.
     :param log_file: output file for evaluation logging. Must be in 'csv' format.
-    :returns: quadratic-linearized system
+    :returns: quadratic polynomial system
 
     Mode
     -----------------
@@ -56,7 +56,7 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
         choose a substitution with the least free variables;
     **auxiliary-equation-degree**
         choose a monomial substitution with the least generated auxiliary equation degree;
-    **auxiliary-equation-ql-discrepancy**
+    **auxiliary-equation-quadratic-discrepancy**
         choose a monomial substitution which generated auxiliary equation is closest to quadratic form;
     **summary-monomial-degree**
         choose a monomial substitution with maximal reduction of system's degree;
@@ -81,21 +81,21 @@ def quadratic_linearize(system: EquationSystem, mode: str = "optimal", auxiliary
     if not system.is_polynomial():
         raise RuntimeError("System is not polynomialized. Polynomialize it first.")
     if mode == 'optimal':
-        return _quadratic_linearize_optimal(system, auxiliary_eq_type, heuristics, method_optimal, initial_max_depth, limit_depth, debug, log_file)
+        return _quadratize_optimal(system, auxiliary_eq_type, heuristics, method_optimal, initial_max_depth, limit_depth, debug, log_file)
     elif mode == 'heuristic':
-        return _quadratic_linearize_heuristic(system, auxiliary_eq_type, heuristics, debug, log_file)
+        return _quadratize_heuristic(system, auxiliary_eq_type, heuristics, debug, log_file)
     else:
         raise ValueError("mode must be 'optimal' or 'heuristic'")
 
 
-def _quadratic_linearize_heuristic(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, debug: Optional[str] = None,
-                                   log_file: Optional[str] = None) -> QuadraticLinearizationResult:
+def _quadratize_heuristic(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, debug: Optional[str] = None,
+                          log_file: Optional[str] = None) -> QuadratizationResult:
     log_rows_list = list()
     new_system = deepcopy(system)
     statistics = EvaluationStatistics(0, 0, heuristics)
     substitutions = list()
 
-    while not new_system.is_quadratic_linear():
+    while not new_system.is_quadratic():
         iter_fun = _heuristic_iter_choose(auxiliary_eq_type)
         hash_before, hash_after, substitution = iter_fun(new_system, heuristics)
 
@@ -103,7 +103,7 @@ def _quadratic_linearize_heuristic(system: EquationSystem, auxiliary_eq_type: st
         substitutions.append(substitution)
         statistics.steps += 1
         if log_file:
-            _ql_log_append(log_rows_list, hash_before, hash_after, substitution)
+            _quad_log_append(log_rows_list, hash_before, hash_after, substitution)
 
     if log_file:
         log_df = pd.DataFrame(log_rows_list)
@@ -113,7 +113,7 @@ def _quadratic_linearize_heuristic(system: EquationSystem, auxiliary_eq_type: st
         print('-' * 100)
 
     statistics.depth = len(new_system.equations) - len(system.equations)
-    return QuadraticLinearizationResult(new_system, statistics, tuple(substitutions))
+    return QuadratizationResult(new_system, statistics, tuple(substitutions))
 
 
 def _heuristic_iter_choose(auxiliary_eq_type: str) -> Callable:
@@ -143,9 +143,9 @@ def _heuristic_algebraic_iter(system: EquationSystem, method: str):
     raise NotImplementedError()
 
 
-def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristics: str = "default", method="iddfs",
-                                 initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug=None,
-                                 log_file: Optional[str] = None) -> QuadraticLinearizationResult:
+def _quadratize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristics: str = "default", method="iddfs",
+                        initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug=None,
+                        log_file: Optional[str] = None) -> QuadratizationResult:
     disable_pbar = True if (debug is None or debug == 'silent') else False
 
     if limit_depth is None:
@@ -163,7 +163,7 @@ def _quadratic_linearize_optimal(system: EquationSystem, auxiliary_eq_type: str,
 
 
 def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics, method: str, initial_max_depth, limit_depth, disable_pbar,
-                           log_rows_list) -> QuadraticLinearizationResult:
+                           log_rows_list) -> QuadratizationResult:
     if method == "bfs":
         return _optimal_bfs(system, auxiliary_eq_type, limit_depth, disable_pbar, log_rows_list)
     elif method == "iddfs":
@@ -173,7 +173,7 @@ def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics
 
 
 def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, disable_pbar: tqdm,
-                 log_rows_list: Optional[List]) -> QuadraticLinearizationResult:
+                 log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
@@ -184,10 +184,10 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     initial_eq_number = len(system.equations)
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='BFS')
 
-    ql_reached = False
-    while not ql_reached:
+    quad_reached = False
+    while not quad_reached:
         if system_queue.empty():
-            raise RuntimeError("Limit depth passed. No quadratic-linear system is found.")
+            raise RuntimeError("Limit depth passed. No quadratic system is found.")
         curr_system, curr_substitutions = system_queue.get_nowait()
         curr_depth = len(curr_system.equations) - initial_eq_number
 
@@ -196,10 +196,10 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
         processed_systems_pbar.update(1)
         processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
 
-        if curr_system.is_quadratic_linear():
+        if curr_system.is_quadratic():
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
-            return QuadraticLinearizationResult(curr_system, statistics, tuple(curr_substitutions))
+            return QuadratizationResult(curr_system, statistics, tuple(curr_substitutions))
 
         if curr_depth == limit_depth:
             continue
@@ -216,7 +216,7 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
             queue_pbar.update(1)
 
             if log_rows_list is not None:
-                _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
+                _quad_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
 def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
@@ -224,11 +224,11 @@ def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
     system_queue.put_nowait(system)
     initial_eq_number = len(system.equations)
 
-    ql_reached = False
-    while not ql_reached:
+    quad_reached = False
+    while not quad_reached:
         curr_system = system_queue.get()
 
-        if curr_system.is_quadratic_linear():
+        if curr_system.is_quadratic():
             return curr_system
 
         possible_substitutions = curr_system.get_possible_substitutions()
@@ -252,7 +252,7 @@ def _optimal_bfs_parallel_worker(system: EquationSystem, system_queue: Queue, au
 
 
 def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: tqdm,
-                   log_rows_list: Optional[List]) -> QuadraticLinearizationResult:
+                   log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
     high_depth_stack_pbar = tqdm(unit="node", desc="Nodes in higher depth queue: ", position=2, disable=disable_pbar)
@@ -270,11 +270,11 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DFS')
 
-    ql_reached = False
-    while not ql_reached:
+    quad_reached = False
+    while not quad_reached:
         if len(system_stack) == 0:
             if len(system_high_depth_stack) == 0:
-                raise RuntimeError("Limit depth passed. No quadratic-linear system is found.")
+                raise RuntimeError("Limit depth passed. No quadratic system is found.")
             system_stack = system_high_depth_stack
             system_high_depth_stack = deque()
             curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
@@ -290,10 +290,10 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
         processed_systems_pbar.update(1)
         processed_systems_pbar.postfix = f"Current max depth level: {curr_max_depth} / {limit_depth}"
 
-        if curr_system.is_quadratic_linear():
+        if curr_system.is_quadratic():
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar, high_depth_stack_pbar)
-            return QuadraticLinearizationResult(curr_system, statistics, tuple(curr_substitutions))
+            return QuadratizationResult(curr_system, statistics, tuple(curr_substitutions))
 
         if curr_depth == limit_depth:
             continue
@@ -315,7 +315,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
                 high_depth_stack_pbar.update(1)
 
             if log_rows_list is not None:
-                _ql_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
+                _quad_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
 def _make_new_system(system, auxiliary_eq_type, substitution) -> EquationSystem:
@@ -326,5 +326,5 @@ def _make_new_system(system, auxiliary_eq_type, substitution) -> EquationSystem:
     return new_system
 
 
-def _ql_log_append(row_list: List, hash_before, hash_after, substitution):
+def _quad_log_append(row_list: List, hash_before, hash_after, substitution):
     row_list.append({'from': hash_before, 'name': hash_after, 'substitution': substitution})

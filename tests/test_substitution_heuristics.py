@@ -5,7 +5,7 @@ from qbee import EquationSystem, derivatives
 from qbee.substitution_heuristics import free_variables_count_sorted, \
     _compute_monomials_affected, \
     _compute_substitution_value_for_all_monomials, \
-    _compute_auxiliary_equation_ql_discrepancy
+    _compute_auxiliary_equation_quadratic_discrepancy
 
 x, y, z = sp.symbols('x, y, z')
 x_dot, y_dot, z_dot = derivatives('x, y, z')
@@ -54,4 +54,4 @@ def test_compute_auxiliary_equation_ql_discrepancy():
     ])
     substitution = sp.Poly(x * y)
 
-    assert _compute_auxiliary_equation_ql_discrepancy(system, substitution) == 3
+    assert _compute_auxiliary_equation_quadratic_discrepancy(system, substitution) == 3

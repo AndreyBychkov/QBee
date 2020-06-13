@@ -1,7 +1,7 @@
 import pytest
 import sympy as sp
 
-from qbee import polynomialize, quadratic_linearize, EquationSystem, derivatives
+from qbee import polynomialize, quadratize, EquationSystem, derivatives
 
 x, y, z = sp.symbols('x, y, z')
 dot_x, dot_y, dot_z = derivatives('x, y, z')
@@ -12,7 +12,7 @@ def test_sigmoid():
         sp.Eq(dot_x, 1 / (1 + sp.exp(x)))
     ])
     poly_system = polynomialize(system)
-    ql_result = quadratic_linearize(poly_system)
+    ql_result = quadratize(poly_system)
     assert len(ql_result.system.equations) == 4
 
 
@@ -28,7 +28,7 @@ def test_zero_system():
     ])
 
     poly_system = polynomialize(system)
-    ql_result = quadratic_linearize(poly_system)
+    ql_result = quadratize(poly_system)
 
     assert len(ql_result.system.equations) == 5
 
@@ -38,7 +38,7 @@ def test_x_sigmoid():
         sp.Eq(dot_x, x / (1 + sp.exp(x)))
     ])
     poly_system = polynomialize(system)
-    ql_result = quadratic_linearize(poly_system, limit_depth=2, initial_max_depth=2)
+    ql_result = quadratize(poly_system, limit_depth=2, initial_max_depth=2)
     assert len(ql_result.system.equations) == 5
 
 
@@ -51,5 +51,5 @@ def test_rabinovich_fabrikant():
         sp.Eq(dot_z, -2 * z * (b + x * y))
     ], parameter_variables=[a, b])
 
-    ql_res = quadratic_linearize(system, initial_max_depth=3, limit_depth=3, heuristics='auxiliary-equation-ql-discrepancy')
+    ql_res = quadratize(system, initial_max_depth=3, limit_depth=3, heuristics='auxiliary-equation-ql-discrepancy')
     assert len(ql_res.system.equations) == 6
