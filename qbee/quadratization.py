@@ -180,7 +180,7 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     substitution_chains = set()
 
     system_queue = Queue()
-    system_queue.put((system, frozenset()), block=True)
+    system_queue.put((system, list()), block=True)
     initial_eq_number = len(system.equations)
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='BFS')
 
@@ -206,13 +206,14 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
 
         possible_substitutions = curr_system.get_possible_substitutions()
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
-            supplemented_substitutions = curr_substitutions.union({substitution})
-            if supplemented_substitutions in substitution_chains:
+            supplemented_substitutions = curr_substitutions + [substitution]
+            supplemented_substitutions_set = frozenset(supplemented_substitutions)
+            if supplemented_substitutions_set in substitution_chains:
                 continue
 
             new_system = _make_new_system(curr_system, auxiliary_eq_type, substitution)
             system_queue.put((new_system, supplemented_substitutions))
-            substitution_chains.add(supplemented_substitutions)
+            substitution_chains.add(supplemented_substitutions_set)
             queue_pbar.update(1)
 
             if log_rows_list is not None:
@@ -265,7 +266,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
 
     curr_depth = 0
     curr_max_depth = initial_max_depth
-    system_stack.append((system, curr_depth, frozenset()))
+    system_stack.append((system, curr_depth, list()))
     stack_pbar.update(1)
 
     statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DFS')
@@ -299,13 +300,14 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             continue
 
         possible_substitutions = heuristic_sorter(curr_system)
-        for substitution in map(sp.Poly.as_expr, possible_substitutions[::-1]):
-            supplemented_substitutions = curr_substitutions.union({substitution})
-            if supplemented_substitutions in substitution_chains:
+        for substitution in map(sp.Poly.as_expr, possible_substitutions[::-1]): # TODO(check sanity of reverse)
+            supplemented_substitutions = curr_substitutions + [substitution]
+            supplemented_substitutions_set = frozenset(supplemented_substitutions)
+            if supplemented_substitutions_set in substitution_chains:
                 continue
 
             new_system = _make_new_system(curr_system, auxiliary_eq_type, substitution)
-            substitution_chains.add(supplemented_substitutions)
+            substitution_chains.add(supplemented_substitutions_set)
 
             if curr_depth < curr_max_depth:
                 system_stack.append((new_system, curr_depth + 1, supplemented_substitutions))
