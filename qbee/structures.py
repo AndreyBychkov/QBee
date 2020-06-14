@@ -153,6 +153,10 @@ class EquationSystem:
 
         return reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_right_equations()))
 
+    @property
+    def substitution_equations(self):
+        return self._substitution_equations
+
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
         for i in range(len(self._equations)):
