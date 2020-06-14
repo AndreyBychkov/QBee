@@ -79,7 +79,7 @@ def auxiliary_equation_quadratic_discrepancy(system: EquationSystem) -> sp.Expr:
 
 
 def _compute_auxiliary_equation_quadratic_discrepancy(system: EquationSystem, substitution: sp.Poly) -> int:
-    used_equations_subs = derivatives(substitution.free_symbols)
+    used_equations_subs = derivatives(substitution.free_symbols.intersection(system.variables.free))
     monomial_degrees = map(lambda subs: system._equations_poly_degrees[subs] + substitution.total_degree() - 1, used_equations_subs)
     quad_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, monomial_degrees))
     return sum(quad_discrepancies)
