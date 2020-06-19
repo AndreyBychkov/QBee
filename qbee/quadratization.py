@@ -283,7 +283,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             reset_progress_bar(stack_pbar, len(system_stack))
             reset_progress_bar(high_depth_stack_pbar, 0)
 
-        curr_system, curr_depth, curr_substitutions = system_stack.pop()
+        curr_system, curr_depth, curr_substitutions = system_stack.popleft()
 
         stack_pbar.update(-1)
         stack_pbar.refresh()
@@ -300,7 +300,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             continue
 
         possible_substitutions = heuristic_sorter(curr_system)
-        for substitution in map(sp.Poly.as_expr, possible_substitutions[::-1]): # TODO(check sanity of reverse)
+        for substitution in map(sp.Poly.as_expr, possible_substitutions):
             supplemented_substitutions = curr_substitutions + [substitution]
             supplemented_substitutions_set = frozenset(supplemented_substitutions)
             if supplemented_substitutions_set in substitution_chains:
