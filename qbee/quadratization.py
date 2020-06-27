@@ -15,7 +15,7 @@ from .util import reset_progress_bar, refresh_and_close_progress_bars
 
 
 def quadratize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
-               method_optimal: str = "iddfs", initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None,
+               method_optimal: str = "iddls", initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None,
                log_file=None) -> QuadratizationResult:
     """
     Transforms the system into quadratic form using variable substitution technique.
@@ -65,7 +65,7 @@ def quadratize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type:
     -----------------
     **bfs**
         Breadth-First Search
-    **iddfs**
+    **iddls**
         Iterative Deepening Depth-First Search
 
     Debug
@@ -143,7 +143,7 @@ def _heuristic_algebraic_iter(system: EquationSystem, method: str):
     raise NotImplementedError()
 
 
-def _quadratize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristics: str = "default", method="iddfs",
+def _quadratize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristics: str = "default", method="iddls",
                         initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug=None,
                         log_file: Optional[str] = None) -> QuadratizationResult:
     disable_pbar = True if (debug is None or debug == 'silent') else False
@@ -166,10 +166,10 @@ def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics
                            log_rows_list) -> QuadratizationResult:
     if method == "bfs":
         return _optimal_bfs(system, auxiliary_eq_type, limit_depth, disable_pbar, log_rows_list)
-    elif method == "iddfs":
-        return _optimal_iddfs(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
+    elif method == "iddls":
+        return _optimal_iddls(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
     else:
-        raise ValueError("Optimal method must be 'bfs' of 'iddfs'")
+        raise ValueError("Optimal method must be 'bfs' of 'iddls'")
 
 
 def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, disable_pbar: tqdm,
@@ -252,7 +252,7 @@ def _optimal_bfs_parallel_worker(system: EquationSystem, system_queue: Queue, au
             pass
 
 
-def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: tqdm,
+def _optimal_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: tqdm,
                    log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
@@ -269,7 +269,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
     system_stack.append((system, curr_depth, list()))
     stack_pbar.update(1)
 
-    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DFS')
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DLS')
 
     quad_reached = False
     while not quad_reached:
@@ -283,7 +283,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             reset_progress_bar(stack_pbar, len(system_stack))
             reset_progress_bar(high_depth_stack_pbar, 0)
 
-        curr_system, curr_depth, curr_substitutions = system_stack.pop()
+        curr_system, curr_depth, curr_substitutions = system_stack.popleft()
 
         stack_pbar.update(-1)
         stack_pbar.refresh()
@@ -300,7 +300,7 @@ def _optimal_iddfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             continue
 
         possible_substitutions = heuristic_sorter(curr_system)
-        for substitution in map(sp.Poly.as_expr, possible_substitutions[::-1]): # TODO(check sanity of reverse)
+        for substitution in map(sp.Poly.as_expr, possible_substitutions):
             supplemented_substitutions = curr_substitutions + [substitution]
             supplemented_substitutions_set = frozenset(supplemented_substitutions)
             if supplemented_substitutions_set in substitution_chains:

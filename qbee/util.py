@@ -18,7 +18,7 @@ def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], c
     for dec in decompositions:
         all_substitutions = reduce(set.union, map(set, dec))
         possible_substitutions += list(filter(lambda p: p.total_degree() > 1, all_substitutions))
-    possible_substitutions = set(possible_substitutions)
+    possible_substitutions = set(map(posify_monomial, possible_substitutions))
 
     if count_sorted:
         decompositions_list = reduce(add, map(list, decompositions))
@@ -26,6 +26,10 @@ def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], c
         counts = Counter(decompositions_list)
         possible_substitutions = sorted(possible_substitutions, key=lambda r: counts[r.as_expr()], reverse=True)
     return tuple(possible_substitutions)
+
+
+def posify_monomial(monomial: sp.Expr):
+    return monomial if '-' not in str(monomial) else -monomial
 
 
 def polynomial_subs(poly: sp.Expr, old: sp.Expr, new: sp.Expr) -> sp.Expr:
