@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="qbee-AndreyBychkov",
-    version="0.3.0",
+    version="0.4.0",
     author="Andrey Bychkov",
     author_email="abychkov@edu.hse.ru",
     description="Package for transforming ODEs system to quadratic form.",
