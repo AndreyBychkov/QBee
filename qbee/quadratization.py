@@ -89,14 +89,14 @@ def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxilia
     return result
 
 
-def _quadratize_best_first(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int,
-                           disable_pbar: bool, log_rows_list: Optional[List]) -> QuadratizationResult:
+def _best_first(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int,
+                disable_pbar: bool, log_rows_list: Optional[List]) -> QuadratizationResult:
     # TODO(implement)
     pass
 
 
-def _quadratize_bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
-                    log_rows_list: Optional[List]) -> QuadratizationResult:
+def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+         log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
@@ -116,7 +116,7 @@ def _quadratize_bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: 
             curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
 
             if log_rows_list is not None:
-                _quad_log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
         else:
             curr_system = prev_system
 
@@ -141,8 +141,8 @@ def _quadratize_bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: 
             queue_pbar.update(1)
 
 
-def _quadratize_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
-                      log_rows_list: Optional[List]) -> QuadratizationResult:
+def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+           log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
     high_depth_stack_pbar = tqdm(unit="node", desc="Nodes in higher depth queue: ", position=2, disable=disable_pbar)
@@ -176,7 +176,7 @@ def _quadratize_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics
             curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
 
             if log_rows_list is not None:
-                _quad_log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
         else:
             curr_system = prev_system
 
@@ -212,13 +212,13 @@ def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) ->
     return new_system
 
 
-def _quad_log_append(row_list: List, hash_before, hash_after, substitution):
+def _log_append(row_list: List, hash_before, hash_after, substitution):
     row_list.append({'from': hash_before, 'name': hash_after, 'substitution': substitution})
 
 
 _quadratization_algorithms = \
     {
-        "BFS"       : _quadratize_bfs,
-        "Best-First": _quadratize_best_first,
-        "ID-DLS"    : _quadratize_iddls
+        "BFS"       : _bfs,
+        "Best-First": _best_first,
+        "ID-DLS"    : _iddls
     }
