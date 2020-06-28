@@ -177,8 +177,6 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
-    substitution_chains = set()
-
     system_queue = Queue()
     system_queue.put((system, list()), block=True)
     initial_eq_number = len(system.equations)
@@ -188,7 +186,17 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
     while not quad_reached:
         if system_queue.empty():
             raise RuntimeError("Limit depth passed. No quadratic system is found.")
-        curr_system, curr_substitutions = system_queue.get_nowait()
+
+        prev_system, curr_depth, substitution_chain = system_queue.get_nowait()
+        if substitution_chain:
+            last_substitution = substitution_chain[-1]
+            curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
+
+            if log_rows_list is not None:
+                _quad_log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+        else:
+            curr_system = prev_system
+
         curr_depth = len(curr_system.equations) - initial_eq_number
 
         queue_pbar.update(-1)
@@ -199,25 +207,15 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
         if curr_system.is_quadratic():
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
-            return QuadratizationResult(curr_system, statistics, tuple(curr_substitutions))
+            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
 
         if curr_depth == limit_depth:
             continue
 
         possible_substitutions = curr_system.get_possible_substitutions()
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
-            supplemented_substitutions = curr_substitutions + [substitution]
-            supplemented_substitutions_set = frozenset(supplemented_substitutions)
-            if supplemented_substitutions_set in substitution_chains:
-                continue
-
-            new_system = _make_new_system(curr_system, auxiliary_eq_type, substitution)
-            system_queue.put((new_system, supplemented_substitutions))
-            substitution_chains.add(supplemented_substitutions_set)
+            system_queue.put((curr_system, substitution_chain + [substitution]))
             queue_pbar.update(1)
-
-            if log_rows_list is not None:
-                _quad_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
 def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
@@ -262,8 +260,6 @@ def _optimal_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
     system_stack = deque()
     system_high_depth_stack = deque()
 
-    substitution_chains = set()
-
     curr_depth = 0
     curr_max_depth = initial_max_depth
     system_stack.append((system, curr_depth, list()))
@@ -283,7 +279,15 @@ def _optimal_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             reset_progress_bar(stack_pbar, len(system_stack))
             reset_progress_bar(high_depth_stack_pbar, 0)
 
-        curr_system, curr_depth, curr_substitutions = system_stack.popleft()
+        prev_system, curr_depth, substitution_chain = system_stack.popleft()
+        if substitution_chain:
+            last_substitution = substitution_chain[-1]
+            curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
+
+            if log_rows_list is not None:
+                _quad_log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+        else:
+            curr_system = prev_system
 
         stack_pbar.update(-1)
         stack_pbar.refresh()
@@ -294,30 +298,19 @@ def _optimal_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
         if curr_system.is_quadratic():
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar, high_depth_stack_pbar)
-            return QuadratizationResult(curr_system, statistics, tuple(curr_substitutions))
+            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
 
         if curr_depth == limit_depth:
             continue
 
         possible_substitutions = heuristic_sorter(curr_system)
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
-            supplemented_substitutions = curr_substitutions + [substitution]
-            supplemented_substitutions_set = frozenset(supplemented_substitutions)
-            if supplemented_substitutions_set in substitution_chains:
-                continue
-
-            new_system = _make_new_system(curr_system, auxiliary_eq_type, substitution)
-            substitution_chains.add(supplemented_substitutions_set)
-
             if curr_depth < curr_max_depth:
-                system_stack.append((new_system, curr_depth + 1, supplemented_substitutions))
+                system_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                 stack_pbar.update(1)
             else:
-                system_high_depth_stack.append((new_system, curr_depth + 1, supplemented_substitutions))
+                system_high_depth_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                 high_depth_stack_pbar.update(1)
-
-            if log_rows_list is not None:
-                _quad_log_append(log_rows_list, curr_system.equations_hash, new_system.equations_hash, substitution)
 
 
 def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:
