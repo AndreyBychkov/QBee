@@ -18,7 +18,7 @@ system = EquationSystem([
 
 def quad_bfs_stat(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="bfs", limit_depth=3)
+        quad_result = quadratize(system, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan
@@ -26,7 +26,7 @@ def quad_bfs_stat(_) -> int:
 
 def quad_iddls_random(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="iddls", heuristics='random', initial_max_depth=3, limit_depth=3)
+        quad_result = quadratize(system, heuristics='random', initial_max_depth=3, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan
@@ -34,7 +34,7 @@ def quad_iddls_random(_) -> int:
 
 def quad_iddls_frequent_first(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="iddls", heuristics='frequent-first', initial_max_depth=3, limit_depth=3)
+        quad_result = quadratize(system, heuristics='frequent-first', initial_max_depth=3, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan
@@ -42,7 +42,7 @@ def quad_iddls_frequent_first(_) -> int:
 
 def quad_iddls_free_variables_count(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="iddls", heuristics='free-variables-count', initial_max_depth=3, limit_depth=3)
+        quad_result = quadratize(system, heuristics='free-variables-count', initial_max_depth=3, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan
@@ -50,7 +50,7 @@ def quad_iddls_free_variables_count(_) -> int:
 
 def quad_iddls_auxiliary_equation_degree(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="iddls", heuristics='auxiliary-equation-degree', initial_max_depth=3, limit_depth=3)
+        quad_result = quadratize(system, heuristics='auxiliary-equation-degree', initial_max_depth=3, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan
@@ -58,8 +58,7 @@ def quad_iddls_auxiliary_equation_degree(_) -> int:
 
 def quad_iddls_auxiliary_equation_quadratic_discrepancy(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="iddls", heuristics='auxiliary-equation-quadratic-discrepancy', initial_max_depth=3,
-                               limit_depth=3)
+        quad_result = quadratize(system, heuristics='auxiliary-equation-quadratic-discrepancy', initial_max_depth=3, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan
@@ -67,7 +66,7 @@ def quad_iddls_auxiliary_equation_quadratic_discrepancy(_) -> int:
 
 def quad_iddls_summary_monomial_degree(_) -> int:
     try:
-        quad_result = quadratize(system, method_optimal="iddls", heuristics='summary-monomial-degree', initial_max_depth=3, limit_depth=3)
+        quad_result = quadratize(system, heuristics='summary-monomial-degree', initial_max_depth=3, limit_depth=3)
         return quad_result.statistics.steps
     except RuntimeError:
         return np.nan

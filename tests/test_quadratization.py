@@ -38,7 +38,7 @@ def test_x_sigmoid():
         sp.Eq(dot_x, x / (1 + sp.exp(x)))
     ])
     poly_system = polynomialize(system)
-    quad_result = quadratize(poly_system, limit_depth=2, initial_max_depth=2)
+    quad_result = quadratize(poly_system, initial_max_depth=2, limit_depth=2)
     assert len(quad_result.system.equations) == 5
 
 
@@ -51,5 +51,5 @@ def test_rabinovich_fabrikant():
         sp.Eq(dot_z, -2 * z * (b + x * y))
     ], parameter_variables=[a, b])
 
-    quad_result = quadratize(system, initial_max_depth=3, limit_depth=3, heuristics='AEQD')
+    quad_result = quadratize(system, heuristics='AEQD', initial_max_depth=3, limit_depth=3)
     assert len(quad_result.system.equations) == 6
