@@ -100,6 +100,8 @@ def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initia
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
+    if heuristics == "default":
+        heuristics = "none"
     heuristic_sorter = get_heuristic_sorter(heuristics)
 
     system_queue = Queue()
