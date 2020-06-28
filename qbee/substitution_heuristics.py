@@ -12,6 +12,15 @@ from typing import List, Tuple
 from .util import is_monomial_divisor
 
 
+def none_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
+    """Does not perform any sorting"""
+    return system.get_possible_substitutions(count_sorted=False)
+
+
+def choose_first(system: EquationSystem) -> sp.Expr:
+    return none_sorted(system)[0].as_expr()
+
+
 def random_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
     """Shuffles monomial substitutions"""
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
@@ -110,6 +119,7 @@ def _compute_substitution_value_for_all_monomials(system: EquationSystem, substi
 
 _heuristics_name_to_function = \
     {
+        'none'                                    : choose_first,
         'random'                                  : random,
         'frequent-first'                          : frequent_first,
         'free-variables-count'                    : free_variables_count,
@@ -126,6 +136,7 @@ _heuristics_name_to_function = \
 
 _heuristics_name_to_sorter = \
     {
+        'none'                                    : none_sorted,
         'random'                                  : random_sorted,
         'frequent-first'                          : frequent_first_sorted,
         'free-variables-count'                    : free_variables_count_sorted,
