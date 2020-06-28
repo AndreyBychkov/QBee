@@ -114,7 +114,7 @@ def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initia
         if system_queue.empty():
             raise RuntimeError("Limit depth passed. No quadratic system is found.")
 
-        prev_system, curr_depth, substitution_chain = system_queue.get_nowait()
+        prev_system, substitution_chain = system_queue.get_nowait()
         if substitution_chain:
             last_substitution = substitution_chain[-1]
             curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
