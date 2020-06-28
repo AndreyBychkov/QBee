@@ -100,6 +100,8 @@ def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initia
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
+    heuristic_sorter = get_heuristic_sorter(heuristics)
+
     system_queue = Queue()
     system_queue.put((system, list()), block=True)
     initial_eq_number = len(system.equations)
@@ -135,7 +137,7 @@ def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initia
         if curr_depth == limit_depth:
             continue
 
-        possible_substitutions = curr_system.get_possible_substitutions()
+        possible_substitutions = heuristic_sorter(curr_system)
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
             system_queue.put((curr_system, substitution_chain + [substitution]))
             queue_pbar.update(1)
