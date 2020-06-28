@@ -98,48 +98,8 @@ def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxilia
 
 def _quadratize_best_first(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int,
                            disable_pbar: bool, log_rows_list: Optional[List]) -> QuadratizationResult:
-    new_system = deepcopy(system)
-    statistics = EvaluationStatistics(0, 0, heuristics)
-    substitutions = list()
-
-    while not new_system.is_quadratic():
-        iter_fun = _heuristic_iter_choose(auxiliary_eq_type)
-        hash_before, hash_after, substitution = iter_fun(new_system, heuristics)
-
-        substitutions.append(substitution)
-        statistics.steps += 1
-        if log_rows_list:
-            _quad_log_append(log_rows_list, hash_before, hash_after, substitution)
-
-    statistics.depth = len(new_system.equations) - len(system.equations)
-    return QuadratizationResult(new_system, statistics, tuple(substitutions))
-
-
-def _heuristic_iter_choose(auxiliary_eq_type: str) -> Callable:
-    if auxiliary_eq_type == 'differential':
-        return _heuristic_differential_iter
-    elif auxiliary_eq_type == 'algebraic':
-        return _heuristic_algebraic_iter
-    else:
-        raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
-
-
-def _heuristic_differential_iter(system: EquationSystem, method: str):
-    hash_before = system.equations_hash
-
-    substitution = get_heuristics(method)(system)
-    new_variable, new_variable_dot = system.variables.create_variable_with_derivative()
-    system.replace_monomial(substitution, new_variable)
-    system._substitution_equations.append(sp.Eq(new_variable, substitution))
-
-    system._equations.append(sp.Eq(new_variable_dot, system._calculate_Lie_derivative(substitution)).expand())
-    hash_after = system.equations_hash
-
-    return hash_before, hash_after, substitution
-
-
-def _heuristic_algebraic_iter(system: EquationSystem, method: str):
-    raise NotImplementedError()
+    # TODO(implement)
+    pass
 
 
 def _quadratize_bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
