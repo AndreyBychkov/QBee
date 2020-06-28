@@ -20,22 +20,15 @@ def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxilia
     Transforms the system into quadratic form using variable substitution technique.
 
     :param system: polynomial system of DAE
-    :param search_algorithm: type of search.
+    :param search_algorithm: graph search algorithm for quadratization.
     :param auxiliary_eq_type: auxiliary equation form.
     :param heuristics: next substitution choice method.
-    :param initial_max_depth: for some methods checks all systems where the number of substitutions does not exceed this number.
+    :param initial_max_depth: some search algorithms evaluate every systems where the number of substitutions does not exceed this number.
                               Put here your assumption of how long a chain of optimal substitutions might be.
     :param limit_depth: maximum number of substitutions. Raise error if no quadratic system is found within limit depth.
     :param debug: printing mode while quadratization is performed.
     :param log_file: output file for evaluation logging. Must be in 'csv' format.
     :returns: quadratic polynomial system
-
-    Mode
-    -----------------
-    **optimal**
-        find optimal transformation. The most time-consuming mode;
-    **heuristic**
-        find sub-optimal transformation. Works much faster than 'optimal'. You can choose heuristics in 'heuristics' parameter;
 
     Auxiliary equations type
     -----------------
@@ -61,19 +54,19 @@ def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxilia
 
     Method Optimal
     -----------------
-    **bfs**
-        Breadth-First Search
-    **iddls**
-        Iterative Deepening Depth-First Search
+    **BFS**
+        Heuristic Breadth-First Search
+    **Best-First**
+        Best-First Search: Heuristic Depth-First Search
+    **ID-DLS**
+        Iterative Deepening Depth-Limited Search with heuristics
 
     Debug
     ---------------
     **None** or **silent**
-        prints nothing;
+        display nothing;
     **info**
-        prints substitution for each iteration;
-    **debug**
-        prints equations in system with substitution for each iteration;
+        display progress bars;
 
     """
     if not system.is_polynomial():
