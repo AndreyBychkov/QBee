@@ -38,4 +38,4 @@ def visualize(log_file: str,
 
 
 if __name__ == '__main__':
-    visualize('log.csv')
+    visualize('visualization/log.csv')

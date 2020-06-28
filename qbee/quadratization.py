@@ -14,30 +14,21 @@ from typing import List, Optional, Callable
 from .util import reset_progress_bar, refresh_and_close_progress_bars
 
 
-def quadratize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type: str = "differential", heuristics: str = "default",
-               method_optimal: str = "iddls", initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None,
-               log_file=None) -> QuadratizationResult:
+def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxiliary_eq_type: str = "differential", heuristics: str = "default",
+               initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None, log_file=None) -> QuadratizationResult:
     """
     Transforms the system into quadratic form using variable substitution technique.
 
     :param system: polynomial system of DAE
-    :param mode: type of search.
+    :param search_algorithm: graph search algorithm for quadratization.
     :param auxiliary_eq_type: auxiliary equation form.
     :param heuristics: next substitution choice method.
-    :param method_optimal: graph search algorithm in the optimal mode.
-    :param initial_max_depth: for some methods checks all systems where the number of substitutions does not exceed this number.
+    :param initial_max_depth: some search algorithms evaluate every systems where the number of substitutions does not exceed this number.
                               Put here your assumption of how long a chain of optimal substitutions might be.
     :param limit_depth: maximum number of substitutions. Raise error if no quadratic system is found within limit depth.
     :param debug: printing mode while quadratization is performed.
     :param log_file: output file for evaluation logging. Must be in 'csv' format.
     :returns: quadratic polynomial system
-
-    Mode
-    -----------------
-    **optimal**
-        find optimal transformation. The most time-consuming mode;
-    **heuristic**
-        find sub-optimal transformation. Works much faster than 'optimal'. You can choose heuristics in 'heuristics' parameter;
 
     Auxiliary equations type
     -----------------
@@ -63,96 +54,32 @@ def quadratize(system: EquationSystem, mode: str = "optimal", auxiliary_eq_type:
 
     Method Optimal
     -----------------
-    **bfs**
-        Breadth-First Search
-    **iddls**
-        Iterative Deepening Depth-First Search
+    **BFS**
+        Heuristic Breadth-First Search
+    **Best-First**
+        Best-First Search: Heuristic Depth-First Search
+    **ID-DLS**
+        Iterative Deepening Depth-Limited Search with heuristics
 
     Debug
     ---------------
     **None** or **silent**
-        prints nothing;
+        display nothing;
     **info**
-        prints substitution for each iteration;
-    **debug**
-        prints equations in system with substitution for each iteration;
+        display progress bars;
 
     """
     if not system.is_polynomial():
         raise RuntimeError("System is not polynomialized. Polynomialize it first.")
-    if mode == 'optimal':
-        return _quadratize_optimal(system, auxiliary_eq_type, heuristics, method_optimal, initial_max_depth, limit_depth, debug, log_file)
-    elif mode == 'heuristic':
-        return _quadratize_heuristic(system, auxiliary_eq_type, heuristics, debug, log_file)
-    else:
-        raise ValueError("mode must be 'optimal' or 'heuristic'")
 
-
-def _quadratize_heuristic(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, debug: Optional[str] = None,
-                          log_file: Optional[str] = None) -> QuadratizationResult:
-    log_rows_list = list()
-    new_system = deepcopy(system)
-    statistics = EvaluationStatistics(0, 0, heuristics)
-    substitutions = list()
-
-    while not new_system.is_quadratic():
-        iter_fun = _heuristic_iter_choose(auxiliary_eq_type)
-        hash_before, hash_after, substitution = iter_fun(new_system, heuristics)
-
-        new_system._debug_system_print(debug)
-        substitutions.append(substitution)
-        statistics.steps += 1
-        if log_file:
-            _quad_log_append(log_rows_list, hash_before, hash_after, substitution)
-
-    if log_file:
-        log_df = pd.DataFrame(log_rows_list)
-        log_df.to_csv(log_file, index=False)
-
-    if not (debug is None or debug == 'silent'):
-        print('-' * 100)
-
-    statistics.depth = len(new_system.equations) - len(system.equations)
-    return QuadratizationResult(new_system, statistics, tuple(substitutions))
-
-
-def _heuristic_iter_choose(auxiliary_eq_type: str) -> Callable:
-    if auxiliary_eq_type == 'differential':
-        return _heuristic_differential_iter
-    elif auxiliary_eq_type == 'algebraic':
-        return _heuristic_algebraic_iter
-    else:
-        raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
-
-
-def _heuristic_differential_iter(system: EquationSystem, method: str):
-    hash_before = system.equations_hash
-
-    substitution = get_heuristics(method)(system)
-    new_variable, new_variable_dot = system.variables.create_variable_with_derivative()
-    system.replace_monomial(substitution, new_variable)
-    system._substitution_equations.append(sp.Eq(new_variable, substitution))
-
-    system._equations.append(sp.Eq(new_variable_dot, system._calculate_Lie_derivative(substitution)).expand())
-    hash_after = system.equations_hash
-
-    return hash_before, hash_after, substitution
-
-
-def _heuristic_algebraic_iter(system: EquationSystem, method: str):
-    raise NotImplementedError()
-
-
-def _quadratize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristics: str = "default", method="iddls",
-                        initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug=None,
-                        log_file: Optional[str] = None) -> QuadratizationResult:
     disable_pbar = True if (debug is None or debug == 'silent') else False
 
     if limit_depth is None:
         limit_depth = sys.maxsize
 
-    log_rows_list = list()
-    result = _optimal_method_choose(system, auxiliary_eq_type, heuristics, method, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
+    log_rows_list = list() if log_file else None
+    algo = _quadratization_algorithms[search_algorithm]
+    result = algo(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
 
     if log_file:
         log_rows_list.append(
@@ -162,20 +89,20 @@ def _quadratize_optimal(system: EquationSystem, auxiliary_eq_type: str, heuristi
     return result
 
 
-def _optimal_method_choose(system: EquationSystem, auxiliary_eq_type, heuristics, method: str, initial_max_depth, limit_depth, disable_pbar,
-                           log_rows_list) -> QuadratizationResult:
-    if method == "bfs":
-        return _optimal_bfs(system, auxiliary_eq_type, limit_depth, disable_pbar, log_rows_list)
-    elif method == "iddls":
-        return _optimal_iddls(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
-    else:
-        raise ValueError("Optimal method must be 'bfs' of 'iddls'")
+def _best_first(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int,
+                disable_pbar: bool, log_rows_list: Optional[List]) -> QuadratizationResult:
+    # TODO(implement)
+    pass
 
 
-def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, disable_pbar: tqdm,
-                 log_rows_list: Optional[List]) -> QuadratizationResult:
+def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+         log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
+
+    if heuristics == "default":
+        heuristics = "none"
+    heuristic_sorter = get_heuristic_sorter(heuristics)
 
     system_queue = Queue()
     system_queue.put((system, list()), block=True)
@@ -187,13 +114,13 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
         if system_queue.empty():
             raise RuntimeError("Limit depth passed. No quadratic system is found.")
 
-        prev_system, curr_depth, substitution_chain = system_queue.get_nowait()
+        prev_system, substitution_chain = system_queue.get_nowait()
         if substitution_chain:
             last_substitution = substitution_chain[-1]
             curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
 
             if log_rows_list is not None:
-                _quad_log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
         else:
             curr_system = prev_system
 
@@ -212,46 +139,14 @@ def _optimal_bfs(system: EquationSystem, auxiliary_eq_type: str, limit_depth, di
         if curr_depth == limit_depth:
             continue
 
-        possible_substitutions = curr_system.get_possible_substitutions()
+        possible_substitutions = heuristic_sorter(curr_system)
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
             system_queue.put((curr_system, substitution_chain + [substitution]))
             queue_pbar.update(1)
 
 
-def _optimal_bfs_parallel(system: EquationSystem, auxiliary_eq_type: str):
-    system_queue = Queue()
-    system_queue.put_nowait(system)
-    initial_eq_number = len(system.equations)
-
-    quad_reached = False
-    while not quad_reached:
-        curr_system = system_queue.get()
-
-        if curr_system.is_quadratic():
-            return curr_system
-
-        possible_substitutions = curr_system.get_possible_substitutions()
-        for substitution in map(sp.Poly.as_expr, possible_substitutions):
-            new_system = deepcopy(curr_system)
-            new_variable = new_system.free.create_variable()
-            equation_add_fun = new_system._auxiliary_equation_type_choose(auxiliary_eq_type)
-            equation_add_fun(new_variable, substitution)
-
-            system_queue.put(new_system)
-
-
-def _optimal_bfs_parallel_worker(system: EquationSystem, system_queue: Queue, auxiliary_eq_type: str):
-    while True:
-        try:
-            curr_system = system_queue.get_nowait()
-        except Empty:
-            break
-        else:
-            pass
-
-
-def _optimal_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: tqdm,
-                   log_rows_list: Optional[List]) -> QuadratizationResult:
+def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+           log_rows_list: Optional[List]) -> QuadratizationResult:
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
     high_depth_stack_pbar = tqdm(unit="node", desc="Nodes in higher depth queue: ", position=2, disable=disable_pbar)
@@ -285,7 +180,7 @@ def _optimal_iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: s
             curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
 
             if log_rows_list is not None:
-                _quad_log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
         else:
             curr_system = prev_system
 
@@ -321,5 +216,13 @@ def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) ->
     return new_system
 
 
-def _quad_log_append(row_list: List, hash_before, hash_after, substitution):
+def _log_append(row_list: List, hash_before, hash_after, substitution):
     row_list.append({'from': hash_before, 'name': hash_after, 'substitution': substitution})
+
+
+_quadratization_algorithms = \
+    {
+        "BFS"       : _bfs,
+        "Best-First": _best_first,
+        "ID-DLS"    : _iddls
+    }
