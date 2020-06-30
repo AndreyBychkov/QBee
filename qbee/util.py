@@ -10,7 +10,16 @@ from collections import Counter
 
 def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], count_sorted=True) -> Tuple[sp.Poly]:
     decompositions = get_monomial_decompositions(poly_list, gens)
+    return get_possible_substitutions_from_decompositions(decompositions, count_sorted)
 
+
+def get_monomial_decompositions(poly_list: List[sp.Expr], gens: Set[sp.Symbol]) -> List[Set[Tuple[sp.Poly]]]:
+    combined_poly = sum(poly_list)
+    terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
+    return list(map(get_all_decompositions, terms))
+
+
+def get_possible_substitutions_from_decompositions(decompositions: List[Set[Tuple[sp.Poly]]], count_sorted=False) -> Tuple[sp.Poly]:
     possible_substitutions = list()
     for dec in decompositions:
         all_substitutions = reduce(set.union, map(set, dec))
@@ -23,12 +32,6 @@ def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], c
         counts = Counter(decompositions_list)
         possible_substitutions = sorted(possible_substitutions, key=lambda r: counts[r.as_expr()], reverse=True)
     return tuple(possible_substitutions)
-
-
-def get_monomial_decompositions(poly_list: List[sp.Expr], gens: Set[sp.Symbol]):
-    combined_poly = sum(poly_list)
-    terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
-    return list(map(get_all_decompositions, terms))
 
 
 def posify_monomial(monomial: sp.Expr):

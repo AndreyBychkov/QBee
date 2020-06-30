@@ -11,7 +11,7 @@ from copy import deepcopy
 from queue import Queue, Empty
 from collections import deque
 from typing import List, Optional, Callable
-from .util import reset_progress_bar, refresh_and_close_progress_bars
+from .util import *
 
 
 def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxiliary_eq_type: str = "differential", heuristics: str = "default",
@@ -206,6 +206,43 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
             else:
                 system_high_depth_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                 high_depth_stack_pbar.update(1)
+
+
+def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+          log_rows_list: Optional[List]) -> QuadratizationResult:
+    heuristic_sorter = get_heuristic_sorter(heuristics)
+
+    system_stack = deque()
+    system_stack.append((system, list()))
+
+    quad_reached = False
+    while not quad_reached:
+        prev_system, curr_depth, substitution_chain = system_stack.popleft()
+        if substitution_chain:
+            last_substitution = substitution_chain[-1]
+            curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
+
+            if log_rows_list is not None:
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+        else:
+            curr_system = prev_system
+
+        if curr_system.is_quadratic():
+            return QuadratizationResult(curr_system, EvaluationStatistics(0, 0, ''), tuple(substitution_chain))
+
+        if curr_depth == limit_depth:
+            continue
+
+        used_substitutions = set()
+        decompositions = curr_system.get_monomial_decompositions()
+        for dec in sorted(decompositions, key=lambda d: len(d)):
+            for substitution in heuristic_sorter(get_possible_substitutions_from_decompositions([dec,])):
+                if substitution not in used_substitutions:
+                    system_stack.appendleft((curr_system, substitution_chain + [substitution]))
+                    used_substitutions.add(substitution)
+
+
+
 
 
 def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:

@@ -3,7 +3,7 @@ import hashlib
 
 from functools import reduce
 from typing import List, Iterable, Optional, Callable, Tuple, Set
-from .util import polynomial_subs, get_possible_substitutions, symbol_from_derivative
+from .util import *
 
 
 def derivatives(names) -> Tuple[sp.Symbol]:
@@ -179,6 +179,10 @@ class EquationSystem:
     def get_possible_substitutions(self, count_sorted=False) -> Tuple[sp.Poly]:
         right_equations = self._get_right_equations()
         return get_possible_substitutions(right_equations, set(self.variables.free), count_sorted=count_sorted)
+
+    def get_monomial_decompositions(self):
+        right_equations = self._get_right_equations()
+        return get_monomial_decompositions(right_equations, set(self.variables.free))
 
     def is_polynomial(self, mode="original") -> bool:
         """
