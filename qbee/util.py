@@ -5,14 +5,11 @@ from tqdm import tqdm
 from .combinations import *
 from functools import reduce, partial
 from typing import List, Tuple
-from operator import add
 from collections import Counter
 
 
 def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], count_sorted=True) -> Tuple[sp.Poly]:
-    combined_poly = sum(poly_list)
-    terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
-    decompositions = list(map(get_all_decompositions, terms))
+    decompositions = get_monomial_decompositions(poly_list, gens)
 
     possible_substitutions = list()
     for dec in decompositions:
@@ -26,6 +23,12 @@ def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], c
         counts = Counter(decompositions_list)
         possible_substitutions = sorted(possible_substitutions, key=lambda r: counts[r.as_expr()], reverse=True)
     return tuple(possible_substitutions)
+
+
+def get_monomial_decompositions(poly_list: List[sp.Expr], gens: Set[sp.Symbol]):
+    combined_poly = sum(poly_list)
+    terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
+    return list(map(get_all_decompositions, terms))
 
 
 def posify_monomial(monomial: sp.Expr):
