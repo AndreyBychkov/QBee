@@ -198,13 +198,13 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
         if curr_depth == limit_depth:
             continue
 
-        possible_substitutions = heuristic_sorter(curr_system)
+        possible_substitutions = heuristic_sorter(curr_system)[::-1]
         for substitution in map(sp.Poly.as_expr, possible_substitutions):
             if curr_depth < curr_max_depth:
-                system_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+                system_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                 stack_pbar.update(1)
             else:
-                system_high_depth_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+                system_high_depth_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                 high_depth_stack_pbar.update(1)
 
 
