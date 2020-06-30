@@ -21,8 +21,8 @@ def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], c
     possible_substitutions = set(map(posify_monomial, possible_substitutions))
 
     if count_sorted:
-        decompositions_list = reduce(add, map(list, decompositions))
-        decompositions_list = reduce(add, decompositions_list)
+        decompositions_list = sum(map(list, decompositions))
+        decompositions_list = sum(decompositions_list)
         counts = Counter(decompositions_list)
         possible_substitutions = sorted(possible_substitutions, key=lambda r: counts[r.as_expr()], reverse=True)
     return tuple(possible_substitutions)
