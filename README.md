@@ -97,6 +97,19 @@ y_{1}' = -y_{1}*y_{2}
 y_{2}' = y_{1}*y_{2} - 2*y_{2}**2
 ```
 
+## Citation
+
+```
+@misc{QBee,
+  author = {Andrey Bychkov, Gleb Pogudin},
+  title = {QBee: Quadratization Framework for Nonlinear ODEs},
+  year = {2020},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/AndreyBychkov/QBee}}
+}
+```
+
 
 
 
