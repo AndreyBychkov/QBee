@@ -213,7 +213,7 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
     heuristic_sorter = get_heuristic_sorter(heuristics)
 
     system_stack = deque()
-    system_stack.append((system, list()))
+    system_stack.append((system, 0,  list()))
 
     quad_reached = False
     while not quad_reached:
@@ -236,9 +236,9 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
         used_substitutions = set()
         decompositions = curr_system.get_monomial_decompositions()
         for dec in sorted(decompositions, key=lambda d: len(d)):
-            for substitution in heuristic_sorter(get_possible_substitutions_from_decompositions([dec,])):
+            for substitution in map(sp.Poly.as_expr, get_possible_substitutions_from_decompositions([dec,])):
                 if substitution not in used_substitutions:
-                    system_stack.appendleft((curr_system, substitution_chain + [substitution]))
+                    system_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                     used_substitutions.add(substitution)
 
 
@@ -261,5 +261,6 @@ _quadratization_algorithms = \
     {
         "BFS"       : _bfs,
         "Best-First": _best_first,
-        "ID-DLS"    : _iddls
+        "ID-DLS"    : _iddls,
+        "MMDR": _mmdr,
     }
