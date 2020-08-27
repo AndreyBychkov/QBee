@@ -8,7 +8,7 @@ import random as rand
 
 from .structures import *
 from functools import partial
-from typing import List, Tuple
+from typing import List, Tuple, Sequence
 from .util import is_monomial_divisor
 
 
@@ -17,14 +17,22 @@ def none_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
     return system.get_possible_substitutions(count_sorted=False)
 
 
+def none_subs_sorted(system: EquationSystem, substitutions: List[sp.Poly]) -> List[sp.Poly]:
+    return substitutions
+
+
 def choose_first(system: EquationSystem) -> sp.Expr:
     return none_sorted(system)[0].as_expr()
 
 
-def random_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
+def random_sorted(system: EquationSystem) -> List[sp.Poly]:
     """Shuffles monomial substitutions"""
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return rand.sample(possible_substitutions, len(possible_substitutions))
+    return random_subs_sorted(system, possible_substitutions)
+
+
+def random_subs_sorted(system: EquationSystem, substitutions: Sequence[sp.Poly]) -> List[sp.Poly]:
+    return rand.sample(substitutions, len(substitutions))
 
 
 def random(system: EquationSystem) -> sp.Expr:
@@ -39,6 +47,10 @@ def frequent_first_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
     return system.get_possible_substitutions(count_sorted=True)
 
 
+def frequent_first_subs_sorted(system: EquationSystem, substitutions: List[sp.Poly]) -> List[sp.Poly]:
+    raise NotImplementedError()
+
+
 def frequent_first(system: EquationSystem) -> sp.Expr:
     """Choose the most frequent monomial substitution"""
     most_frequent_substitution = frequent_first_sorted(system)[0].as_expr()
@@ -48,7 +60,12 @@ def frequent_first(system: EquationSystem) -> sp.Expr:
 def free_variables_count_sorted(system: EquationSystem) -> Tuple[sp.Poly]:
     """Monomial substitutions with fewer variables are at the beginning"""
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return tuple(sorted(possible_substitutions, key=lambda x: len(x.free_symbols)))
+    return free_variables_count_subs_sorted(system, possible_substitutions)
+
+
+def free_variables_count_subs_sorted(system: EquationSystem, substitutions: Sequence[sp.Poly]) -> Tuple[sp.Poly]:
+    """Monomial substitutions with fewer variables are at the beginning"""
+    return tuple(sorted(substitutions, key=lambda x: len(x.free_symbols)))
 
 
 def free_variables_count(system: EquationSystem) -> sp.Expr:
@@ -58,9 +75,14 @@ def free_variables_count(system: EquationSystem) -> sp.Expr:
 
 def auxiliary_equation_degree_sorted(system: EquationSystem) -> List[sp.Poly]:
     """Monomial substitutions with lower generated auxiliary equation degree are at the beginning"""
-    system.update_poly_degrees()
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return sorted(possible_substitutions, key=partial(_compute_auxiliary_equation_degree, system))
+    return auxiliary_equation_degree_subs_sorted(system, possible_substitutions)
+
+
+def auxiliary_equation_degree_subs_sorted(system: EquationSystem, substitutions: Sequence[sp.Poly]) -> List[sp.Poly]:
+    """Monomial substitutions with lower generated auxiliary equation degree are at the beginning"""
+    system.update_poly_degrees()
+    return sorted(substitutions, key=partial(_compute_auxiliary_equation_degree, system))
 
 
 def auxiliary_equation_degree(system: EquationSystem) -> sp.Expr:
@@ -77,9 +99,14 @@ def _compute_auxiliary_equation_degree(system: EquationSystem, substitution: sp.
 
 def auxiliary_equation_quadratic_discrepancy_sorted(system: EquationSystem) -> List[sp.Poly]:
     """Monomial substitutions which generated auxiliary equation are closer to quadratic form are at the beginning"""
-    system.update_poly_degrees()
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return sorted(possible_substitutions, key=partial(_compute_auxiliary_equation_quadratic_discrepancy, system))
+    return auxiliary_equation_degree_subs_sorted(system, possible_substitutions)
+
+
+def auxiliary_equation_quadratic_discrepancy_subs_sorted(system: EquationSystem, substitutions: Sequence[sp.Poly]) -> List[sp.Poly]:
+    """Monomial substitutions which generated auxiliary equation are closer to quadratic form are at the beginning"""
+    system.update_poly_degrees()
+    return sorted(substitutions, key=partial(_compute_auxiliary_equation_quadratic_discrepancy, system))
 
 
 def auxiliary_equation_quadratic_discrepancy(system: EquationSystem) -> sp.Expr:
@@ -97,7 +124,12 @@ def _compute_auxiliary_equation_quadratic_discrepancy(system: EquationSystem, su
 def summary_monomial_degree_sorted(system: EquationSystem) -> List[sp.Poly]:
     """Monomial substitutions which strongly reduce the degree of the system are at the begging"""
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return sorted(possible_substitutions, key=partial(_compute_substitution_value_for_all_monomials, system), reverse=True)
+    return summary_monomial_degree_subs_sorted(system, possible_substitutions)
+
+
+def summary_monomial_degree_subs_sorted(system: EquationSystem, substitutions: Sequence[sp.Poly]) -> List[sp.Poly]:
+    """Monomial substitutions which strongly reduce the degree of the system are at the begging"""
+    return sorted(substitutions, key=partial(_compute_substitution_value_for_all_monomials, system), reverse=True)
 
 
 def summary_monomial_degree(system: EquationSystem) -> sp.Expr:
@@ -151,6 +183,23 @@ _heuristics_name_to_sorter = \
         'default'                                 : summary_monomial_degree_sorted
     }
 
+_heuristics_name_to_subs_sorter = \
+    {
+        'none'                                    : none_subs_sorted,
+        'random'                                  : random_subs_sorted,
+        'frequent-first'                          : frequent_first_subs_sorted,
+        'free-variables-count'                    : free_variables_count_subs_sorted,
+        'auxiliary-equation-degree'               : auxiliary_equation_degree_subs_sorted,
+        'auxiliary-equation-quadratic-discrepancy': auxiliary_equation_quadratic_discrepancy_subs_sorted,
+        'summary-monomial-degree'                 : summary_monomial_degree_subs_sorted,
+        'FF'                                      : frequent_first_subs_sorted,
+        'FVC'                                     : free_variables_count_subs_sorted,
+        'AED'                                     : auxiliary_equation_degree_subs_sorted,
+        'AEQD'                                    : auxiliary_equation_quadratic_discrepancy_subs_sorted,
+        'SMD'                                     : summary_monomial_degree_subs_sorted,
+        'default'                                 : summary_monomial_degree_subs_sorted
+    }
+
 
 def get_heuristics(name: str):
     try:
@@ -163,6 +212,14 @@ def get_heuristics(name: str):
 def get_heuristic_sorter(name: str):
     try:
         return _heuristics_name_to_sorter[name]
+    except KeyError:
+        sys.stderr.write("Your heuristics has wrong name. Used default heuristics.")
+        return _heuristics_name_to_sorter['default']
+
+
+def get_heuristics_substitution_sorted(name: str):
+    try:
+        return _heuristics_name_to_subs_sorter[name]
     except KeyError:
         sys.stderr.write("Your heuristics has wrong name. Used default heuristics.")
         return _heuristics_name_to_sorter['default']
