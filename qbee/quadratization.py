@@ -5,7 +5,7 @@ import pandas as pd
 import multiprocessing as mp
 
 from .structures import *
-from .substitution_heuristics import get_heuristics, get_heuristic_sorter
+from .substitution_heuristics import get_heuristics, get_heuristic_sorter, get_heuristics_substitution_sorted
 from tqdm.autonotebook import tqdm
 from copy import deepcopy
 from queue import Queue, Empty
@@ -210,10 +210,16 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
 
 def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
           log_rows_list: Optional[List]) -> QuadratizationResult:
-    heuristic_sorter = get_heuristic_sorter(heuristics)
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
+    stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
+    heuristic_sorter = get_heuristics_substitution_sorted(heuristics)
+
+    curr_depth = 0
     system_stack = deque()
-    system_stack.append((system, 0,  list()))
+    system_stack.append((system, curr_depth, list()))
+
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DLS')
 
     quad_reached = False
     while not quad_reached:
@@ -227,8 +233,16 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
         else:
             curr_system = prev_system
 
+        stack_pbar.update(-1)
+        stack_pbar.refresh()
+        statistics.steps += 1
+        processed_systems_pbar.update(1)
+        processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
+
         if curr_system.is_quadratic():
-            return QuadratizationResult(curr_system, EvaluationStatistics(0, 0, ''), tuple(substitution_chain))
+            statistics.depth = curr_depth
+            refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar)
+            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
 
         if curr_depth == limit_depth:
             continue
@@ -236,13 +250,12 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
         used_substitutions = set()
         decompositions = curr_system.get_monomial_decompositions()
         for dec in sorted(decompositions, key=lambda d: len(d)):
-            for substitution in map(sp.Poly.as_expr, get_possible_substitutions_from_decompositions([dec,])):
+            substitutions = heuristic_sorter(system, get_possible_substitutions_from_decompositions([dec,]))
+            for substitution in map(sp.Poly.as_expr, substitutions):
                 if substitution not in used_substitutions:
                     system_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+                    stack_pbar.update(1)
                     used_substitutions.add(substitution)
-
-
-
 
 
 def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:
@@ -262,5 +275,5 @@ _quadratization_algorithms = \
         "BFS"       : _bfs,
         "Best-First": _best_first,
         "ID-DLS"    : _iddls,
-        "MMDR": _mmdr,
+        "MMDR"      : _mmdr,
     }
