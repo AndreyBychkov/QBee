@@ -219,11 +219,11 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
     system_stack = deque()
     system_stack.append((system, curr_depth, list()))
 
-    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DLS')
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='MMDR')
 
     quad_reached = False
     while not quad_reached:
-        prev_system, curr_depth, substitution_chain = system_stack.popleft()
+        prev_system, curr_depth, substitution_chain = system_stack.pop()
         if substitution_chain:
             last_substitution = substitution_chain[-1]
             curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
@@ -249,11 +249,11 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
 
         used_substitutions = set()
         decompositions = curr_system.get_monomial_decompositions()
-        for dec in sorted(decompositions, key=lambda d: len(d)):
-            substitutions = heuristic_sorter(system, get_possible_substitutions_from_decompositions([dec,]))
+        for dec in sorted(decompositions, key=lambda d: len(d), reverse=True):
+            substitutions = heuristic_sorter(curr_system, get_possible_substitutions_from_decompositions([dec,]))
             for substitution in map(sp.Poly.as_expr, substitutions):
                 if substitution not in used_substitutions:
-                    system_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+                    system_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
                     stack_pbar.update(1)
                     used_substitutions.add(substitution)
 
