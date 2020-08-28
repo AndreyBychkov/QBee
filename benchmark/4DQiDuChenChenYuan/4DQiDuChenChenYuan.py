@@ -14,4 +14,4 @@ system = EquationSystem([
 
 if __name__ == '__main__':
     benchmark_system(system=system, system_name="4DQiDuChenChenYuan", cycles=10, search_algorithms=('BFS', 'ID-DLS'),
-                     heuristics=('none', 'FF', 'FVC', 'AED', 'AEQD', 'SMD'), initial_max_depth=4, limit_depth=4)
+                     heuristics=('none', 'FF', 'FVC', 'AED', 'AEQD', 'SMD'), initial_max_depth=6, limit_depth=6)

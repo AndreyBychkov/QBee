@@ -12,8 +12,9 @@ system = polynomialize(system)
 
 
 def xSigmoid_benchmark():
+    restricted_heuristics = ('none', 'FVC', 'AED', 'AEQD', 'SMD')
     benchmark_system(system=system, system_name="xSigmoid", cycles=20, search_algorithms=('BFS', 'ID-DLS'),
-                     heuristics=('none', 'FF', 'FVC', 'AED', 'AEQD', 'SMD'), initial_max_depth=2, limit_depth=2)
+                     heuristics=restricted_heuristics, initial_max_depth=2, limit_depth=2)
 
 
 if __name__ == '__main__':
