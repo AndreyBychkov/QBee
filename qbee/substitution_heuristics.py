@@ -100,7 +100,7 @@ def _compute_auxiliary_equation_degree(system: EquationSystem, substitution: sp.
 def auxiliary_equation_quadratic_discrepancy_sorted(system: EquationSystem) -> List[sp.Poly]:
     """Monomial substitutions which generated auxiliary equation are closer to quadratic form are at the beginning"""
     possible_substitutions = system.get_possible_substitutions(count_sorted=False)
-    return auxiliary_equation_degree_subs_sorted(system, possible_substitutions)
+    return auxiliary_equation_quadratic_discrepancy_subs_sorted(system, possible_substitutions)
 
 
 def auxiliary_equation_quadratic_discrepancy_subs_sorted(system: EquationSystem, substitutions: Sequence[sp.Poly]) -> List[sp.Poly]:
