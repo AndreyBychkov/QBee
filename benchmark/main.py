@@ -9,7 +9,7 @@ from typing import List
 def benchmark_system(system: EquationSystem,
                      system_name,
                      cycles=10,
-                     search_algorithms=('BFS', 'ID-DLS'),
+                     search_algorithms=('BFS', 'ID-DLS', 'MMDR'),
                      heuristics=('none', 'FF', 'FVC', 'AED', 'AEQD', 'SMD'),
                      initial_max_depth=1,
                      limit_depth=None):
