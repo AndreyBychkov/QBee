@@ -13,5 +13,5 @@ system = EquationSystem([
 
 if __name__ == '__main__':
     restricted_heuristics = ('none', 'FVC', 'AED', 'AEQD', 'SMD')
-    benchmark_system(system=system, system_name="RabinovichFabrikant", cycles=20, search_algorithms=('BFS', 'ID-DLS'),
+    benchmark_system(system=system, system_name="RabinovichFabrikant", cycles=20, search_algorithms=('BFS', 'ID-DLS', 'MMDR'),
                      heuristics=restricted_heuristics, initial_max_depth=3, limit_depth=3)
