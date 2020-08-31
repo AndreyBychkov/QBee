@@ -210,6 +210,11 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
 
 def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
           log_rows_list: Optional[List]) -> QuadratizationResult:
+    """
+    Minimal Monomial Decomposition Reduction
+
+    First choose a monomial with the least number of decompositions. Then select a substitution using heuristics.
+    """
     processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
     stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
