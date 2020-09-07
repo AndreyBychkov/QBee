@@ -208,10 +208,10 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
                 high_depth_stack_pbar.update(1)
 
 
-def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
-          log_rows_list: Optional[List]) -> QuadratizationResult:
+def _id_mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+             log_rows_list: Optional[List]) -> QuadratizationResult:
     """
-    Minimal Monomial Decomposition Reduction
+    Iterative Deepening Minimal Monomial Decomposition Reduction
 
     First choose a monomial with the least number of decompositions. Then select a substitution using heuristics.
     """
@@ -280,5 +280,5 @@ _quadratization_algorithms = \
         "BFS"       : _bfs,
         "Best-First": _best_first,
         "ID-DLS"    : _iddls,
-        "MMDR"      : _mmdr,
+        "ID-MMDR"      : _id_mmdr,
     }
