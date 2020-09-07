@@ -14,8 +14,8 @@ def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], c
 
 
 def get_monomial_decompositions(poly_list: List[sp.Expr], gens: Set[sp.Symbol]) -> List[Set[Tuple[sp.Poly]]]:
-    combined_poly = sum(poly_list)
-    terms = list(map(lambda m: sp.Poly(m, *gens), sp.Add.make_args(combined_poly.expand())))
+    polys = list(map(lambda m: sp.Poly(m, *gens).expand(), poly_list))
+    terms = reduce(lambda a, b: a + b, map(lambda p: sp.Add.make_args(p), polys))
     return list(map(get_all_decompositions, terms))
 
 
