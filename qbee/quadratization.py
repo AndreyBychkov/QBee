@@ -208,6 +208,62 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
                 high_depth_stack_pbar.update(1)
 
 
+def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+             log_rows_list: Optional[List]) -> QuadratizationResult:
+    """
+    Minimal Monomial Decomposition Reduction
+
+    First choose a monomial with the least number of decompositions. Then select a substitution using heuristics.
+    """
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
+    queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
+
+    if heuristics == "default":
+        heuristics = "none"
+    heuristic_sorter = get_heuristic_sorter(heuristics)
+
+    system_queue = Queue()
+    system_queue.put((system, list()), block=True)
+    initial_eq_number = len(system.equations)
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='MMDR')
+
+    quad_reached = False
+    while not quad_reached:
+        if system_queue.empty():
+            raise RuntimeError("Limit depth passed. No quadratic system is found.")
+
+        prev_system, substitution_chain = system_queue.get_nowait()
+        if substitution_chain:
+            last_substitution = substitution_chain[-1]
+            curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
+
+            if log_rows_list is not None:
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+        else:
+            curr_system = prev_system
+
+        curr_depth = len(curr_system.equations) - initial_eq_number
+
+        queue_pbar.update(-1)
+        statistics.steps += 1
+        processed_systems_pbar.update(1)
+        processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
+
+        if curr_system.is_quadratic():
+            statistics.depth = curr_depth
+            refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
+            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
+
+        if curr_depth == limit_depth:
+            continue
+
+        minimal_decomposition = sorted(curr_system.get_monomial_decompositions(), key=lambda d: len(d))[0]
+        substitutions = heuristic_sorter(curr_system, get_possible_substitutions_from_decompositions([minimal_decomposition,]))
+        for substitution in map(sp.Poly.as_expr, substitutions):
+            system_queue.put_nowait((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+            queue_pbar.update(1)
+
+
 def _id_mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
              log_rows_list: Optional[List]) -> QuadratizationResult:
     """
@@ -224,7 +280,7 @@ def _id_mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, in
     system_stack = deque()
     system_stack.append((system, curr_depth, list()))
 
-    statistics = EvaluationStatistics(depth=0, steps=0, method_name='MMDR')
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-MMDR')
 
     quad_reached = False
     while not quad_reached:
