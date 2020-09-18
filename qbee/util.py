@@ -19,6 +19,11 @@ def get_monomial_decompositions(poly_list: List[sp.Expr], gens: Set[sp.Symbol]) 
     return list(map(get_all_decompositions, terms))
 
 
+def unify_poly_field(poly_list: List[sp.Poly]) -> List[sp.Poly]:
+    gens = set(reduce(lambda a, b: a + b, map(lambda p: p.gens, poly_list)))
+    return list(map(lambda p: sp.Poly(p, *gens), poly_list))
+
+
 def get_possible_substitutions_from_decompositions(decompositions: List[Set[Tuple[sp.Poly]]], count_sorted=False) -> Tuple[sp.Poly]:
     possible_substitutions = list()
     for dec in decompositions:
