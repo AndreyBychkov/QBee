@@ -3,8 +3,9 @@ import sympy as sp
 from time import time
 from tqdm import tqdm
 from .combinations import *
+from itertools import combinations
 from functools import reduce, partial
-from typing import List, Tuple
+from typing import List, Tuple, Iterable
 from collections import Counter
 
 
@@ -74,3 +75,23 @@ def refresh_and_close_progress_bars(*pbars: tqdm):
 
 def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
     return sp.Symbol(str(derivative).replace(r"\dot ", '', 1))
+
+
+def can_substitutions_quadratize(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
+    gens = monom.gens
+    expanded_subs = set(map(lambda var: sp.Monomial(var, monom.gens), gens)).union(subs)
+    return _can_quad_2(monom, expanded_subs) or _can_quad_1(monom, expanded_subs)
+
+
+def _can_quad_2(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
+    for sub in subs:
+        if monom == sub ** 2:
+            return True
+    return False
+
+
+def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
+    for left, right in combinations(subs, 2):
+        if monom == left * right:
+            return True
+    return False
