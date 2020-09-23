@@ -209,7 +209,7 @@ def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, init
 
 
 def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
-             log_rows_list: Optional[List]) -> QuadratizationResult:
+          log_rows_list: Optional[List]) -> QuadratizationResult:
     """
     Minimal Monomial Decomposition Reduction
 
@@ -258,7 +258,7 @@ def _mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initi
             continue
 
         minimal_decomposition = sorted(curr_system.get_monomial_decompositions(), key=lambda d: len(d))[0]
-        substitutions = heuristic_sorter(curr_system, get_possible_substitutions_from_decompositions([minimal_decomposition,]))
+        substitutions = heuristic_sorter(curr_system, get_possible_substitutions_from_decompositions([minimal_decomposition, ]))
         for substitution in map(sp.Poly.as_expr, substitutions):
             system_queue.put_nowait((curr_system, curr_depth + 1, substitution_chain + [substitution]))
             queue_pbar.update(1)
@@ -311,7 +311,7 @@ def _id_mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, in
         used_substitutions = set()
         decompositions = curr_system.get_monomial_decompositions()
         for dec in sorted(decompositions, key=lambda d: len(d), reverse=True):
-            substitutions = heuristic_sorter(curr_system, get_possible_substitutions_from_decompositions([dec,]))
+            substitutions = heuristic_sorter(curr_system, get_possible_substitutions_from_decompositions([dec, ]))
             for substitution in map(sp.Poly.as_expr, substitutions):
                 if substitution not in used_substitutions:
                     system_stack.append((curr_system, curr_depth + 1, substitution_chain + [substitution]))
@@ -319,10 +319,60 @@ def _id_mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, in
                     used_substitutions.add(substitution)
 
 
+def _new_bfs(system: PolynomialSystem, auxiliary_eq_type="differential", limit_depth=None) -> QuadratizationResult:
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0)
+    queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1)
+
+    system_queue = Queue()
+    system_queue.put((system, list()), block=True)
+    initial_eq_number = len(system.equations)
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='New BFS')
+
+    quad_reached = False
+    while not quad_reached:
+        if system_queue.empty():
+            raise RuntimeError("Limit depth passed. No quadratic system is found.")
+
+        prev_system, substitution_chain = system_queue.get_nowait()
+        if substitution_chain:
+            last_substitution = substitution_chain[-1]
+            curr_system = _make_new_system_alt(prev_system, auxiliary_eq_type, last_substitution)
+        else:
+            curr_system = prev_system
+
+        curr_depth = len(curr_system.equations) - initial_eq_number
+
+        queue_pbar.update(-1)
+        statistics.steps += 1
+        processed_systems_pbar.update(1)
+        processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
+
+        if curr_system.is_quadratic([sp.Monomial(sub.as_expr(), curr_system.variables.free) for sub in substitution_chain]):
+            statistics.depth = curr_depth
+            refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
+            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
+
+        if curr_depth == limit_depth:
+            continue
+
+        possible_substitutions = curr_system.get_possible_substitutions()
+        for substitution in possible_substitutions:
+            system_queue.put((curr_system, substitution_chain + [substitution]))
+            queue_pbar.update(1)
+
+
 def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:
     new_system = deepcopy(system)
     new_variable = new_system.variables.create_variable()
     equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
+    equation_add_fun(new_variable, substitution)
+    return new_system
+
+
+def _make_new_system_alt(system: PolynomialSystem, auxiliary_eq_type, substitution) -> PolynomialSystem:
+    new_system = system.clone()
+    new_variable = new_system.variables.create_variable()
+    equation_add_fun = new_system.auxiliary_equation_inserter(auxiliary_eq_type)
     equation_add_fun(new_variable, substitution)
     return new_system
 
@@ -336,5 +386,5 @@ _quadratization_algorithms = \
         "BFS"       : _bfs,
         "Best-First": _best_first,
         "ID-DLS"    : _iddls,
-        "ID-MMDR"      : _id_mmdr,
+        "ID-MMDR"   : _id_mmdr,
     }

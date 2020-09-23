@@ -40,7 +40,7 @@ def get_possible_substitutions_from_decompositions(decompositions: List[Set[Tupl
     return tuple(possible_substitutions)
 
 
-def posify_monomial(monomial: sp.Expr):
+def posify_monomial(monomial: sp.Monomial):
     return monomial if '-' not in str(monomial) else -monomial
 
 

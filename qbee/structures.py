@@ -2,11 +2,11 @@ import sympy as sp
 import hashlib
 
 from functools import reduce
-from typing import List, Iterable, Optional, Callable, Tuple, Set
+from typing import List, Iterable, Optional, Callable, Tuple, Set, Union
 from .util import *
 
 
-def derivatives(names) -> Tuple[sp.Symbol]:
+def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
     """
     Add dot to input symbols.
 
@@ -115,6 +115,35 @@ class VariablesHolder:
         new_variable = self.create_variable()
         new_variable_der = make_derivative_symbol(new_variable)
         return new_variable, new_variable_der
+
+
+class Equation:
+    def __init__(self, left_hand_side, right_hand_side):
+        self.lhs = left_hand_side
+        self.rhs = right_hand_side
+
+    @staticmethod
+    def from_sympy(sympy_equation: sp.Eq):
+        return Equation(sympy_equation.lhs, sympy_equation.rhs)
+
+    def to_sympy(self, evaluate=False) -> sp.Eq:
+        return sp.Eq(self.lhs, self.rhs, evaluate=evaluate)
+
+    def subs(self, *args, **kwargs):
+        self.lhs = self.lhs.subs(*args, **kwargs)
+        self.rhs = self.rhs.subs(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.lhs} = {self.rhs}"
+
+
+class DiffPolyEquation(Equation):
+    def __init__(self, der: sp.Symbol, poly: sp.Poly):
+        super().__init__(der, poly)
+
+    @staticmethod
+    def from_sympy(sympy_equation: sp.Eq):
+        return DiffPolyEquation(sympy_equation.lhs, sympy_equation.rhs)
 
 
 class EquationSystem:
@@ -348,6 +377,182 @@ class EquationSystem:
 
     def _print_simple(self):
         for eq in self.equations:
+            print(rf"{symbol_from_derivative(eq.args[0])}' = {sp.collect(eq.args[1], self.variables.free)}")
+
+    def __len__(self):
+        return len(self._equations)
+
+    def __repr__(self):
+        return '\n'.join(map(lambda e: e.__repr__(), self._equations))
+
+    def __str__(self):
+        return '\n'.join(map(lambda e: e.__str__(), self._equations))
+
+
+class PolynomialSystem:
+    def __init__(self, equations: List[sp.Eq],
+                 parameter_variables: Iterable[sp.Symbol] = None,
+                 input_variables: Iterable[sp.Symbol] = None):
+        derivs = [eq.args[0] for eq in equations]
+        polys = unify_poly_field([sp.Poly(eq.args[1].expand()) for eq in equations])
+        self._equations = [sp.Eq(der, poly, evaluate=False) for der, poly in zip(derivs, polys)]
+        self._len_original_equations = len(equations)
+        self._substitutions = list()
+
+        _symbols = reduce(set.union, map(lambda e: e.free_symbols, equations))
+        _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
+        _input_vars = set(input_variables) if input_variables is not None else set()
+        _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
+        _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
+        self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
+
+        self._equations_poly_degrees = dict()
+        self._compute_equations_poly_degrees()
+
+    def clone(self):
+        system = PolynomialSystem(self.equations, self.variables.parameter, self.variables.input)
+        system._len_original_equations = self._len_original_equations
+        system._substitutions = self._substitutions
+        return system
+
+    @property
+    def equations(self) -> List[sp.Eq]:
+        # return [eq.to_sympy() for eq in self._equations]
+        return self._equations
+
+    @property
+    def original_equations(self) -> List[sp.Eq]:
+        # return [eq.to_sympy() for eq in self._equations[:self._len_original_equations]]
+        return self._equations[:self._len_original_equations]
+
+    @property
+    def substitution_equations(self) -> List[sp.Eq]:
+        # return [eq.to_sympy() for eq in self._equations[self._len_original_equations:]]
+        return self._equations[self._len_original_equations:]
+
+    @property
+    def equations_hash(self) -> bytes:
+        return hashlib.md5(str(self._equations).encode('utf-8')).digest()
+
+    @property
+    def monomials(self) -> Tuple[sp.Monomial]:
+        """Sequential non-unique monomials of system"""
+        return tuple(map(sp.Monomial, reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_polynomials()))))
+
+    @staticmethod
+    def from_EquationSystem(system: EquationSystem):
+        if system.is_polynomial("full"):
+            return PolynomialSystem(system.equations, system.variables.parameter, system.variables.input)
+
+    def replace_expression(self, old: sp.Expr, new: sp.Expr):
+        """Replace 'old' expression with 'new' expression for each equation."""
+        for i in range(len(self._equations)):
+            self._equations[i] = self._equations[i].subs(old, new)
+
+    def replace_monomial(self, old: sp.Expr, new: sp.Expr):
+        """If any expression in system is divisible on 'old', replace it with 'new'"""
+        for i, eq in enumerate(self._equations):
+            self._equations[i] = sp.Eq(eq.args[0], polynomial_subs(eq.args[1], old, new))
+
+    def get_possible_substitutions(self, count_sorted=False) -> Tuple[sp.Poly]:
+        right_parts = self._get_polynomials()
+        return get_possible_substitutions(right_parts, set(self.variables.free), count_sorted=count_sorted)
+
+    def expand_equations(self):
+        """Apply SymPy 'expand' function to each of equation."""
+        for i in range(len(self._equations)):
+            self._equations[i] = sp.expand(self._equations[i])
+
+    def update_poly_degrees(self):
+        """Update system variable _equations_poly_degrees"""
+        self._compute_equations_poly_degrees()
+
+    def is_quadratic(self, subs: Iterable[sp.Monomial]) -> bool:
+        return all(map(lambda m: can_substitutions_quadratize(m, subs), self.monomials))
+
+    def auxiliary_equation_inserter(self, auxiliary_eq_type: str) -> Callable:
+        if auxiliary_eq_type == 'differential':
+            return self.add_differential_auxiliary_equation
+        elif auxiliary_eq_type == 'algebraic':
+            return self.add_algebraic_auxiliary_equation
+        else:
+            raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
+
+    def add_differential_auxiliary_equation(self, new_variable: sp.Symbol, substitution: sp.Poly) -> None:
+        """
+        Add differential auxiliary equation, generated by substitution.
+
+        Substitution equation:
+            .. math:: y = f(x)
+        Generated equation:
+            .. math:: \dot y = \dot f(x)
+
+        :param new_variable: left part, y
+        :param substitution: right part, f(x)
+        """
+        new_variable_dot = make_derivative_symbol(new_variable)
+        self._substitutions.append(sp.Eq(new_variable, substitution, evaluate=False))
+        self._equations.append(sp.Eq(new_variable_dot, self._calculate_Lie_derivative(substitution), evaluate=False))
+
+    def add_algebraic_auxiliary_equation(self, new_variable: sp.Symbol, substitution: sp.Poly) -> None:
+        """
+        Add algebraic auxiliary equation, generated by substitution.
+
+        substitution and added equation:
+            .. math:: y = f(x)
+
+        :param new_variable: left part, y
+        :param substitution: right part, f(x)
+        :param is_polynomial_substitution: is substitution is polynomial
+        """
+        self._substitutions.append(sp.Eq(new_variable, substitution))
+        self._equations.append(sp.Eq(new_variable, substitution).expand())
+
+    def _calculate_Lie_derivative(self, expr: sp.Poly) -> sp.Poly:
+        """Calculates Lie derivative using chain rule."""
+        result = sp.Integer(0)
+        for var in expr.free_symbols.difference(self.variables.parameter).difference(self.variables.input):
+            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
+            var_diff = var_diff_eq.args[1]
+            result += expr.diff(var) * var_diff
+        for input_var in expr.free_symbols.intersection(self.variables.input):
+            input_var_dot = make_derivative_symbol(input_var)
+            result += expr.diff(input_var) * input_var_dot
+        return sp.Poly(self._apply_substitutions(self._apply_substitutions(result).expand()).expand(), *self.variables.free)
+
+    def _apply_substitutions(self, expr: sp.Poly) -> sp.Poly:
+        for left, right in map(lambda eq: eq.args, self._substitutions):
+            expr = expr.subs(right, left)
+        return expr
+
+    def _compute_equations_poly_degrees(self):
+        for var_dot, right_expr in map(lambda eq: eq.args, self._equations):
+            if right_expr.is_Number:
+                self._equations_poly_degrees[var_dot] = 0
+            else:
+                self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
+
+    def _get_polynomials(self) -> List[sp.Poly]:
+        return list(map(lambda eq: eq.args[1], self.equations))
+
+    def print(self, mode: str = 'simple'):
+        if mode == "simple":
+            self._print_simple()
+        elif mode == 'latex':
+            self._print_latex()
+        elif mode == 'sympy':
+            print(str(self))
+        else:
+            raise AttributeError(f"mode {mode} is not valid. Use correct mode.")
+
+    def _print_latex(self):
+        print(r'\begin{array}{ll}')
+        for eq in self._equations:
+            print('\t' + rf"{eq.args[0]} = {sp.latex(sp.collect(eq.args[1], self.variables.free))}" + r'\\')
+        print(r'\end{array}')
+
+    def _print_simple(self):
+        for eq in self._equations:
             print(rf"{symbol_from_derivative(eq.args[0])}' = {sp.collect(eq.args[1], self.variables.free)}")
 
     def __len__(self):
