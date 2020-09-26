@@ -109,6 +109,10 @@ def poly_to_monomial(poly: sp.Poly) -> sp.Monomial:
     return sp.Monomial(poly.monoms()[0], poly.gens)
 
 
+def monomial_to_poly(monom: sp.Monomial) -> sp.Poly:
+    return sp.Poly(sp.prod([gen ** e for gen, e in zip(monom.gens, monom.exponents)]), monom.gens)
+
+
 def unify_monom_to_gens(in_monom: sp.Monomial, gens: List[sp.Symbol]):
     res = list()
     for gen in gens:
