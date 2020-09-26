@@ -2,7 +2,7 @@ import sympy as sp
 import hashlib
 
 from copy import deepcopy, copy
-from typing import List, Iterable, Optional, Callable, Tuple, Set, Union
+from typing import Callable, Union, Sequence
 from .decomposition import get_substitutions
 from .util import *
 
@@ -469,8 +469,11 @@ class PolynomialSystem:
         for i, eq in enumerate(self._equations):
             self._equations[i] = sp.Eq(eq.args[0], polynomial_subs(eq.args[1], old, new))
 
-    def get_possible_substitutions(self) -> Iterable[sp.Poly]:
+    def get_possible_substitutions(self) -> List[sp.Poly]:
         return list(map(monomial_to_poly, get_substitutions(self._get_polynomials(), self.variables.original)))
+
+    def apply_substitutions(self):
+        NotImplemented
 
     def expand_equations(self):
         """Apply SymPy 'expand' function to each of equation."""

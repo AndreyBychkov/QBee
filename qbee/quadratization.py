@@ -319,9 +319,10 @@ def _id_mmdr(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, in
                     used_substitutions.add(substitution)
 
 
-def _new_bfs(system: PolynomialSystem, auxiliary_eq_type="differential", limit_depth=None) -> QuadratizationResult:
-    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0)
-    queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1)
+def _new_bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+             log_rows_list: Optional[List]) -> QuadratizationResult:
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
+    queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
 
     system_queue = Queue()
     system_queue.put((system, list()), block=True)
@@ -337,6 +338,9 @@ def _new_bfs(system: PolynomialSystem, auxiliary_eq_type="differential", limit_d
         if substitution_chain:
             last_substitution = substitution_chain[-1]
             curr_system = _make_new_poly_system(prev_system, auxiliary_eq_type, last_substitution)
+
+            if log_rows_list is not None:
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
         else:
             curr_system = prev_system
 
@@ -359,6 +363,67 @@ def _new_bfs(system: PolynomialSystem, auxiliary_eq_type="differential", limit_d
         for substitution in possible_substitutions:
             system_queue.put((curr_system, substitution_chain + [substitution]))
             queue_pbar.update(1)
+
+def _new_iddls(system: PolynomialSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
+           log_rows_list: Optional[List]) -> QuadratizationResult:
+    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
+    stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
+    high_depth_stack_pbar = tqdm(unit="node", desc="Nodes in higher depth queue: ", position=2, disable=disable_pbar)
+
+    heuristic_sorter = get_heuristic_sorter(heuristics)
+    system_stack = deque()
+    system_high_depth_stack = deque()
+
+    curr_depth = 0
+    curr_max_depth = initial_max_depth
+    system_stack.append((system, curr_depth, list()))
+    stack_pbar.update(1)
+
+    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DLS')
+
+    quad_reached = False
+    while not quad_reached:
+        if len(system_stack) == 0:
+            if len(system_high_depth_stack) == 0:
+                raise RuntimeError("Limit depth passed. No quadratic system is found.")
+            system_stack = system_high_depth_stack
+            system_high_depth_stack = deque()
+            curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
+
+            reset_progress_bar(stack_pbar, len(system_stack))
+            reset_progress_bar(high_depth_stack_pbar, 0)
+
+        prev_system, curr_depth, substitution_chain = system_stack.popleft()
+        if substitution_chain:
+            last_substitution = substitution_chain[-1]
+            curr_system = _make_new_poly_system(prev_system, auxiliary_eq_type, last_substitution)
+
+            if log_rows_list is not None:
+                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+        else:
+            curr_system = prev_system
+
+        stack_pbar.update(-1)
+        stack_pbar.refresh()
+        statistics.steps += 1
+        processed_systems_pbar.update(1)
+        processed_systems_pbar.postfix = f"Current max depth level: {curr_max_depth} / {limit_depth}"
+
+        if curr_system.is_quadratic([poly_to_monomial(sub) for sub in substitution_chain]):
+            statistics.depth = curr_depth
+            refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar, high_depth_stack_pbar)
+            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
+
+        if curr_depth == limit_depth:
+            continue
+
+        for substitution in heuristic_sorter(curr_system)[::-1]:
+            if curr_depth < curr_max_depth:
+                system_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+                stack_pbar.update(1)
+            else:
+                system_high_depth_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
+                high_depth_stack_pbar.update(1)
 
 
 def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:
