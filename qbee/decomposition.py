@@ -1,7 +1,7 @@
 import sympy as sp
 
 from sympy.polys.orderings import monomial_key
-from typing import Set, List, Iterable, Collection
+from typing import List, Iterable, Collection
 from operator import add
 from functools import reduce
 

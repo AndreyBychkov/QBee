@@ -41,7 +41,7 @@ def _polynomialize_algebraic_iter(system: EquationSystem):
         non_poly_elem = find_non_polynomial(eq.args[1])
         if non_poly_elem:
             new_variable = system.variables.create_variable()
-            system.algebraic_auxiliary_equation_add(new_variable, non_poly_elem, is_polynomial_substitution=False)
+            system.algebraic_auxiliary_equation_add(new_variable, non_poly_elem)
             break
 
 
@@ -59,5 +59,5 @@ def _polynomialize_differential_iter(system: EquationSystem):
         if non_poly_elem:
 
             new_variable = system.variables.create_variable()
-            system.differential_auxiliary_equation_add(new_variable, non_poly_elem, is_polynomial_substitution=False)
+            system.differential_auxiliary_equation_add(new_variable, non_poly_elem)
             break

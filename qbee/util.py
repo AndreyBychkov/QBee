@@ -2,50 +2,18 @@ import sympy as sp
 
 from time import time
 from tqdm import tqdm
-from .combinations import *
+from functools import partial
+from typing import List, Optional, Iterable
 from sympy.polys.monomials import monomial_deg
 from itertools import combinations
-from functools import reduce, partial
-from typing import List, Tuple, Iterable, Collection
-from collections import Counter
-
-
-def get_possible_substitutions(poly_list: List[sp.Expr], gens: Set[sp.Symbol], count_sorted=True) -> Tuple[sp.Poly]:
-    decompositions = get_monomial_decompositions(poly_list, gens)
-    return get_possible_substitutions_from_decompositions(decompositions, count_sorted)
-
-
-def get_monomial_decompositions(poly_list: List[sp.Expr], gens: Set[sp.Symbol]) -> List[Set[Tuple[sp.Poly]]]:
-    terms = reduce(lambda a, b: a + b, map(lambda p: sp.Add.make_args(p.as_expr()), poly_list))
-    return list(map(get_all_decompositions, [sp.Poly(t, *gens) for t in terms]))
-
-
-def unify_poly_field(poly_list: List[sp.Poly], gens: Collection[sp.Symbol] = None) -> List[sp.Poly]:
-    if gens is None:
-        gens = set(reduce(lambda a, b: a + b, map(lambda p: p.gens, poly_list)))
-    return list(map(lambda p: sp.Poly(p, *gens), poly_list))
-
-
-def get_possible_substitutions_from_decompositions(decompositions: List[Set[Tuple[sp.Poly]]], count_sorted=False) -> Tuple[sp.Poly]:
-    possible_substitutions = list()
-    for dec in decompositions:
-        all_substitutions = reduce(set.union, map(set, dec))
-        possible_substitutions += list(filter(lambda p: p.total_degree() > 1, all_substitutions))
-    possible_substitutions = set(map(posify_monomial, possible_substitutions))
-
-    if count_sorted:
-        decompositions_list = sum(map(list, decompositions))
-        decompositions_list = sum(decompositions_list)
-        counts = Counter(decompositions_list)
-        possible_substitutions = sorted(possible_substitutions, key=lambda r: counts[r.as_expr()], reverse=True)
-    return tuple(possible_substitutions)
 
 
 def posify_monomial(monomial: sp.Monomial):
+    # TODO: Odd, it was useful with negative substitutions. Has to check this out.
     return monomial if '-' not in str(monomial) else -monomial
 
 
-def polynomial_subs(poly: sp.Expr, old: sp.Expr, new: sp.Expr) -> sp.Expr:
+def polynomial_subs(poly: sp.Poly, old: sp.Poly, new: sp.Poly) -> sp.Expr:
     monomials = sp.Add.make_args(poly)
     return sp.Add(*map(partial(monomial_subs, old=old, new=new), monomials))
 
@@ -78,33 +46,6 @@ def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
     return sp.Symbol(str(derivative).replace(r"\dot ", '', 1))
 
 
-def can_substitutions_quadratize(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
-    gens = tuple(monom.gens)
-    var_subs = set(map(lambda var: sp.Monomial(var, gens), gens))
-    var_subs.add(sp.Monomial((0,) * len(gens), gens))  # zero degree monomial
-    # unified_gens_subs = set(map(lambda sub: unify_monom_to_gens(sub, gens), subs))
-    expanded_subs = var_subs.union(subs)
-    return _can_quad_0(monom) or _can_quad_2(monom, expanded_subs) or _can_quad_1(monom, expanded_subs)
-
-
-def _can_quad_2(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
-    for sub in subs:
-        if monom == sub ** 2:
-            return True
-    return False
-
-
-def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
-    for left, right in combinations(subs, 2):
-        if monom == left * right:
-            return True
-    return False
-
-
-def _can_quad_0(monom: sp.Monomial) -> bool:
-    return monomial_deg(monom) == 0
-
-
 def poly_to_monomial(poly: sp.Poly) -> sp.Monomial:
     return sp.Monomial(poly.monoms()[0], poly.gens)
 
@@ -133,3 +74,30 @@ def index_or_None(it: Iterable, elem) -> Optional[int]:
 
 def gcd(*args: sp.Monomial) -> sp.Monomial:
     return sp.Monomial([min(m_i) for m_i in zip(*args)])
+
+
+def can_substitutions_quadratize(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
+    gens = tuple(monom.gens)
+    var_subs = set(map(lambda var: sp.Monomial(var, gens), gens))
+    var_subs.add(sp.Monomial((0,) * len(gens), gens))  # zero degree monomial
+    # unified_gens_subs = set(map(lambda sub: unify_monom_to_gens(sub, gens), subs))
+    expanded_subs = var_subs.union(subs)
+    return _can_quad_0(monom) or _can_quad_2(monom, expanded_subs) or _can_quad_1(monom, expanded_subs)
+
+
+def _can_quad_2(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
+    for sub in subs:
+        if monom == sub ** 2:
+            return True
+    return False
+
+
+def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
+    for left, right in combinations(subs, 2):
+        if monom == left * right:
+            return True
+    return False
+
+
+def _can_quad_0(monom: sp.Monomial) -> bool:
+    return monomial_deg(monom) == 0

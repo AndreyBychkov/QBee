@@ -6,7 +6,7 @@ import sys
 import sympy as sp
 import random as rand
 
-from .structures import *
+from .structures import PolynomialSystem, derivatives
 from functools import partial
 from typing import List, Tuple, Sequence, Callable
 from .util import is_monomial_divisor

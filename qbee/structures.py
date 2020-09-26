@@ -2,7 +2,8 @@ import sympy as sp
 import hashlib
 
 from copy import deepcopy, copy
-from typing import Callable, Union, Sequence
+from functools import reduce
+from typing import Callable, Union, Sequence, Optional, Set, Collection, Tuple
 from .decomposition import get_substitutions
 from .util import *
 
@@ -27,7 +28,7 @@ def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
         derivatives([x, y, z]), derivatives(['x', 'y', 'z'])
     """
     if not isinstance(names, Iterable) and isinstance(names, sp.Symbol):
-        return (make_derivative_symbol(names))
+        return (make_derivative_symbol(names), )
 
     if isinstance(names, Iterable) and reduce(lambda a, b: a and b, map(lambda elem: isinstance(elem, sp.Symbol), names)):
         return tuple(map(make_derivative_symbol, names))
@@ -123,35 +124,6 @@ class VariablesHolder:
         return new_variable, new_variable_der
 
 
-class Equation:
-    def __init__(self, left_hand_side, right_hand_side):
-        self.lhs = left_hand_side
-        self.rhs = right_hand_side
-
-    @staticmethod
-    def from_sympy(sympy_equation: sp.Eq):
-        return Equation(sympy_equation.lhs, sympy_equation.rhs)
-
-    def to_sympy(self, evaluate=False) -> sp.Eq:
-        return sp.Eq(self.lhs, self.rhs, evaluate=evaluate)
-
-    def subs(self, *args, **kwargs):
-        self.lhs = self.lhs.subs(*args, **kwargs)
-        self.rhs = self.rhs.subs(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.lhs} = {self.rhs}"
-
-
-class DiffPolyEquation(Equation):
-    def __init__(self, der: sp.Symbol, poly: sp.Poly):
-        super().__init__(der, poly)
-
-    @staticmethod
-    def from_sympy(sympy_equation: sp.Eq):
-        return DiffPolyEquation(sympy_equation.lhs, sympy_equation.rhs)
-
-
 class EquationSystem:
     def __init__(self, equations: List[sp.Eq],
                  parameter_variables: Iterable[sp.Symbol] = None,
@@ -170,8 +142,6 @@ class EquationSystem:
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
         self._equations_poly_degrees = dict()
-        if self.is_polynomial():
-            self._compute_equations_poly_degrees()
 
     @property
     def equations(self) -> List[sp.Eq]:
@@ -197,27 +167,10 @@ class EquationSystem:
         for i in range(len(self._equations)):
             self._equations[i] = self._equations[i].subs(old, new)
 
-    def replace_monomial(self, old: sp.Expr, new: sp.Expr):
-        """If any expression in system is divisible on 'old', replace it with 'new'"""
-        for i, eq in enumerate(self._equations):
-            self._equations[i] = sp.Eq(eq.args[0], polynomial_subs(eq.args[1], old, new))
-
     def expand_equations(self):
         """Apply SymPy 'expand' function to each of equation."""
         for i in range(len(self._equations)):
             self._equations[i] = sp.expand(self._equations[i])
-
-    def update_poly_degrees(self):
-        """Update system variable _equations_poly_degrees"""
-        self._compute_equations_poly_degrees()
-
-    def get_possible_substitutions(self, count_sorted=False) -> Tuple[sp.Poly]:
-        right_equations = self._get_right_equations()
-        return get_possible_substitutions(right_equations, set(self.variables.free), count_sorted=count_sorted)
-
-    def get_monomial_decompositions(self):
-        right_equations = self._get_right_equations()
-        return get_monomial_decompositions(right_equations, set(self.variables.free))
 
     def is_polynomial(self, mode="original") -> bool:
         """
@@ -244,33 +197,6 @@ class EquationSystem:
                 return False
         return True
 
-    def is_quadratic(self, mode='full') -> bool:
-        if mode == 'original':
-            return self._is_quadratic_original()
-        elif mode == 'full':
-            return self._is_quadratic_full()
-        else:
-            raise ValueError("mode must be 'original' or 'full'.")
-
-    def _is_quadratic_full(self) -> bool:
-        for eq in self._equations:
-            if not self._is_poly_quadratic(eq.args[1]):
-                return False
-        return True
-
-    def _is_quadratic_original(self) -> bool:
-        for i in self._original_equation_indexes:
-            if not self._is_poly_quadratic(self._equations[i].args[1]):
-                return False
-        return True
-
-    def _is_poly_quadratic(self, poly: sp.Expr) -> bool:
-        monomials = sp.Add.make_args(poly)
-        for mon in monomials:
-            if sp.total_degree(mon, *poly.free_symbols.difference(self.variables.parameter)) > 2:
-                return False
-        return True
-
     def auxiliary_equation_type_choose(self, auxiliary_eq_type: str) -> Callable:
         if auxiliary_eq_type == 'differential':
             return self.differential_auxiliary_equation_add
@@ -279,7 +205,7 @@ class EquationSystem:
         else:
             raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
 
-    def differential_auxiliary_equation_add(self, new_variable: sp.Symbol, substitution: sp.Expr, is_polynomial_substitution=True) -> None:
+    def differential_auxiliary_equation_add(self, new_variable: sp.Symbol, substitution: sp.Expr) -> None:
         """
         Add differential auxiliary equation, generated by substitution.
 
@@ -290,17 +216,13 @@ class EquationSystem:
 
         :param new_variable: left part, y
         :param substitution: right part, f(x)
-        :param is_polynomial_substitution: is substitution is polynomial
         """
         new_variable_dot = make_derivative_symbol(new_variable)
-        if is_polynomial_substitution:
-            self.replace_monomial(substitution, new_variable)
-        else:
-            self.replace_expression(substitution, new_variable)
+        self.replace_expression(substitution, new_variable)
         self._substitution_equations.append(sp.Eq(new_variable, substitution))
         self._equations.append(sp.Eq(new_variable_dot, self._calculate_Lie_derivative(substitution)).expand())
 
-    def algebraic_auxiliary_equation_add(self, new_variable: sp.Symbol, substitution: sp.Expr, is_polynomial_substitution=True) -> None:
+    def algebraic_auxiliary_equation_add(self, new_variable: sp.Symbol, substitution: sp.Expr) -> None:
         """
         Add algebraic auxiliary equation, generated by substitution.
 
@@ -309,12 +231,8 @@ class EquationSystem:
 
         :param new_variable: left part, y
         :param substitution: right part, f(x)
-        :param is_polynomial_substitution: is substitution is polynomial
         """
-        if is_polynomial_substitution:
-            self.replace_monomial(substitution, new_variable)
-        else:
-            self.replace_expression(substitution, new_variable)
+        self.replace_expression(substitution, new_variable)
         self._substitution_equations.append(sp.Eq(new_variable, substitution))
         self._equations.append(sp.Eq(new_variable, substitution).expand())
 
@@ -334,30 +252,6 @@ class EquationSystem:
         for left, right in map(lambda eq: eq.args, self._substitution_equations):
             expr = expr.subs(right, left)
         return expr
-
-    def _compute_equations_poly_degrees(self):
-        for var_dot, right_expr in map(lambda eq: eq.args, self._equations):
-            if right_expr.is_Number:
-                self._equations_poly_degrees[var_dot] = 0
-            else:
-                self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
-
-    def _debug_system_print(self, level: Optional[str]) -> None:
-        if level is None or level == 'silent':
-            pass
-        elif level == 'info':
-            print('-' * 100)
-            print(f"Equations added: {len(self._substitution_equations)}")
-            print(f"Last substitution: {self._substitution_equations[-1]}")
-        elif level == 'debug':
-            print('-' * 100)
-            print(f"Equations added: {len(self._substitution_equations)}")
-            print(f"Last substitution: {self._substitution_equations[-1]}")
-            print('Equations:')
-            print(self.equations)
-
-        else:
-            raise ValueError("debug value must be 'silent', 'info' or debug'")
 
     def _get_right_equations(self):
         return list(map(lambda eq: eq.args[1], self._equations))
@@ -459,11 +353,6 @@ class PolynomialSystem:
             # poly_system._substitutions = system.substitution_equations
             return poly_system
 
-    def replace_expression(self, old: sp.Expr, new: sp.Expr):
-        """Replace 'old' expression with 'new' expression for each equation."""
-        for i in range(len(self._equations)):
-            self._equations[i] = self._equations[i].subs(old, new)
-
     def replace_monomial(self, old: sp.Expr, new: sp.Expr):
         """If any expression in system is divisible on 'old', replace it with 'new'"""
         for i, eq in enumerate(self._equations):
@@ -473,7 +362,8 @@ class PolynomialSystem:
         return list(map(monomial_to_poly, get_substitutions(self._get_polynomials(), self.variables.original)))
 
     def apply_substitutions(self):
-        NotImplemented
+        # TODO: Can do it like in can_quadratize
+        raise NotImplementedError()
 
     def expand_equations(self):
         """Apply SymPy 'expand' function to each of equation."""
@@ -520,7 +410,6 @@ class PolynomialSystem:
 
         :param new_variable: left part, y
         :param substitution: right part, f(x)
-        :param is_polynomial_substitution: is substitution is polynomial
         """
         self._substitutions.append(sp.Eq(new_variable, substitution))
         self._equations.append(sp.Eq(new_variable, substitution).expand())
@@ -604,7 +493,7 @@ class EvaluationStatistics:
 
 
 class QuadratizationResult:
-    def __init__(self, system: EquationSystem, statistics: EvaluationStatistics, substitutions: Tuple[sp.Expr]):
+    def __init__(self, system: PolynomialSystem, statistics: EvaluationStatistics, substitutions: Tuple[sp.Expr]):
         self.system = system
         self.statistics = statistics
         self.substitutions = substitutions
