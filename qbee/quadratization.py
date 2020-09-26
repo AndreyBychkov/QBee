@@ -336,7 +336,7 @@ def _new_bfs(system: PolynomialSystem, auxiliary_eq_type="differential", limit_d
         prev_system, substitution_chain = system_queue.get_nowait()
         if substitution_chain:
             last_substitution = substitution_chain[-1]
-            curr_system = _make_new_system_alt(prev_system, auxiliary_eq_type, last_substitution)
+            curr_system = _make_new_poly_system(prev_system, auxiliary_eq_type, last_substitution)
         else:
             curr_system = prev_system
 
@@ -347,7 +347,7 @@ def _new_bfs(system: PolynomialSystem, auxiliary_eq_type="differential", limit_d
         processed_systems_pbar.update(1)
         processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
 
-        if curr_system.is_quadratic([sp.Monomial(sub.as_expr(), curr_system.variables.free) for sub in substitution_chain]):
+        if curr_system.is_quadratic([poly_to_monomial(sub) for sub in substitution_chain]):
             statistics.depth = curr_depth
             refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
             return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
@@ -369,7 +369,7 @@ def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) ->
     return new_system
 
 
-def _make_new_system_alt(system: PolynomialSystem, auxiliary_eq_type, substitution) -> PolynomialSystem:
+def _make_new_poly_system(system: PolynomialSystem, auxiliary_eq_type, substitution) -> PolynomialSystem:
     new_system = system.clone()
     new_variable = new_system.variables.create_variable()
     equation_add_fun = new_system.auxiliary_equation_inserter(auxiliary_eq_type)

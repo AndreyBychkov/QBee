@@ -1,8 +1,9 @@
 import sympy as sp
 import hashlib
 
-from functools import reduce
+from copy import deepcopy, copy
 from typing import List, Iterable, Optional, Callable, Tuple, Set, Union
+from .decomposition import get_substitutions
 from .util import *
 
 
@@ -72,6 +73,7 @@ class VariablesHolder:
         self._free_variables = list(variables)
         self._parameter_variables = parameter_variables
         self._input_variables = input_variables
+        self._original_variables = list(variables)
         self._generated_variables = list()
         self._base_name = "y_"
 
@@ -86,6 +88,10 @@ class VariablesHolder:
     @property
     def input(self):
         return self._input_variables
+
+    @property
+    def original(self):
+        return self._original_variables
 
     def create_variable(self) -> sp.Symbol:
         """
@@ -391,20 +397,20 @@ class EquationSystem:
 
 class PolynomialSystem:
     def __init__(self, equations: List[sp.Eq],
-                 parameter_variables: Iterable[sp.Symbol] = None,
-                 input_variables: Iterable[sp.Symbol] = None):
-        derivs = [eq.args[0] for eq in equations]
-        polys = unify_poly_field([sp.Poly(eq.args[1].expand()) for eq in equations])
-        self._equations = [sp.Eq(der, poly, evaluate=False) for der, poly in zip(derivs, polys)]
-        self._len_original_equations = len(equations)
-        self._substitutions = list()
-
+                 parameter_variables: Collection[sp.Symbol] = None,
+                 input_variables: Collection[sp.Symbol] = None):
         _symbols = reduce(set.union, map(lambda e: e.free_symbols, equations))
         _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         _input_vars = set(input_variables) if input_variables is not None else set()
         _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
         _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
+
+        derivs = [eq.args[0] for eq in equations]
+        polys = [sp.Poly(eq.args[1].expand(), *self.variables.original) for eq in equations]
+        self._equations = [sp.Eq(der, poly, evaluate=False) for der, poly in zip(derivs, polys)]
+        self._len_original_equations = len(equations)
+        self._substitutions = list()
 
         self._equations_poly_degrees = dict()
         self._compute_equations_poly_degrees()
@@ -413,6 +419,7 @@ class PolynomialSystem:
         system = PolynomialSystem(self.equations, self.variables.parameter, self.variables.input)
         system._len_original_equations = self._len_original_equations
         system._substitutions = self._substitutions
+        system.variables = deepcopy(self.variables)
         return system
 
     @property
@@ -437,12 +444,20 @@ class PolynomialSystem:
     @property
     def monomials(self) -> Tuple[sp.Monomial]:
         """Sequential non-unique monomials of system"""
-        return tuple(map(sp.Monomial, reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_polynomials()))))
+        return tuple(map(poly_to_monomial, reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_polynomials()))))
+
+    @property
+    def monomials_unique(self) -> Tuple[sp.Monomial]:
+        return tuple(map(lambda m: sp.Monomial(m, self.variables.original),
+                         set(tuple(reduce(lambda a, b: a + b, map(sp.Poly.monoms, self._get_polynomials()))))))
 
     @staticmethod
     def from_EquationSystem(system: EquationSystem):
         if system.is_polynomial("full"):
-            return PolynomialSystem(system.equations, system.variables.parameter, system.variables.input)
+            poly_system = PolynomialSystem(system.equations, system.variables.parameter, system.variables.input)
+            # poly_system.variables = deepcopy(system.variables)
+            # poly_system._substitutions = system.substitution_equations
+            return poly_system
 
     def replace_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
@@ -454,9 +469,8 @@ class PolynomialSystem:
         for i, eq in enumerate(self._equations):
             self._equations[i] = sp.Eq(eq.args[0], polynomial_subs(eq.args[1], old, new))
 
-    def get_possible_substitutions(self, count_sorted=False) -> Tuple[sp.Poly]:
-        right_parts = self._get_polynomials()
-        return get_possible_substitutions(right_parts, set(self.variables.free), count_sorted=count_sorted)
+    def get_possible_substitutions(self) -> Iterable[sp.Poly]:
+        return list(map(monomial_to_poly, get_substitutions(self._get_polynomials(), self.variables.original)))
 
     def expand_equations(self):
         """Apply SymPy 'expand' function to each of equation."""
@@ -468,7 +482,7 @@ class PolynomialSystem:
         self._compute_equations_poly_degrees()
 
     def is_quadratic(self, subs: Iterable[sp.Monomial]) -> bool:
-        return all(map(lambda m: can_substitutions_quadratize(m, subs), self.monomials))
+        return all(map(lambda m: can_substitutions_quadratize(m, subs), self.monomials_unique))
 
     def auxiliary_equation_inserter(self, auxiliary_eq_type: str) -> Callable:
         if auxiliary_eq_type == 'differential':
@@ -511,14 +525,14 @@ class PolynomialSystem:
     def _calculate_Lie_derivative(self, expr: sp.Poly) -> sp.Poly:
         """Calculates Lie derivative using chain rule."""
         result = sp.Integer(0)
-        for var in expr.free_symbols.difference(self.variables.parameter).difference(self.variables.input):
+        for var in self.variables.original:
             var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
             var_diff = var_diff_eq.args[1]
             result += expr.diff(var) * var_diff
-        for input_var in expr.free_symbols.intersection(self.variables.input):
+        for input_var in self.variables.input:
             input_var_dot = make_derivative_symbol(input_var)
             result += expr.diff(input_var) * input_var_dot
-        return sp.Poly(self._apply_substitutions(self._apply_substitutions(result).expand()).expand(), *self.variables.free)
+        return result
 
     def _apply_substitutions(self, expr: sp.Poly) -> sp.Poly:
         for left, right in map(lambda eq: eq.args, self._substitutions):
@@ -533,7 +547,7 @@ class PolynomialSystem:
                 self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
 
     def _get_polynomials(self) -> List[sp.Poly]:
-        return list(map(lambda eq: eq.args[1], self.equations))
+        return list(map(lambda eq: eq.args[1], self._equations))
 
     def print(self, mode: str = 'simple'):
         if mode == "simple":

@@ -83,12 +83,3 @@ def _get_complete_decompositions_rec(monomial: sp.Poly, decomposition: list, res
     # Long operation. TODO(try optimize: mb should remove sorting)
     unique_decompositions = set(tuple(sorted(d, key=monomial_key('grlex', monomial.gens))) for d in result)
     return unique_decompositions
-
-
-if __name__ == '__main__':
-    x, y, z = sp.symbols('x, y, z')
-    monomial = sp.Poly(x ** 2 * y ** 3)
-
-    dec = get_all_decompositions(monomial)
-    print(f"Number of decompositions: {len(dec)}")
-    list(map(print, dec))
