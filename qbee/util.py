@@ -101,3 +101,4 @@ def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
 
 def _can_quad_0(monom: sp.Monomial) -> bool:
     return monomial_deg(monom) == 0
+
