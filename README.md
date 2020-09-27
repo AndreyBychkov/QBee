@@ -41,7 +41,7 @@ We will demonstrate usage of QBee on the example below. Other interactive exampl
 
 ```python
 import sympy
-from qbee import EquationSystem, polynomialize, quadratize, derivatives
+from qbee import *
 
 sympy.init_printing()  # If you work in Jupyter notebook 
 ```
@@ -51,13 +51,13 @@ sympy.init_printing()  # If you work in Jupyter notebook
 First, we introduce variables, using SymPy framework
 ```python
 x = sympy.symbols('x')
-dot_x = derivatives(x)
+dx = derivatives(x)
 ```
 
 Then we build a ODEs system with elementary function right-hand side
 ```python
 system = EquationSystem([
-    sympy.Eq(dot_x, 1 / (1 + sympy.exp(x)))
+    sympy.Eq(dx, 1 / (1 + sympy.exp(x)))
 ])
 ```
 
@@ -84,6 +84,7 @@ y_{1}' = -y_{0}*y_{1}**3
 Now, convert polynomial system to quadratic form
 
 ```python
+poly_system = PolynomialSystem.from_EquationSystem(poly_system)
 quad_result = quadratize(poly_system)
 quad_system = quad_result.system
 quad_system.print()
