@@ -1,6 +1,7 @@
 import copy
 import math
 import time
+import numpy as np
 
 from sympy import *
 from sympy.polys.monomials import monomial_deg
@@ -8,6 +9,19 @@ from typing import Callable, Union, Collection, Optional, List, Tuple
 from functools import reduce
 from operator import add
 from util import monomial_to_poly
+from tqdm import tqdm
+
+
+def timed(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        res = func(*args, **kwargs)
+        end_time = time.time()
+        print()
+        print(f"Elapsed time: {np.round(end_time - start_time, 3)}s.")
+        return res
+
+    return wrapper
 
 
 def get_decompositions(monomial):
@@ -25,6 +39,18 @@ def get_decompositions(monomial):
 def default_score(system) -> int:
     total_nonsquare = sum([monomial_deg(m) for m in system.nonsquares])
     return total_nonsquare + system.dim * len(system.vars)
+
+
+def aeqd_score(system) -> int:
+    eq_degs = list(map(lambda mlist: max(map(monomial_deg, mlist)), system.rhs.values()))
+    aeqds = list(map(_compute_aeqd, system.nonsquares, [eq_degs, ] * len(system.nonsquares)))
+    return sum(aeqds)
+
+
+def _compute_aeqd(sub, eq_degs):
+    mon_degs = map(lambda deg: deg + monomial_deg(sub) - 1, eq_degs)
+    quad_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, mon_degs))
+    return sum(quad_discrepancies)
 
 
 def _mlist_to_poly(mlist: Collection[Monomial], gens) -> Poly:
@@ -110,8 +136,8 @@ class QuadratizationResult:
         pass
 
     def __repr__(self):
-        return f"Number of introduced variables: {self.introduced_vars}\n" +\
-               f"Introduced variables: {self._intoroduced_variables_str()}\n" +\
+        return f"Number of introduced variables: {self.introduced_vars}\n" + \
+               f"Introduced variables: {self._intoroduced_variables_str()}\n" + \
                f"Nodes traversed: {self.nodes_traversed}"
 
     def _intoroduced_variables_str(self):
@@ -151,8 +177,11 @@ class Algorithm:
 
 
 class BranchAndBound(Algorithm):
-    def __init__(self, poly_system: PolynomialSystem, upper_bound: int):
-        super().__init__(poly_system)
+    def __init__(self, poly_system: PolynomialSystem,
+                 upper_bound: int,
+                 heuristics: Heuristics = default_score,
+                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
+        super().__init__(poly_system, heuristics, termination_criteria)
         self.upper_bound = upper_bound
 
     def quadratize(self) -> QuadratizationResult:
@@ -168,7 +197,7 @@ class BranchAndBound(Algorithm):
 
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
-        for next_system in part_res.next_generation():
+        for next_system in part_res.next_generation(self.heuristics):
             nvars, opt_system, traversed = find_optimal_quadratization(next_system, min_nvars)
             traversed_total += traversed
             if nvars < min_nvars:
@@ -264,13 +293,30 @@ def test_systems():
     print("===========")
 
 
-def general_test():
+@timed
+def simple_test():
     R, x, y = ring(['x', 'y'], QQ)
     poly_system = PolynomialSystem([x ** 2 + y, 3 * x * y ** 3 - y])
-    algo = BranchAndBound(poly_system, 5)
+    algo = BranchAndBound(poly_system, 5, heuristics=aeqd_score)
+    res = algo.quadratize()
+    print(res)
+
+@timed
+def poly_test():
+    R, x, y = ring(['x', 'y'], QQ)
+    poly_system = PolynomialSystem([(x + 1)**8, y])
+    algo = BranchAndBound(poly_system, 5, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
+
+@timed
+def long_poly_test():
+    R, x, y = ring(['x', 'y'], QQ)
+    poly_system = PolynomialSystem([(x + 1)**15, y])
+    algo = BranchAndBound(poly_system, 8, heuristics=aeqd_score)
     res = algo.quadratize()
     print(res)
 
 
 if __name__ == "__main__":
-    general_test()
+    long_poly_test()
