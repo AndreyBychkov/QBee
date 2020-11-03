@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 from sympy import *
-from sympy.polys.monomials import monomial_deg
+from sympy.polys.monomials import monomial_deg, monomial_divides
 from typing import Callable, Union, Collection, Optional, List, Tuple
 from functools import reduce
 from operator import add
@@ -37,6 +37,10 @@ def get_decompositions(monomial):
     return result
 
 
+def empty_score(system) -> int:
+    return 1
+
+
 def default_score(system) -> int:
     total_nonsquare = sum([monomial_deg(m) for m in system.nonsquares])
     return total_nonsquare + system.dim * len(system.vars)
@@ -48,10 +52,19 @@ def aeqd_score(system) -> int:
     return sum(aeqds)
 
 
-def _compute_aeqd(sub, eq_degs):
+def smd_score(system) -> int:
+    mlist = system.nonsquares
+    return sum(map(lambda s: _compute_smd(s, mlist), mlist))
+
+
+def _compute_aeqd(sub: Tuple[int], eq_degs):
     mon_degs = map(lambda deg: deg + monomial_deg(sub) - 1, eq_degs)
     quad_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, mon_degs))
     return sum(quad_discrepancies)
+
+
+def _compute_smd(sub, mlist: list):
+    return (monomial_deg(sub) - 1) * len(list(filter(lambda m: monomial_divides(sub, m), mlist)))
 
 
 def _mlist_to_poly(mlist: Collection[Monomial], gens) -> Poly:
@@ -224,81 +237,11 @@ def find_optimal_quadratization(part_res, best=math.inf):
     return (min_nvars, best_system, traversed_total)
 
 
-def test_systems():
-    R, x, y = ring(["x", "y"], QQ)
-
-    system = PolynomialSystem([x ** 2 + y, 3 * x * y ** 3 - y])
-    start = time.time()
-    nvars, sys, nodes = find_optimal_quadratization(system)
-    end = time.time()
-    print(f"Runtime: {end - start}")
-    print(f"Order of quadratization {nvars}")
-    print(f"All the variables {sys.vars}")
-    print(f"Number of nodes traversed by the algo {nodes}")
-    print("===========")
-
-    system = PolynomialSystem([(x + 1) ** 8, y])
-    start = time.time()
-    nvars, sys, nodes = find_optimal_quadratization(system)
-    end = time.time()
-    print(nvars)
-    print(sys.vars)
-    print(nodes)
-    print(f"Runtime: {end - start}")
-    print(f"Order of quadratization {nvars}")
-    print(f"All the variables {sys.vars}")
-    print(f"Number of nodes traversed by the algo {nodes}")
-    print("===========")
-
-    system = PolynomialSystem([(x + 1) ** 15, y])
-    start = time.time()
-    nvars, sys, nodes = find_optimal_quadratization(system)
-    end = time.time()
-    print(nvars)
-    print(sys.vars)
-    print(nodes)
-    print(f"Runtime: {end - start}")
-    print(f"Order of quadratization {nvars}")
-    print(f"All the variables {sys.vars}")
-    print(f"Number of nodes traversed by the algo {nodes}")
-    print("===========")
-
-    # xSigmoid
-    R, x, y, z = ring(["x", "y", "z"], QQ)
-    system = PolynomialSystem([x * z, x * y * z, x * y * z ** 3])
-    start = time.time()
-    nvars, sys, nodes = find_optimal_quadratization(system)
-    end = time.time()
-    print(nvars)
-    print(sys.vars)
-    print(nodes)
-    print(f"Runtime: {end - start}")
-    print(f"Order of quadratization {nvars}")
-    print(f"All the variables {sys.vars}")
-    print(f"Number of nodes traversed by the algo {nodes}")
-    print("===========")
-
-    # Rabinovich-Fabrikant
-    R, x, y, z = ring(["x", "y", "z"], QQ)
-    system = PolynomialSystem([y * (z - 1 - x ** 2) + x, x * (3 * z + 1 - x ** 2) + y, -2 * z * (2 + x * y)])
-    start = time.time()
-    nvars, sys, nodes = find_optimal_quadratization(system)
-    end = time.time()
-    print(nvars)
-    print(sys.vars)
-    print(nodes)
-    print(f"Runtime: {end - start}")
-    print(f"Order of quadratization {nvars}")
-    print(f"All the variables {sys.vars}")
-    print(f"Number of nodes traversed by the algo {nodes}")
-    print("===========")
-
-
 @timed
 def simple_test():
     R, x, y = ring(['x', 'y'], QQ)
     poly_system = PolynomialSystem([x ** 2 + y, 3 * x * y ** 3 - y])
-    algo = BranchAndBound(poly_system, 5, heuristics=aeqd_score)
+    algo = BranchAndBound(poly_system, 10, heuristics=empty_score)
     res = algo.quadratize()
     print(res)
 
@@ -307,7 +250,7 @@ def simple_test():
 def poly_test():
     R, x, y = ring(['x', 'y'], QQ)
     poly_system = PolynomialSystem([(x + 1) ** 8, y])
-    algo = BranchAndBound(poly_system, 5, heuristics=default_score)
+    algo = BranchAndBound(poly_system, 20, heuristics=empty_score)
     res = algo.quadratize()
     print(res)
 
@@ -316,9 +259,10 @@ def poly_test():
 def long_poly_test():
     R, x, y = ring(['x', 'y'], QQ)
     poly_system = PolynomialSystem([(x + 1) ** 15, y])
-    algo = BranchAndBound(poly_system, 8, heuristics=aeqd_score)
+    algo = BranchAndBound(poly_system, 8, heuristics=empty_score)
     res = algo.quadratize()
     print(res)
+
 
 @timed
 def xSigmoid():
@@ -328,11 +272,12 @@ def xSigmoid():
     res = algo.quadratize()
     print(res)
 
+
 @timed
 def RabinovichFabricant():
     R, x, y, z = ring(["x", "y", "z"], QQ)
     poly_system = PolynomialSystem([y * (z - 1 - x ** 2) + x, x * (3 * z + 1 - x ** 2) + y, -2 * z * (2 + x * y)])
-    algo = BranchAndBound(poly_system, 4, heuristics=default_score)
+    algo = BranchAndBound(poly_system, 20, heuristics=smd_score)
     res = algo.quadratize()
     print(res)
 
