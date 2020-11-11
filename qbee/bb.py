@@ -212,7 +212,7 @@ class BranchAndBound(Algorithm):
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
         for next_system in part_res.next_generation(self.heuristics):
-            nvars, opt_system, traversed = find_optimal_quadratization(next_system, min_nvars)
+            nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars)
             traversed_total += traversed
             if nvars < min_nvars:
                 min_nvars = nvars
@@ -220,21 +220,58 @@ class BranchAndBound(Algorithm):
         return min_nvars, best_system, traversed_total
 
 
-def find_optimal_quadratization(part_res, best=math.inf):
-    if part_res.is_quadratized():
-        return (part_res.new_vars_count(), part_res, 1)
-    if part_res.new_vars_count() >= best - 1:
-        return (math.inf, None, 1)
+class ID_DLS(Algorithm):
+    def __init__(self, poly_system: PolynomialSystem,
+                 start_upper_bound: int,
+                 upper_bound: int,
+                 heuristics: Heuristics = default_score,
+                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
+        super().__init__(poly_system, heuristics, termination_criteria)
+        self.upper_bound = upper_bound
+        self.start_upper_bound = start_upper_bound
 
-    traversed_total = 1
-    min_nvars, best_system = best, None
-    for next_system in part_res.next_generation():
-        nvars, opt_system, traversed = find_optimal_quadratization(next_system, min_nvars)
-        traversed_total += traversed
-        if nvars < min_nvars:
-            min_nvars = nvars
-            best_system = opt_system
-    return (min_nvars, best_system, traversed_total)
+    def quadratize(self) -> QuadratizationResult:
+        stack = deque()
+        high_depth_stack = deque()
+
+        curr_depth = 0
+        curr_max_depth = self.start_upper_bound
+        stack.append((self._system, curr_depth))
+        nodes_traversed = 1
+
+        while True:
+            if len(stack) == 0:
+                if len(high_depth_stack) == 0:
+                    raise RuntimeError("Limit depth passed. No quadratic system is found.")
+                stack = high_depth_stack
+                high_depth_stack = deque()
+                curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
+
+            system, curr_depth = stack.pop()
+            nodes_traversed += 1
+            if system.is_quadratized():
+                return QuadratizationResult(system, curr_depth, curr_depth)
+
+            if curr_depth > self.upper_bound:
+                continue
+
+            for next_system in system.next_generation(self.heuristics):
+                if curr_depth < curr_max_depth:
+                    stack.append((next_system, curr_depth + 1))
+                else:
+                    high_depth_stack.append((next_system, curr_depth + 1))
+
+
+class BestFirst(Algorithm):
+    def __init__(self, poly_system: PolynomialSystem,
+                 upper_bound: int,
+                 heuristics: Heuristics = default_score,
+                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
+        super().__init__(poly_system, heuristics, termination_criteria)
+        self.upper_bound = upper_bound
+
+    def quadratize(self) -> QuadratizationResult:
+        pass
 
 
 @timed
@@ -283,4 +320,8 @@ def RabinovichFabricant():
 
 
 if __name__ == "__main__":
-    RabinovichFabricant()
+    R, x = ring(["x"], QQ)
+    poly_system = PolynomialSystem([x ** 6])
+    algo = BranchAndBound(poly_system, 3)
+    res = algo.quadratize()
+    print(res)
