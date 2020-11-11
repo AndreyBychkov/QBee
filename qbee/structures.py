@@ -1,11 +1,9 @@
 import sympy as sp
 import hashlib
-
-from copy import deepcopy, copy
-from functools import reduce
-from typing import Callable, Union, Sequence, Optional, Set, Collection, Tuple
-from .decomposition import get_substitutions
-from .util import *
+import copy
+from heuristics import *
+from typing import Callable, Union, Set, Tuple, Optional, List
+from util import *
 
 
 def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
@@ -28,9 +26,10 @@ def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
         derivatives([x, y, z]), derivatives(['x', 'y', 'z'])
     """
     if not isinstance(names, Iterable) and isinstance(names, sp.Symbol):
-        return (make_derivative_symbol(names), )
+        return (make_derivative_symbol(names),)
 
-    if isinstance(names, Iterable) and reduce(lambda a, b: a and b, map(lambda elem: isinstance(elem, sp.Symbol), names)):
+    if isinstance(names, Iterable) and reduce(lambda a, b: a and b,
+                                              map(lambda elem: isinstance(elem, sp.Symbol), names)):
         return tuple(map(make_derivative_symbol, names))
 
     symbols_output = sp.symbols(names)
@@ -288,212 +287,63 @@ class EquationSystem:
     def __str__(self):
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
 
-
 class PolynomialSystem:
-    def __init__(self, equations: List[sp.Eq],
-                 parameter_variables: Collection[sp.Symbol] = None,
-                 input_variables: Collection[sp.Symbol] = None):
-        _symbols = reduce(set.union, map(lambda e: e.free_symbols, equations))
-        _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
-        _input_vars = set(input_variables) if input_variables is not None else set()
-        _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
-        _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
-        self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
-
-        derivs = [eq.args[0] for eq in equations]
-        polys = [sp.Poly(eq.args[1].expand(), *self.variables.original) for eq in equations]
-        self._equations = [sp.Eq(der, poly, evaluate=False) for der, poly in zip(derivs, polys)]
-        self._len_original_equations = len(equations)
-        self._substitutions = list()
-
-        self._equations_poly_degrees = dict()
-        self._compute_equations_poly_degrees()
-
-    def clone(self):
-        system = PolynomialSystem(self.equations, self.variables.parameter, self.variables.input)
-        system._len_original_equations = self._len_original_equations
-        system._substitutions = self._substitutions
-        system.variables = deepcopy(self.variables)
-        return system
-
-    @property
-    def equations(self) -> List[sp.Eq]:
-        # return [eq.to_sympy() for eq in self._equations]
-        return self._equations
-
-    @property
-    def original_equations(self) -> List[sp.Eq]:
-        # return [eq.to_sympy() for eq in self._equations[:self._len_original_equations]]
-        return self._equations[:self._len_original_equations]
-
-    @property
-    def substitution_equations(self) -> List[sp.Eq]:
-        # return [eq.to_sympy() for eq in self._equations[self._len_original_equations:]]
-        return self._equations[self._len_original_equations:]
-
-    @property
-    def equations_hash(self) -> bytes:
-        return hashlib.md5(str(self._equations).encode('utf-8')).digest()
-
-    @property
-    def monomials(self) -> Tuple[sp.Monomial]:
-        """Sequential non-unique monomials of system"""
-        return tuple(map(poly_to_monomial, reduce(lambda a, b: a + b, map(sp.Add.make_args, self._get_polynomials()))))
-
-    @property
-    def monomials_unique(self) -> Tuple[sp.Monomial]:
-        return tuple(map(lambda m: sp.Monomial(m, self.variables.original),
-                         set(tuple(reduce(lambda a, b: a + b, map(sp.Poly.monoms, self._get_polynomials()))))))
-
-    @staticmethod
-    def from_EquationSystem(system: EquationSystem):
-        if system.is_polynomial("full"):
-            poly_system = PolynomialSystem(system.equations, system.variables.parameter, system.variables.input)
-            # poly_system.variables = deepcopy(system.variables)
-            # poly_system._substitutions = system.substitution_equations
-            return poly_system
-
-    def replace_monomial(self, old: sp.Expr, new: sp.Expr):
-        """If any expression in system is divisible on 'old', replace it with 'new'"""
-        for i, eq in enumerate(self._equations):
-            self._equations[i] = sp.Eq(eq.args[0], polynomial_subs(eq.args[1], old, new))
-
-    def get_possible_substitutions(self) -> List[sp.Poly]:
-        return list(map(monomial_to_poly, get_substitutions(self._get_polynomials(), self.variables.original)))
-
-    def apply_substitutions(self):
-        # TODO: Can do it like in can_quadratize
-        raise NotImplementedError()
-
-    def expand_equations(self):
-        """Apply SymPy 'expand' function to each of equation."""
-        for i in range(len(self._equations)):
-            self._equations[i] = sp.expand(self._equations[i])
-
-    def update_poly_degrees(self):
-        """Update system variable _equations_poly_degrees"""
-        self._compute_equations_poly_degrees()
-
-    def is_quadratic(self, subs: Iterable[sp.Monomial]) -> bool:
-        return all(map(lambda m: can_substitutions_quadratize(m, subs), self.monomials_unique))
-
-    def auxiliary_equation_inserter(self, auxiliary_eq_type: str) -> Callable:
-        if auxiliary_eq_type == 'differential':
-            return self.add_differential_auxiliary_equation
-        elif auxiliary_eq_type == 'algebraic':
-            return self.add_algebraic_auxiliary_equation
-        else:
-            raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
-
-    def add_differential_auxiliary_equation(self, new_variable: sp.Symbol, substitution: sp.Poly) -> None:
+    def __init__(self, polynomials: List[sp.Poly]):
         """
-        Add differential auxiliary equation, generated by substitution.
-
-        Substitution equation:
-            .. math:: y = f(x)
-        Generated equation:
-            .. math:: \dot y = \dot f(x)
-
-        :param new_variable: left part, y
-        :param substitution: right part, f(x)
+        polynomials - right-hand sides of the ODE system listed in the same order as
+                      the variables in the polynomial ring
         """
-        new_variable_dot = make_derivative_symbol(new_variable)
-        self._substitutions.append(sp.Eq(new_variable, substitution, evaluate=False))
-        self._equations.append(sp.Eq(new_variable_dot, self._calculate_Lie_derivative(substitution), evaluate=False))
+        self.dim = len(polynomials[0].ring.gens)
+        self.gen_syms = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
 
-    def add_algebraic_auxiliary_equation(self, new_variable: sp.Symbol, substitution: sp.Poly) -> None:
-        """
-        Add algebraic auxiliary equation, generated by substitution.
+        # put not monomials but differents in the exponents between rhs and lhs
+        self.rhs = dict()
+        for i, p in enumerate(polynomials):
+            self.rhs[i] = set()
+            for m in p.to_dict().keys():
+                mlist = list(m)
+                mlist[i] -= 1
+                self.rhs[i].add(tuple(mlist))
 
-        substitution and added equation:
-            .. math:: y = f(x)
+        self.vars, self.squares, self.nonsquares = set(), set(), set()
+        self.add_var(tuple([0] * self.dim))
+        for i in range(self.dim):
+            self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
 
-        :param new_variable: left part, y
-        :param substitution: right part, f(x)
-        """
-        self._substitutions.append(sp.Eq(new_variable, substitution))
-        self._equations.append(sp.Eq(new_variable, substitution).expand())
+    def add_var(self, v):
+        for i in range(self.dim):
+            if v[i] > 0:
+                for m in self.rhs[i]:
+                    self.nonsquares.add(tuple([v[j] + m[j] for j in range(self.dim)]))
 
-    def _calculate_Lie_derivative(self, expr: sp.Poly) -> sp.Poly:
-        """Calculates Lie derivative using chain rule."""
-        result = sp.Integer(0)
-        for var in self.variables.original:
-            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
-            var_diff = var_diff_eq.args[1]
-            result += expr.diff(var) * var_diff
-        for input_var in self.variables.input:
-            input_var_dot = make_derivative_symbol(input_var)
-            result += expr.diff(input_var) * input_var_dot
-        return result
+        self.vars.add(v)
+        for u in self.vars:
+            self.squares.add(tuple([u[i] + v[i] for i in range(self.dim)]))
+        self.nonsquares = set(filter(lambda s: s not in self.squares, self.nonsquares))
 
-    def _apply_substitutions(self, expr: sp.Poly) -> sp.Poly:
-        for left, right in map(lambda eq: eq.args, self._substitutions):
-            expr = expr.subs(right, left)
-        return expr
+    def is_quadratized(self):
+        return not self.nonsquares
 
-    def _compute_equations_poly_degrees(self):
-        for var_dot, right_expr in map(lambda eq: eq.args, self._equations):
-            if right_expr.is_Number:
-                self._equations_poly_degrees[var_dot] = 0
-            else:
-                self._equations_poly_degrees[var_dot] = sp.Poly(right_expr).total_degree()
+    def get_smallest_nonsquare(self):
+        return min([(sum(m), m) for m in self.nonsquares])[1]
 
-    def _get_polynomials(self) -> List[sp.Poly]:
-        return list(map(lambda eq: eq.args[1], self._equations))
+    def next_generation(self, heuristics=default_score):
+        new_gen = []
+        for d in get_decompositions(self.get_smallest_nonsquare()):
+            c = copy.deepcopy(self)
+            for v in d:
+                c.add_var(v)
+            new_gen.append(c)
 
-    def print(self, mode: str = 'simple'):
-        if mode == "simple":
-            self._print_simple()
-        elif mode == 'latex':
-            self._print_latex()
-        elif mode == 'sympy':
-            print(str(self))
-        else:
-            raise AttributeError(f"mode {mode} is not valid. Use correct mode.")
+        return sorted(new_gen, key=heuristics)
 
-    def _print_latex(self):
-        print(r'\begin{array}{ll}')
-        for eq in self._equations:
-            print('\t' + rf"{eq.args[0]} = {sp.latex(sp.collect(eq.args[1], self.variables.free))}" + r'\\')
-        print(r'\end{array}')
+    def new_vars_count(self):
+        return len(self.vars) - self.dim - 1
 
-    def _print_simple(self):
-        for eq in self._equations:
-            print(rf"{symbol_from_derivative(eq.args[0])}' = {sp.collect(eq.args[1], self.variables.free)}")
+    def apply_quadratizaton(self):
+        # TODO
+        new_variables = list(filter(lambda m: monomial_deg(m) >= 2, self.vars))
 
-    def __len__(self):
-        return len(self._equations)
-
-    def __repr__(self):
-        return '\n'.join(map(lambda e: e.__repr__(), self._equations))
-
-    def __str__(self):
-        return '\n'.join(map(lambda e: e.__str__(), self._equations))
-
-
-class EvaluationStatistics:
-    """Statistics structure for quadratization"""
-
-    def __init__(self, steps: int, depth: int, method_name: str):
-        """
-        :param steps: number of computed systems
-        :param depth: number of substitutions to make system quadratic
-        :param method_name: name of the algorithm
-        """
-        self.steps = steps
-        self.method_name = method_name
-        self.depth = depth
-
-    def __repr__(self):
-        return '\n'.join([
-            f"steps: {self.steps}",
-            f"Method's name: {self.method_name}",
-            f"depth: {self.depth}"
-        ])
-
-
-class QuadratizationResult:
-    def __init__(self, system: PolynomialSystem, statistics: EvaluationStatistics, substitutions: Tuple[sp.Expr]):
-        self.system = system
-        self.statistics = statistics
-        self.substitutions = substitutions
+    def to_sympy(self, gens):
+        # TODO: Does not work correctly with PolyElement
+        return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]

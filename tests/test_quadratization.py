@@ -1,55 +1,48 @@
 import pytest
-import sympy as sp
 
-from qbee import polynomialize, quadratize, EquationSystem, derivatives
-
-x, y, z = sp.symbols('x, y, z')
-dot_x, dot_y, dot_z = derivatives('x, y, z')
+from qbee.algorithm import *
 
 
-def test_sigmoid():
-    system = EquationSystem([
-        sp.Eq(dot_x, 1 / (1 + sp.exp(x)))
-    ])
-    poly_system = polynomialize(system)
-    quad_result = quadratize(poly_system)
-    assert len(quad_result.system.equations) == 4
+@timed
+def test_simple():
+    R, x, y = ring(['x', 'y'], QQ)
+    poly_system = PolynomialSystem([x ** 2 + y, 3 * x * y ** 3 - y])
+    algo = BranchAndBound(poly_system, 10, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
 
 
-def test_zero_system():
-    w = sp.symbols('w')
-    dot_w = derivatives('w')
-
-    system = EquationSystem([
-        sp.Eq(dot_x, 0),
-        sp.Eq(dot_y, 0),
-        sp.Eq(dot_z, 0),
-        sp.Eq(dot_w, x ** 2 * y ** 2 * z ** 2)
-    ])
-
-    poly_system = polynomialize(system)
-    quad_result = quadratize(poly_system)
-
-    assert len(quad_result.system.equations) == 5
+@timed
+def test_poly():
+    R, x, y = ring(['x', 'y'], QQ)
+    poly_system = PolynomialSystem([(x + 1) ** 8, y])
+    algo = BranchAndBound(poly_system, 20, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
 
 
-def test_x_sigmoid():
-    system = EquationSystem([
-        sp.Eq(dot_x, x / (1 + sp.exp(x)))
-    ])
-    poly_system = polynomialize(system)
-    quad_result = quadratize(poly_system, initial_max_depth=2, limit_depth=2)
-    assert len(quad_result.system.equations) == 5
+@timed
+def test_poly_long():
+    R, x, y = ring(['x', 'y'], QQ)
+    poly_system = PolynomialSystem([(x + 1) ** 15, y])
+    algo = BranchAndBound(poly_system, 8, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
 
 
-def test_rabinovich_fabrikant():
-    a, b = sp.symbols('a, b')
+@timed
+def test_xSigmoid():
+    R, x, y, z = ring(["x", "y", "z"], QQ)
+    poly_system = PolynomialSystem([x * z, x * y * z, x * y * z ** 3])
+    algo = BranchAndBound(poly_system, 5, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
 
-    system = EquationSystem([
-        sp.Eq(dot_x, y * (z - 1 + x ** 2) + a * x),
-        sp.Eq(dot_y, x * (3 * z + 1 - x ** 2) + a * y),
-        sp.Eq(dot_z, -2 * z * (b + x * y))
-    ], parameter_variables=[a, b])
 
-    quad_result = quadratize(system, heuristics='AEQD', initial_max_depth=3, limit_depth=3)
-    assert len(quad_result.system.equations) == 6
+@timed
+def test_RabinovichFabricant():
+    R, x, y, z = ring(["x", "y", "z"], QQ)
+    poly_system = PolynomialSystem([y * (z - 1 - x ** 2) + x, x * (3 * z + 1 - x ** 2) + y, -2 * z * (2 + x * y)])
+    algo = BranchAndBound(poly_system, 20, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
