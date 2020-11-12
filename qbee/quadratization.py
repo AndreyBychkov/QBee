@@ -105,11 +105,11 @@ class Algorithm:
     def __init__(self,
                  poly_system: PolynomialSystem,
                  heuristics: Heuristics = default_score,
-                 termination_criteria: Union[EarlyTermination, Collection[EarlyTermination]] = None):
+                 early_termination: Collection[EarlyTermination] = None):
         self._system = poly_system
         self._heuristics = heuristics
-        self._early_termination_funs = list(termination_criteria) if termination_criteria is not None else [
-            lambda a, b: False, ]
+        self._early_termination_funs = list(early_termination) if early_termination is not None else [
+            lambda a, b: False]
         self._nodes_traversed = 0
 
     def quadratize(self) -> QuadratizationResult:
@@ -131,8 +131,8 @@ class BranchAndBound(Algorithm):
     def __init__(self, poly_system: PolynomialSystem,
                  upper_bound: int,
                  heuristics: Heuristics = default_score,
-                 termination_criteria: Union[EarlyTermination, Collection[EarlyTermination]] = None):
-        super().__init__(poly_system, heuristics, termination_criteria)
+                 early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
+        super().__init__(poly_system, heuristics, early_termination)
         self.upper_bound = upper_bound
 
     @timed
@@ -172,8 +172,8 @@ class ID_DLS(Algorithm):
                  start_upper_bound: int,
                  upper_bound: int,
                  heuristics: Heuristics = default_score,
-                 termination_criteria: Union[EarlyTermination, Collection[EarlyTermination]] = None):
-        super().__init__(poly_system, heuristics, termination_criteria)
+                 early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
+        super().__init__(poly_system, heuristics, early_termination)
         self.upper_bound = upper_bound
         self.start_upper_bound = start_upper_bound
 
@@ -237,8 +237,8 @@ def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, nvars: in
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
     poly_system = PolynomialSystem([(x + 1) ** 12])
-    algo = BranchAndBound(poly_system, 10, heuristics=aeqd_score)
-    algo.attach_early_termimation(partial(termination_by_nodes_processed, nodes_processed=1000))
+    algo = BranchAndBound(poly_system, 10, heuristics=aeqd_score,
+                          early_termination=[partial(termination_by_nodes_processed, nodes_processed=1000)])
     algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
     res = algo.quadratize()
     print(res)
