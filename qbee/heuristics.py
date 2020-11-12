@@ -1,5 +1,7 @@
 from sympy.polys.monomials import monomial_deg, monomial_divides
-from typing import Tuple
+from typing import Tuple, Callable
+
+Heuristics = Callable[['PolynomialSystem'], int]
 
 
 def empty_score(system) -> int:

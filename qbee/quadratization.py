@@ -4,6 +4,7 @@ from sympy import *
 from collections import deque
 from typing import Callable, List, Optional
 from heuristics import *
+from functools import partial
 from util import *
 
 
@@ -69,10 +70,6 @@ class PolynomialSystem:
         return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
 
 
-Heuristics = Callable[[PolynomialSystem], int]
-TerminationCriteria = Callable[[PolynomialSystem], bool]
-
-
 class QuadratizationResult:
     def __init__(self,
                  system: PolynomialSystem,
@@ -101,20 +98,24 @@ class QuadratizationResult:
         return ''.join([f"{g}^{p}" for g, p in zip(self.system.gen_syms, v)])
 
 
+EarlyTermination = Callable[['Algorithm', PolynomialSystem], bool]
+
+
 class Algorithm:
     def __init__(self,
                  poly_system: PolynomialSystem,
                  heuristics: Heuristics = default_score,
-                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
+                 termination_criteria: Union[EarlyTermination, Collection[EarlyTermination]] = None):
         self._system = poly_system
         self._heuristics = heuristics
         self._early_termination_funs = list(termination_criteria) if termination_criteria is not None else [
-            lambda _: False, ]
+            lambda a, b: False, ]
+        self._nodes_traversed = 0
 
     def quadratize(self) -> QuadratizationResult:
         pass
 
-    def attach_early_termimation(self, termination_criteria: Callable[[PolynomialSystem], bool]) -> None:
+    def attach_early_termimation(self, termination_criteria: EarlyTermination) -> None:
         self._early_termination_funs.append(termination_criteria)
 
     @property
@@ -130,7 +131,7 @@ class BranchAndBound(Algorithm):
     def __init__(self, poly_system: PolynomialSystem,
                  upper_bound: int,
                  heuristics: Heuristics = default_score,
-                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
+                 termination_criteria: Union[EarlyTermination, Collection[EarlyTermination]] = None):
         super().__init__(poly_system, heuristics, termination_criteria)
         self.upper_bound = upper_bound
 
@@ -141,11 +142,14 @@ class BranchAndBound(Algorithm):
         return QuadratizationResult(opt_system, nvars, traversed)
 
     @logged(is_stop=False)
-    def _bnb_step(self, part_res: PolynomialSystem, best_nvars) -> Tuple[
-        Union[int, float], Optional[PolynomialSystem], int]:
+    def _bnb_step(self, part_res: PolynomialSystem, best_nvars) \
+            -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
+        self._nodes_traversed += 1
         if part_res.is_quadratized():
             return part_res.new_vars_count(), part_res, 1
         if part_res.new_vars_count() >= best_nvars - 1:
+            return math.inf, None, 1
+        if any(map(lambda f: f(self, part_res), self._early_termination_funs)):
             return math.inf, None, 1
 
         traversed_total = 1
@@ -160,7 +164,7 @@ class BranchAndBound(Algorithm):
 
     @logged(is_stop=True)
     def _final_iter(self):
-        pass
+        self._nodes_traversed = 0
 
 
 class ID_DLS(Algorithm):
@@ -168,7 +172,7 @@ class ID_DLS(Algorithm):
                  start_upper_bound: int,
                  upper_bound: int,
                  heuristics: Heuristics = default_score,
-                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
+                 termination_criteria: Union[EarlyTermination, Collection[EarlyTermination]] = None):
         super().__init__(poly_system, heuristics, termination_criteria)
         self.upper_bound = upper_bound
         self.start_upper_bound = start_upper_bound
@@ -181,10 +185,10 @@ class ID_DLS(Algorithm):
         curr_depth = 0
         curr_max_depth = self.start_upper_bound
         stack.append((self._system, curr_depth))
-        nodes_traversed = 0
 
         while True:
             self._iter()
+            self._nodes_traversed += 1
             if len(stack) == 0:
                 if len(high_depth_stack) == 0:
                     raise RuntimeError("Limit depth passed. No quadratic system is found.")
@@ -193,10 +197,12 @@ class ID_DLS(Algorithm):
                 curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
 
             system, curr_depth = stack.pop()
-            nodes_traversed += 1
+            if (any(map(lambda f: f(self, system), self._early_termination_funs))):
+                return QuadratizationResult(None, -1, self._nodes_traversed)
             if system.is_quadratized():
+                traversed = self._nodes_traversed
                 self._final_iter()
-                return QuadratizationResult(system, curr_depth, nodes_traversed)
+                return QuadratizationResult(system, curr_depth, traversed)
 
             if curr_depth > self.upper_bound:
                 continue
@@ -209,29 +215,30 @@ class ID_DLS(Algorithm):
 
     @logged(is_stop=True)
     def _final_iter(self):
-        pass
+        self._nodes_traversed = 0
 
     @logged(is_stop=False)
     def _iter(self):
         pass
 
 
-class BestFirst(Algorithm):
-    def __init__(self, poly_system: PolynomialSystem,
-                 upper_bound: int,
-                 heuristics: Heuristics = default_score,
-                 termination_criteria: Union[TerminationCriteria, Collection[TerminationCriteria]] = None):
-        super().__init__(poly_system, heuristics, termination_criteria)
-        self.upper_bound = upper_bound
+def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, nodes_processed: int):
+    if algo._nodes_traversed >= nodes_processed:
+        return True
+    return False
 
-    def quadratize(self) -> QuadratizationResult:
-        pass
+
+def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, nvars: int):
+    if len(system.vars) >= nvars:
+        return True
+    return False
 
 
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
     poly_system = PolynomialSystem([(x + 1) ** 12])
-    algo = ID_DLS(poly_system, 2, 10)
+    algo = BranchAndBound(poly_system, 10, heuristics=aeqd_score)
+    algo.attach_early_termimation(partial(termination_by_nodes_processed, nodes_processed=1000))
+    algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
     res = algo.quadratize()
     print(res)
-    # TODO: TerminationCriteria must be either for PartialResult, or for Algorithm
