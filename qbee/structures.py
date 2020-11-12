@@ -2,59 +2,9 @@ import sympy as sp
 import hashlib
 import copy
 from heuristics import *
-from typing import Callable, Union, Set, Tuple, Optional, List
+from typing import Callable, Set, Optional, List
 from util import *
 
-
-def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
-    """
-    Add dot to input symbols.
-
-    :param names: input symbols. Can be represented in different ways.
-    :return: Input symbols wrapper with dots.
-
-    Example:
-        .. math:: \dot{x}, \dot{y} = derivatives([x, y])
-
-    Names variants
-    -----------------
-    **symbol**
-        derivatives('x'), derivatives(x: Symbol)
-    **string with delimiters**
-        derivatives('x, y, z'), derivatives('x y z')
-    **iterable of symbols**
-        derivatives([x, y, z]), derivatives(['x', 'y', 'z'])
-    """
-    if not isinstance(names, Iterable) and isinstance(names, sp.Symbol):
-        return (make_derivative_symbol(names),)
-
-    if isinstance(names, Iterable) and reduce(lambda a, b: a and b,
-                                              map(lambda elem: isinstance(elem, sp.Symbol), names)):
-        return tuple(map(make_derivative_symbol, names))
-
-    symbols_output = sp.symbols(names)
-    if isinstance(symbols_output, sp.Symbol):
-        return make_derivative_symbol(symbols_output)
-    else:
-        return tuple(map(make_derivative_symbol, sp.symbols(names)))
-
-
-def make_derivative_symbol(symbol) -> sp.Symbol:
-    """
-    Makes symbol with the dot from input symbol.
-
-    If symbols with index must be in form 's_{index}'.
-
-    Example:
-        .. math:: \dot{x} = make\_derivative\_symbol(x)
-
-    """
-    str_symbol = str(symbol)
-    if '_' in str_symbol:
-        name, index, *other = str(symbol).split('_')
-        return sp.Symbol(rf'\dot {name}' + '_' + '%s' % index)
-    else:
-        return sp.Symbol(rf'\dot {str_symbol}')
 
 
 class VariablesHolder:
@@ -286,6 +236,7 @@ class EquationSystem:
 
     def __str__(self):
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
+
 
 class PolynomialSystem:
     def __init__(self, polynomials: List[sp.Poly]):

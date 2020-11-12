@@ -2,11 +2,12 @@ import sympy as sp
 import numpy as np
 from time import time
 from tqdm import tqdm
-from typing import Iterable, Collection
+from typing import Iterable, Collection, Union, Tuple
 from sympy.polys.monomials import monomial_deg
 from itertools import combinations
 from functools import reduce
 from operator import add
+
 
 def parametrized(dec):
     def layer(*args, **kwargs):
@@ -29,8 +30,10 @@ def timed(func):
 
     return wrapper
 
+
 __log_evaluated = False
 __log_pb = None
+
 
 @parametrized
 def logged(func, is_stop):
@@ -48,7 +51,60 @@ def logged(func, is_stop):
             __log_pb.update(1)
             __log_pb.refresh()
         return func(*args, **kwargs)
+
     return wrapper
+
+
+def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
+    """
+    Add dot to input symbols.
+
+    :param names: input symbols. Can be represented in different ways.
+    :return: Input symbols wrapper with dots.
+
+    Example:
+        .. math:: \dot{x}, \dot{y} = derivatives([x, y])
+
+    Names variants
+    -----------------
+    **symbol**
+        derivatives('x'), derivatives(x: Symbol)
+    **string with delimiters**
+        derivatives('x, y, z'), derivatives('x y z')
+    **iterable of symbols**
+        derivatives([x, y, z]), derivatives(['x', 'y', 'z'])
+    """
+    if not isinstance(names, Iterable) and isinstance(names, sp.Symbol):
+        return (make_derivative_symbol(names),)
+
+    if isinstance(names, Iterable) and reduce(lambda a, b: a and b,
+                                              map(lambda elem: isinstance(elem, sp.Symbol), names)):
+        return tuple(map(make_derivative_symbol, names))
+
+    symbols_output = sp.symbols(names)
+    if isinstance(symbols_output, sp.Symbol):
+        return make_derivative_symbol(symbols_output)
+    else:
+        return tuple(map(make_derivative_symbol, sp.symbols(names)))
+
+
+def make_derivative_symbol(symbol) -> sp.Symbol:
+    """
+    Makes symbol with the dot from input symbol.
+
+    If symbols with index must be in form 's_{index}'.
+
+    Example:
+        .. math:: \dot{x} = make\_derivative\_symbol(x)
+
+    """
+    str_symbol = str(symbol)
+    if '_' in str_symbol:
+        name, index, *other = str(symbol).split('_')
+        return sp.Symbol(rf'\dot {name}' + '_' + '%s' % index)
+    else:
+        return sp.Symbol(rf'\dot {str_symbol}')
+
 
 def reset_progress_bar(pbar: tqdm, value):
     pbar.n = pbar.last_print_n = value
