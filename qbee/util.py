@@ -8,6 +8,15 @@ from itertools import combinations
 from functools import reduce
 from operator import add
 
+def parametrized(dec):
+    def layer(*args, **kwargs):
+        def repl(f):
+            return dec(f, *args, **kwargs)
+
+        return repl
+
+    return layer
+
 
 def timed(func):
     def wrapper(*args, **kwargs):
@@ -20,6 +29,26 @@ def timed(func):
 
     return wrapper
 
+__log_evaluated = False
+__log_pb = None
+
+@parametrized
+def logged(func, is_stop):
+    def wrapper(*args, **kwargs):
+        global __log_evaluated
+        global __log_pb
+        if not __log_evaluated:
+            __log_evaluated = True
+            __log_pb = tqdm(desc="Nodes processed", unit=" nodes")
+        if is_stop:
+            __log_pb.close()
+            __log_pb = None
+            __log_evaluated = False
+        else:
+            __log_pb.update(1)
+            __log_pb.refresh()
+        return func(*args, **kwargs)
+    return wrapper
 
 def reset_progress_bar(pbar: tqdm, value):
     pbar.n = pbar.last_print_n = value

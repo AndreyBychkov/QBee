@@ -6,7 +6,6 @@ from heuristics import *
 from structures import PolynomialSystem
 from util import *
 
-
 Heuristics = Callable[[PolynomialSystem], int]
 TerminationCriteria = Callable[[PolynomialSystem], bool]
 
@@ -72,10 +71,13 @@ class BranchAndBound(Algorithm):
         super().__init__(poly_system, heuristics, termination_criteria)
         self.upper_bound = upper_bound
 
+    @timed
     def quadratize(self) -> QuadratizationResult:
         nvars, opt_system, traversed = self._bnb_step(self._system, self.upper_bound)
+        self._final_iter()
         return QuadratizationResult(opt_system, nvars, traversed)
 
+    @logged(is_stop=False)
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars) -> Tuple[
         Union[int, float], Optional[PolynomialSystem], int]:
         if part_res.is_quadratized():
@@ -93,6 +95,10 @@ class BranchAndBound(Algorithm):
                 best_system = opt_system
         return min_nvars, best_system, traversed_total
 
+    @logged(is_stop=True)
+    def _final_iter(self):
+        pass
+
 
 class ID_DLS(Algorithm):
     def __init__(self, poly_system: PolynomialSystem,
@@ -104,6 +110,7 @@ class ID_DLS(Algorithm):
         self.upper_bound = upper_bound
         self.start_upper_bound = start_upper_bound
 
+    @timed
     def quadratize(self) -> QuadratizationResult:
         stack = deque()
         high_depth_stack = deque()
@@ -114,6 +121,7 @@ class ID_DLS(Algorithm):
         nodes_traversed = 1
 
         while True:
+            self._iter()
             if len(stack) == 0:
                 if len(high_depth_stack) == 0:
                     raise RuntimeError("Limit depth passed. No quadratic system is found.")
@@ -124,6 +132,7 @@ class ID_DLS(Algorithm):
             system, curr_depth = stack.pop()
             nodes_traversed += 1
             if system.is_quadratized():
+                self._final_iter()
                 return QuadratizationResult(system, curr_depth, curr_depth)
 
             if curr_depth > self.upper_bound:
@@ -134,6 +143,14 @@ class ID_DLS(Algorithm):
                     stack.append((next_system, curr_depth + 1))
                 else:
                     high_depth_stack.append((next_system, curr_depth + 1))
+
+    @logged(is_stop=True)
+    def _final_iter(self):
+        pass
+
+    @logged(is_stop=False)
+    def _iter(self):
+        pass
 
 
 class BestFirst(Algorithm):
@@ -149,8 +166,8 @@ class BestFirst(Algorithm):
 
 
 if __name__ == "__main__":
-    R, x = ring(["x"], QQ)
-    poly_system = PolynomialSystem([x ** 6])
-    algo = BranchAndBound(poly_system, 3)
+    R, x = ring(["x", ], QQ)
+    poly_system = PolynomialSystem([(x + 1) ** 12])
+    algo = ID_DLS(poly_system, 2, 10)
     res = algo.quadratize()
     print(res)
