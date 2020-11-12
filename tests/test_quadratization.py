@@ -1,6 +1,6 @@
 import pytest
 
-from qbee.algorithm import *
+from qbee.quadratization import *
 
 
 @timed

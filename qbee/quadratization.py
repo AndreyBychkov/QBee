@@ -1,10 +1,73 @@
 import math
+import copy
 from sympy import *
 from collections import deque
-from typing import Callable, Union, Optional
+from typing import Callable, List, Optional
 from heuristics import *
-from structures import PolynomialSystem
 from util import *
+
+
+class PolynomialSystem:
+    def __init__(self, polynomials: List[sp.Poly]):
+        """
+        polynomials - right-hand sides of the ODE system listed in the same order as
+                      the variables in the polynomial ring
+        """
+        self.dim = len(polynomials[0].ring.gens)
+        self.gen_syms = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
+
+        # put not monomials but differents in the exponents between rhs and lhs
+        self.rhs = dict()
+        for i, p in enumerate(polynomials):
+            self.rhs[i] = set()
+            for m in p.to_dict().keys():
+                mlist = list(m)
+                mlist[i] -= 1
+                self.rhs[i].add(tuple(mlist))
+
+        self.vars, self.squares, self.nonsquares = set(), set(), set()
+        self.add_var(tuple([0] * self.dim))
+        for i in range(self.dim):
+            self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
+
+    def add_var(self, v):
+        for i in range(self.dim):
+            if v[i] > 0:
+                for m in self.rhs[i]:
+                    self.nonsquares.add(tuple([v[j] + m[j] for j in range(self.dim)]))
+
+        self.vars.add(v)
+        for u in self.vars:
+            self.squares.add(tuple([u[i] + v[i] for i in range(self.dim)]))
+        self.nonsquares = set(filter(lambda s: s not in self.squares, self.nonsquares))
+
+    def is_quadratized(self):
+        return not self.nonsquares
+
+    def get_smallest_nonsquare(self):
+        return min([(sum(m), m) for m in self.nonsquares])[1]
+
+    def next_generation(self, heuristics=default_score):
+        new_gen = []
+        for d in get_decompositions(self.get_smallest_nonsquare()):
+            c = copy.deepcopy(self)
+            for v in d:
+                c.add_var(v)
+            new_gen.append(c)
+
+        return sorted(new_gen, key=heuristics)
+
+    def new_vars_count(self):
+        return len(self.vars) - self.dim - 1
+
+    def apply_quadratizaton(self):
+        # TODO
+        new_variables = list(filter(lambda m: monomial_deg(m) >= 2, self.vars))
+
+    def to_sympy(self, gens):
+        # TODO: Does not work correctly with PolyElement
+        return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
+
 
 Heuristics = Callable[[PolynomialSystem], int]
 TerminationCriteria = Callable[[PolynomialSystem], bool]
@@ -118,7 +181,7 @@ class ID_DLS(Algorithm):
         curr_depth = 0
         curr_max_depth = self.start_upper_bound
         stack.append((self._system, curr_depth))
-        nodes_traversed = 1
+        nodes_traversed = 0
 
         while True:
             self._iter()
@@ -133,7 +196,7 @@ class ID_DLS(Algorithm):
             nodes_traversed += 1
             if system.is_quadratized():
                 self._final_iter()
-                return QuadratizationResult(system, curr_depth, curr_depth)
+                return QuadratizationResult(system, curr_depth, nodes_traversed)
 
             if curr_depth > self.upper_bound:
                 continue
@@ -171,3 +234,4 @@ if __name__ == "__main__":
     algo = ID_DLS(poly_system, 2, 10)
     res = algo.quadratize()
     print(res)
+    # TODO: TerminationCriteria must be either for PartialResult, or for Algorithm
