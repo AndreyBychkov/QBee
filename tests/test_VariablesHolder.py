@@ -1,7 +1,7 @@
 import pytest
 import sympy as sp
 
-from qbee.structures import VariablesHolder
+from qbee.polynomialization import VariablesHolder
 
 
 def test_symbols_creation():

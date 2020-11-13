@@ -3,9 +3,9 @@ import copy
 from sympy import *
 from collections import deque
 from typing import Callable, List, Optional
-from heuristics import *
 from functools import partial
-from util import *
+from heuristics import *  # replace with .heuristics if you want pip install
+from util import *        # replace with .util if you want pip install
 
 
 class PolynomialSystem:

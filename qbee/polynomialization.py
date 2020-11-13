@@ -3,7 +3,7 @@ from copy import deepcopy
 from .AST_walk import find_non_polynomial
 import hashlib
 from typing import Callable, Set, Optional, List
-from util import *
+from .util import *
 
 
 class VariablesHolder:
