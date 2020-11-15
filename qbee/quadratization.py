@@ -3,9 +3,12 @@ import copy
 from sympy import *
 from collections import deque
 from typing import Callable, List, Optional
-from functools import partial
+from functools import partial, reduce
+from itertools import product
+from operator import mul
+from random import randrange
 from heuristics import *  # replace with .heuristics if you want pip install
-from util import *        # replace with .util if you want pip install
+from util import *  # replace with .util if you want pip install
 
 
 class PolynomialSystem:
@@ -232,6 +235,33 @@ def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, nvars: in
     if len(system.vars) >= nvars:
         return True
     return False
+
+
+class SimpleGenerator:
+    def __init__(self, variables_num, system_degree):
+        self.nvars = variables_num
+        self.deg = system_degree
+        _, *self.vars = ring([f"x{i}" for i in range(self.nvars)], QQ)
+
+    def generate(self):
+        return [self._gen_eq() for _ in range(self.nvars)]
+
+    def _gen_eq(self):
+        return reduce(add, [self._gen_eq_deg(d) for d in range(1, self.deg + 1)])
+
+    def _gen_eq_deg(self, deg: int):
+        return reduce(add, [randrange(-10, 10) * reduce(mul, p) for p in product(self.vars, repeat=deg)]) + randrange(
+            -10, 10)
+
+
+def run_with_gen(N):
+    print(N)
+    gen = SimpleGenerator(1, N)
+    system = gen.generate()
+    poly_system = PolynomialSystem(system)
+    algo = BranchAndBound(poly_system, 13, heuristics=default_score)
+    res = algo.quadratize()
+    print(res)
 
 
 if __name__ == "__main__":
