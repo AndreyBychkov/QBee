@@ -75,7 +75,7 @@ class PolynomialSystem:
 
 class QuadratizationResult:
     def __init__(self,
-                 system: PolynomialSystem,
+                 system: Optional[PolynomialSystem],
                  introduced_vars: int,
                  nodes_traversed: int):
         self.system = system
@@ -83,9 +83,12 @@ class QuadratizationResult:
         self.nodes_traversed = nodes_traversed
 
     def sympy_str(self, variables):
-        pass
+        pass  # TODO: apply quadratization to system
 
     def __repr__(self):
+        if self.system is None:
+            return "No quadratization found under the given condition\n" + \
+                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
                f"Introduced variables: {self._intoroduced_variables_str()}\n" + \
                f"Nodes traversed: {self.nodes_traversed}"
@@ -264,7 +267,7 @@ def run_with_gen(N):
 
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
-    poly_system = PolynomialSystem([(x + 1) ** 12])
+    poly_system = PolynomialSystem([(x + 1) ** 14])
     algo = BranchAndBound(poly_system, heuristics=aeqd_score,
                           early_termination=[partial(termination_by_nodes_processed, nodes_processed=1000)])
     algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
