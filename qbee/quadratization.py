@@ -132,15 +132,13 @@ class Algorithm:
 
 class BranchAndBound(Algorithm):
     def __init__(self, poly_system: PolynomialSystem,
-                 upper_bound: int,
                  heuristics: Heuristics = default_score,
                  early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
         super().__init__(poly_system, heuristics, early_termination)
-        self.upper_bound = upper_bound
 
     @timed
     def quadratize(self) -> QuadratizationResult:
-        nvars, opt_system, traversed = self._bnb_step(self._system, self.upper_bound)
+        nvars, opt_system, traversed = self._bnb_step(self._system, math.inf)
         self._final_iter()
         return QuadratizationResult(opt_system, nvars, traversed)
 
@@ -267,7 +265,7 @@ def run_with_gen(N):
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
     poly_system = PolynomialSystem([(x + 1) ** 12])
-    algo = BranchAndBound(poly_system, 10, heuristics=aeqd_score,
+    algo = BranchAndBound(poly_system, heuristics=aeqd_score,
                           early_termination=[partial(termination_by_nodes_processed, nodes_processed=1000)])
     algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
     res = algo.quadratize()
