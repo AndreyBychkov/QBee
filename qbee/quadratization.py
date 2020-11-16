@@ -104,7 +104,7 @@ class QuadratizationResult:
         return ''.join([f"{g}^{p}" for g, p in zip(self.system.gen_syms, v)])
 
 
-EarlyTermination = Callable[['Algorithm', PolynomialSystem], bool]
+EarlyTermination = Callable[..., bool]
 
 
 class Algorithm:
@@ -151,9 +151,7 @@ class BranchAndBound(Algorithm):
         self._nodes_traversed += 1
         if part_res.is_quadratized():
             return part_res.new_vars_count(), part_res, 1
-        if part_res.new_vars_count() >= best_nvars - 1:
-            return math.inf, None, 1
-        if any(map(lambda f: f(self, part_res), self._early_termination_funs)):
+        if any(map(lambda f: f(self, part_res, best_nvars), self._early_termination_funs)):
             return math.inf, None, 1
 
         traversed_total = 1
@@ -226,14 +224,20 @@ class ID_DLS(Algorithm):
         pass
 
 
-def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, nodes_processed: int):
+def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
     if algo._nodes_traversed >= nodes_processed:
         return True
     return False
 
 
-def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, nvars: int):
+def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
     if len(system.vars) >= nvars:
+        return True
+    return False
+
+def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
+    best_nvars, *_ = args
+    if part_res.new_vars_count() >= best_nvars - 1:
         return True
     return False
 
@@ -267,9 +271,10 @@ def run_with_gen(N):
 
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
-    poly_system = PolynomialSystem([(x + 1) ** 14])
+    poly_system = PolynomialSystem([(x + 1) ** 12])
     algo = BranchAndBound(poly_system, heuristics=aeqd_score,
-                          early_termination=[partial(termination_by_nodes_processed, nodes_processed=1000)])
-    algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
+                          early_termination=[termination_by_best_nvars])
+    # algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
+    # algo.attach_early_termimation(partial(termination_by_nodes_processed, nodes_processed=1000))
     res = algo.quadratize()
     print(res)
