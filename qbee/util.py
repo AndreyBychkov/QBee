@@ -55,6 +55,22 @@ def logged(func, is_stop):
     return wrapper
 
 
+@parametrized
+def memoize_first(func, max_size):
+    memo = {}
+
+    def wrapper(*args):
+        if args in memo:
+            return memo[args]
+        else:
+            rv = func(*args)
+            if len(memo) <= max_size:
+                memo[args] = rv
+            return rv
+
+    return wrapper
+
+
 def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
     """
     Add dot to input symbols.

@@ -2,7 +2,7 @@ import math
 import copy
 from sympy import *
 from collections import deque
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Generator, Set
 from functools import partial, reduce
 from itertools import product
 from operator import mul
@@ -72,6 +72,16 @@ class PolynomialSystem:
         # TODO: Does not work correctly with PolyElement
         return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
 
+    def __repr__(self):
+        return f"{self._intoroduced_variables_str()}"
+
+    def _intoroduced_variables_str(self):
+        return list(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
+                        self._remove_free_variables(self.vars)))
+
+    def _remove_free_variables(self, vars: Collection[tuple]):
+        return tuple(filter(lambda v: monomial_deg(v) >= 2, vars))
+
 
 class QuadratizationResult:
     def __init__(self,
@@ -88,20 +98,10 @@ class QuadratizationResult:
     def __repr__(self):
         if self.system is None:
             return "No quadratization found under the given condition\n" + \
-                    f"Nodes traversed: {self.nodes_traversed}"
+                   f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
-               f"Introduced variables: {self._intoroduced_variables_str()}\n" + \
+               f"Introduced variables: {self.system._intoroduced_variables_str()}\n" + \
                f"Nodes traversed: {self.nodes_traversed}"
-
-    def _intoroduced_variables_str(self):
-        return list(map(lambda v: latex(monomial_to_poly(Monomial(v, self.system.gen_syms)).as_expr()),
-                        self._remove_free_variables(self.system.vars)))
-
-    def _remove_free_variables(self, vars: Collection[tuple]):
-        return tuple(filter(lambda v: monomial_deg(v) >= 2, vars))
-
-    def _var_to_symbolic(self, v: tuple):
-        return ''.join([f"{g}^{p}" for g, p in zip(self.system.gen_syms, v)])
 
 
 EarlyTermination = Callable[..., bool]
@@ -121,6 +121,29 @@ class Algorithm:
     def quadratize(self) -> QuadratizationResult:
         pass
 
+    def traverse_all(self, to_depth: int, pred: Callable[[PolynomialSystem], bool]):
+        res = set()
+        self._dls(self._system, to_depth, pred, res)
+        self._final_iter()
+        return res
+
+    @logged(is_stop=False)
+    def _dls(self, part_res: PolynomialSystem, to_depth: int, pred: Callable[[PolynomialSystem], bool], res: set):
+        if part_res.new_vars_count() > to_depth:
+            return
+
+        if pred(part_res):
+            res.add(part_res)
+        else:
+            for next_system in part_res.next_generation():
+                self._dls(next_system, to_depth, pred, res)
+        return
+
+    def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
+        optimal_first = self.quadratize()
+        print(optimal_first)
+        return self.traverse_all(optimal_first.introduced_vars, lambda s: s.is_quadratized())
+
     def attach_early_termimation(self, termination_criteria: EarlyTermination) -> None:
         self._early_termination_funs.append(termination_criteria)
 
@@ -131,6 +154,10 @@ class Algorithm:
     @heuristics.setter
     def heuristics(self, value):
         self._heuristics = value
+
+    @logged(is_stop=True)
+    def _final_iter(self):
+        pass
 
 
 class BranchAndBound(Algorithm):
@@ -235,6 +262,7 @@ def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nv
         return True
     return False
 
+
 def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
     if part_res.new_vars_count() >= best_nvars - 1:
@@ -271,10 +299,8 @@ def run_with_gen(N):
 
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
-    poly_system = PolynomialSystem([(x + 1) ** 12])
+    poly_system = PolynomialSystem([x ** 10 + x ** 9 + x ** 8 + x ** 5 + x + 1])
     algo = BranchAndBound(poly_system, heuristics=aeqd_score,
                           early_termination=[termination_by_best_nvars])
-    # algo.attach_early_termimation(partial(termination_by_vars_number, nvars=8))
-    # algo.attach_early_termimation(partial(termination_by_nodes_processed, nodes_processed=1000))
-    res = algo.quadratize()
-    print(res)
+    for res in algo.get_optimal_quadratizations():
+        print(res)
