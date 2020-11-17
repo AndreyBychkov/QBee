@@ -300,13 +300,16 @@ def run_with_gen(N):
     print(res)
 
 
-def does_system_has_quadratization_with_higher_degree_than_itself(system: PolynomialSystem) -> bool:
+def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
+
+def with_le_degree_than_original(system: PolynomialSystem) -> bool:
+    return any(map(lambda m: monomial_deg(m) <= system.original_degree, system.vars))
 
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
     poly_system = PolynomialSystem([x ** 12 + x ** 8 + x ** 6 + x + 1])
     algo = BranchAndBound(poly_system, heuristics=aeqd_score,
                           early_termination=[termination_by_best_nvars])
-    res = algo.quadratize(does_system_has_quadratization_with_higher_degree_than_itself)
+    res = algo.quadratize(with_le_degree_than_original)
     print(res)
