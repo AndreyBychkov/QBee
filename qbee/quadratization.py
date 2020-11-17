@@ -33,6 +33,7 @@ class PolynomialSystem:
         self.add_var(tuple([0] * self.dim))
         for i in range(self.dim):
             self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
+        self.original_degree = max(map(monomial_deg, self.nonsquares))
 
     def add_var(self, v):
         for i in range(self.dim):
@@ -52,6 +53,8 @@ class PolynomialSystem:
         return min([(sum(m), m) for m in self.nonsquares])[1]
 
     def next_generation(self, heuristics=default_score):
+        if len(self.nonsquares) == 0:
+            return list()
         new_gen = []
         for d in get_decompositions(self.get_smallest_nonsquare()):
             c = copy.deepcopy(self)
@@ -167,16 +170,16 @@ class BranchAndBound(Algorithm):
         super().__init__(poly_system, heuristics, early_termination)
 
     @timed
-    def quadratize(self) -> QuadratizationResult:
-        nvars, opt_system, traversed = self._bnb_step(self._system, math.inf)
+    def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
+        nvars, opt_system, traversed = self._bnb_step(self._system, math.inf, cond)
         self._final_iter()
         return QuadratizationResult(opt_system, nvars, traversed)
 
     @logged(is_stop=False)
-    def _bnb_step(self, part_res: PolynomialSystem, best_nvars) \
+    def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
-        if part_res.is_quadratized():
+        if part_res.is_quadratized() and cond(part_res):
             return part_res.new_vars_count(), part_res, 1
         if any(map(lambda f: f(self, part_res, best_nvars), self._early_termination_funs)):
             return math.inf, None, 1
@@ -184,7 +187,7 @@ class BranchAndBound(Algorithm):
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
         for next_system in part_res.next_generation(self.heuristics):
-            nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars)
+            nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars, cond)
             traversed_total += traversed
             if nvars < min_nvars:
                 min_nvars = nvars
@@ -297,10 +300,13 @@ def run_with_gen(N):
     print(res)
 
 
+def does_system_has_quadratization_with_higher_degree_than_itself(system: PolynomialSystem) -> bool:
+    return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
+
 if __name__ == "__main__":
     R, x = ring(["x", ], QQ)
-    poly_system = PolynomialSystem([x ** 10 + x ** 9 + x ** 8 + x ** 5 + x + 1])
+    poly_system = PolynomialSystem([x ** 12 + x ** 8 + x ** 6 + x + 1])
     algo = BranchAndBound(poly_system, heuristics=aeqd_score,
                           early_termination=[termination_by_best_nvars])
-    for res in algo.get_optimal_quadratizations():
-        print(res)
+    res = algo.quadratize(does_system_has_quadratization_with_higher_degree_than_itself)
+    print(res)
