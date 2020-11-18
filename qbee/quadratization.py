@@ -145,7 +145,10 @@ class Algorithm:
     def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
         optimal_first = self.quadratize()
         print(optimal_first)
-        return self.traverse_all(optimal_first.introduced_vars, lambda s: s.is_quadratized())
+        return self.get_quadratizations(optimal_first.introduced_vars)
+
+    def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
+        return self.traverse_all(depth, lambda s: s.is_quadratized())
 
     def attach_early_termimation(self, termination_criteria: EarlyTermination) -> None:
         self._early_termination_funs.append(termination_criteria)
@@ -290,26 +293,24 @@ class SimpleGenerator:
             -10, 10)
 
 
-def run_with_gen(N):
-    print(N)
-    gen = SimpleGenerator(1, N)
-    system = gen.generate()
-    poly_system = PolynomialSystem(system)
-    algo = BranchAndBound(poly_system, 13, heuristics=default_score)
-    res = algo.quadratize()
-    print(res)
-
-
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
+
 
 def with_le_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) <= system.original_degree, system.vars))
 
-if __name__ == "__main__":
-    R, x = ring(["x", ], QQ)
-    poly_system = PolynomialSystem([x ** 12 + x ** 8 + x ** 6 + x + 1])
+
+def run_with_gen(N):
+    print(N)
+    gen = SimpleGenerator(2, N)
+    system = gen.generate()
+    poly_system = PolynomialSystem(system)
     algo = BranchAndBound(poly_system, heuristics=aeqd_score,
                           early_termination=[termination_by_best_nvars])
-    res = algo.quadratize(with_le_degree_than_original)
+    res = algo.quadratize(with_higher_degree_than_original)
     print(res)
+
+
+if __name__ == "__main__":
+    run_with_gen(5)
