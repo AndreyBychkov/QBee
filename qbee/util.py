@@ -31,22 +31,22 @@ def timed(func):
     return wrapper
 
 
-__log_evaluated = False
+__log_pb_evaluated = False
 __log_pb = None
 
 
 @parametrized
-def logged(func, is_stop):
+def progress_bar(func, is_stop):
     def wrapper(*args, **kwargs):
-        global __log_evaluated
+        global __log_pb_evaluated
         global __log_pb
-        if not __log_evaluated:
-            __log_evaluated = True
+        if not __log_pb_evaluated:
+            __log_pb_evaluated = True
             __log_pb = tqdm(desc="Nodes processed", unit=" nodes")
         if is_stop:
             __log_pb.close()
             __log_pb = None
-            __log_evaluated = False
+            __log_pb_evaluated = False
         else:
             __log_pb.update(1)
             __log_pb.refresh()

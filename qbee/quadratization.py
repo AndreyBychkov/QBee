@@ -130,7 +130,7 @@ class Algorithm:
         self._final_iter()
         return res
 
-    @logged(is_stop=False)
+    @progress_bar(is_stop=False)
     def _dls(self, part_res: PolynomialSystem, to_depth: int, pred: Callable[[PolynomialSystem], bool], res: set):
         if part_res.new_vars_count() > to_depth:
             return
@@ -161,7 +161,7 @@ class Algorithm:
     def heuristics(self, value):
         self._heuristics = value
 
-    @logged(is_stop=True)
+    @progress_bar(is_stop=True)
     def _final_iter(self):
         pass
 
@@ -178,7 +178,7 @@ class BranchAndBound(Algorithm):
         self._final_iter()
         return QuadratizationResult(opt_system, nvars, traversed)
 
-    @logged(is_stop=False)
+    @progress_bar(is_stop=False)
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
@@ -197,7 +197,7 @@ class BranchAndBound(Algorithm):
                 best_system = opt_system
         return min_nvars, best_system, traversed_total
 
-    @logged(is_stop=True)
+    @progress_bar(is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
@@ -248,11 +248,11 @@ class ID_DLS(Algorithm):
                 else:
                     high_depth_stack.append((next_system, curr_depth + 1))
 
-    @logged(is_stop=True)
+    @progress_bar(is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
-    @logged(is_stop=False)
+    @progress_bar(is_stop=False)
     def _iter(self):
         pass
 
