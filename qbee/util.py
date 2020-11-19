@@ -1,3 +1,4 @@
+import pandas as pd
 import sympy as sp
 import numpy as np
 from time import time
@@ -5,7 +6,7 @@ from tqdm import tqdm
 from typing import Iterable, Collection, Union, Tuple
 from sympy.polys.monomials import monomial_deg
 from itertools import combinations
-from functools import reduce
+from functools import reduce, wraps
 from operator import add
 
 
@@ -33,6 +34,7 @@ def timed(func):
 
 __log_pb_evaluated = False
 __log_pb = None
+__log_records = list()
 
 
 @parametrized
@@ -51,6 +53,22 @@ def progress_bar(func, is_stop):
             __log_pb.update(1)
             __log_pb.refresh()
         return func(*args, **kwargs)
+
+    return wrapper
+
+
+@parametrized
+def logged(method, log_file, is_stop=False):
+
+    def wrapper(self, *args, **kwargs):
+        global __log_records
+        res = method(self, *args, **kwargs)
+        if is_stop:
+            pd.DataFrame(__log_records, columns=['from', 'to']).to_csv(log_file, index=None)
+            __log_records = list()
+        else:
+            __log_records.append([self, list(res)])
+        return res
 
     return wrapper
 

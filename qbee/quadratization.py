@@ -10,6 +10,8 @@ from random import randrange
 from heuristics import *  # replace with .heuristics if you want pip install
 from util import *  # replace with .util if you want pip install
 
+log_file = "../log/log.csv"
+
 
 class PolynomialSystem:
     def __init__(self, polynomials: List[sp.Poly]):
@@ -52,6 +54,7 @@ class PolynomialSystem:
     def get_smallest_nonsquare(self):
         return min([(sum(m), m) for m in self.nonsquares])[1]
 
+    @logged(log_file, is_stop=False)
     def next_generation(self, heuristics=default_score):
         if len(self.nonsquares) == 0:
             return list()
@@ -162,6 +165,7 @@ class Algorithm:
         self._heuristics = value
 
     @progress_bar(is_stop=True)
+    @logged(log_file, is_stop=True)
     def _final_iter(self):
         pass
 
@@ -198,6 +202,7 @@ class BranchAndBound(Algorithm):
         return min_nvars, best_system, traversed_total
 
     @progress_bar(is_stop=True)
+    @logged(log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
@@ -249,6 +254,7 @@ class ID_DLS(Algorithm):
                     high_depth_stack.append((next_system, curr_depth + 1))
 
     @progress_bar(is_stop=True)
+    @logged(log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
