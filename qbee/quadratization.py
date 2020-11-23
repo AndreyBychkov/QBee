@@ -12,6 +12,7 @@ from util import *  # replace with .util if you want pip install
 
 log_file = "../log/log.csv"
 
+#------------------------------------------------------------------------------
 
 class PolynomialSystem:
     def __init__(self, polynomials: List[sp.Poly]):
@@ -79,15 +80,16 @@ class PolynomialSystem:
         return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
 
     def __repr__(self):
-        return f"{self._intoroduced_variables_str()}"
+        return f"{self._introduced_variables_str()}"
 
-    def _intoroduced_variables_str(self):
+    def _introduced_variables_str(self):
         return list(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
                         self._remove_free_variables(self.vars)))
 
     def _remove_free_variables(self, vars: Collection[tuple]):
         return tuple(filter(lambda v: monomial_deg(v) >= 2, vars))
 
+#------------------------------------------------------------------------------
 
 class QuadratizationResult:
     def __init__(self,
@@ -106,12 +108,12 @@ class QuadratizationResult:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
-               f"Introduced variables: {self.system._intoroduced_variables_str()}\n" + \
+               f"Introduced variables: {self.system._introduced_variables_str()}\n" + \
                f"Nodes traversed: {self.nodes_traversed}"
 
+#------------------------------------------------------------------------------
 
 EarlyTermination = Callable[..., bool]
-
 
 class Algorithm:
     def __init__(self,
@@ -169,6 +171,7 @@ class Algorithm:
     def _final_iter(self):
         pass
 
+#------------------------------------------------------------------------------
 
 class BranchAndBound(Algorithm):
     def __init__(self, poly_system: PolynomialSystem,
@@ -206,6 +209,7 @@ class BranchAndBound(Algorithm):
     def _final_iter(self):
         self._nodes_traversed = 0
 
+#------------------------------------------------------------------------------
 
 class ID_DLS(Algorithm):
     def __init__(self, poly_system: PolynomialSystem,
@@ -262,6 +266,7 @@ class ID_DLS(Algorithm):
     def _iter(self):
         pass
 
+#------------------------------------------------------------------------------
 
 def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
     if algo._nodes_traversed >= nodes_processed:
@@ -281,6 +286,41 @@ def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
         return True
     return False
 
+def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args):
+    best_nvars, *_ = args
+    total_monoms = len(part_res.squares) + len(part_res.nonsquares)
+    lower_bound = int(math.ceil( (math.sqrt(1. + 8. * total_monoms) - 1.) / 2.))
+    if lower_bound >= best_nvars - 1:
+        return True
+    return False
+
+def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, * args):
+    best_nvars, *_ = args
+    no_C4_monoms = set()
+    sums_of_monoms = set()
+    for m in sorted(part_res.squares.union(part_res.nonsquares), key=sum, reverse=True):
+        new_sums = set()
+        to_add = True
+        for mm in no_C4_monoms:
+            s = tuple([m[i] + mm[i] for i in range(len(m))])
+            if s in sums_of_monoms:
+                to_add = False
+                break
+            new_sums.add(s)
+        if to_add:
+            sums_of_monoms = sums_of_monoms.union(new_sums)
+            no_C4_monoms.add(m)
+
+    m = len(no_C4_monoms)
+    lb = 1
+    while 4 * m**2 - 2 * lb * m - lb**2 * (lb + 1) > 0:
+        lb += 1
+    if lb >= best_nvars - 1:
+        return True
+    return False
+
+
+#------------------------------------------------------------------------------
 
 class SimpleGenerator:
     def __init__(self, variables_num, system_degree):
@@ -298,6 +338,7 @@ class SimpleGenerator:
         return reduce(add, [randrange(-10, 10) * reduce(mul, p) for p in product(self.vars, repeat=deg)]) + randrange(
             -10, 10)
 
+#------------------------------------------------------------------------------
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
@@ -317,6 +358,31 @@ def run_with_gen(N):
     res = algo.quadratize(with_higher_degree_than_original)
     print(res)
 
+#------------------------------------------------------------------------------
+
+def generate_lifeware_conjecture(n):
+    """
+    Generate the system from Conjecture 3.1 from https://hal.inria.fr/hal-02900798v2/document
+    """
+    variables = ring([f"x{i}" for i in range(n)], QQ)[1:]
+    prod_all = 1
+    for i in range(n):
+        prod_all *= variables[i]**2
+
+    system = []
+    for i in range(n):
+        system.append(variables[(i + 1) % n]**2 + prod_all)
+    return PolynomialSystem(system)
+
+#------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    run_with_gen(5)
+    n = 3
+    system = generate_lifeware_conjecture(n)
+    algo = BranchAndBound(system, heuristics=aeqd_score, early_termination=[termination_by_square_bound])
+    res = algo.quadratize()
+    print(res)
+
+    algo2 = BranchAndBound(system, heuristics=aeqd_score, early_termination=[termination_by_C4_bound, termination_by_square_bound])
+    res = algo2.quadratize()
+    print(res)
