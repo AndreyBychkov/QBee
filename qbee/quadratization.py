@@ -57,7 +57,6 @@ class PolynomialSystem:
     def get_smallest_nonsquare(self):
         return min([(sum(m), m) for m in self.nonsquares])[1]
 
-    @logged(log_file, is_stop=False)
     def next_generation(self, heuristics=default_score):
         if len(self.nonsquares) == 0:
             return list()
@@ -202,13 +201,17 @@ class BranchAndBound(Algorithm):
 
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
-        for next_system in part_res.next_generation(self.heuristics):
+        for next_system in self.next_gen(part_res):
             nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars, cond)
             traversed_total += traversed
             if nvars < min_nvars:
                 min_nvars = nvars
                 best_system = opt_system
         return min_nvars, best_system, traversed_total
+
+    @logged(log_file)
+    def next_gen(self, part_res: PolynomialSystem):
+        return part_res.next_generation(self.heuristics)
 
     @progress_bar(is_stop=True)
     @logged(log_file, is_stop=True)
