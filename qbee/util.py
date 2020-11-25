@@ -58,7 +58,7 @@ def progress_bar(func, is_stop):
 
 
 @parametrized
-def logged(method, log_file, is_stop=False):
+def logged(method, enabled, log_file, is_stop=False):
     def wrapper(self, *args, **kwargs):
         global __log_records
         res = method(self, *args, **kwargs)
@@ -69,8 +69,10 @@ def logged(method, log_file, is_stop=False):
             part_res, *_ = args
             __log_records.append([part_res, list(res)])
         return res
-
-    return wrapper
+    if enabled:
+        return wrapper
+    else:
+        return method
 
 
 @parametrized

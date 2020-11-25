@@ -1,5 +1,6 @@
 import math
 import itertools
+import configparser
 import _pickle as cpickle
 from sympy import *
 from collections import deque
@@ -11,7 +12,10 @@ from random import randrange
 from heuristics import *  # replace with .heuristics if you want pip install
 from util import *  # replace with .util if you want pip install
 
-log_file = "../log/log.csv"
+config = configparser.ConfigParser({'logging_enable': False, 'logging_file': '../log/log.csv'})
+config.read("../config.ini")
+log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
+log_file = config.get('DEFAULT', 'logging_file')
 
 
 # ------------------------------------------------------------------------------
@@ -171,7 +175,7 @@ class Algorithm:
         self._heuristics = value
 
     @progress_bar(is_stop=True)
-    @logged(log_file, is_stop=True)
+    @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         pass
 
@@ -209,12 +213,12 @@ class BranchAndBound(Algorithm):
                 best_system = opt_system
         return min_nvars, best_system, traversed_total
 
-    @logged(log_file)
+    @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
         return part_res.next_generation(self.heuristics)
 
     @progress_bar(is_stop=True)
-    @logged(log_file, is_stop=True)
+    @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
@@ -268,7 +272,7 @@ class ID_DLS(Algorithm):
                     high_depth_stack.append((next_system, curr_depth + 1))
 
     @progress_bar(is_stop=True)
-    @logged(log_file, is_stop=True)
+    @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
