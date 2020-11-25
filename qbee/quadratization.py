@@ -1,6 +1,6 @@
 import math
-import copy
 import itertools
+import _pickle as cpickle
 from sympy import *
 from collections import deque
 from typing import Callable, List, Optional, Generator, Set
@@ -62,7 +62,7 @@ class PolynomialSystem:
             return list()
         new_gen = []
         for d in get_decompositions(self.get_smallest_nonsquare()):
-            c = copy.deepcopy(self)
+            c = cpickle.loads(cpickle.dumps(self, -1))
             for v in d:
                 c.add_var(v)
             new_gen.append(c)
