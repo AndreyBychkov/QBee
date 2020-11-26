@@ -1,9 +1,25 @@
+import itertools
 from quadratization import *
+from functools import partial, reduce
+from random import randrange
 
 
 def generate_x_plus_1(deg):
     R, x = ring(['x'], QQ)
     return PolynomialSystem([(x + 1) ** deg])
+
+
+def generate_dense_polynomial(nvars, deg):
+    R, *variables = ring([f"x{i}" for i in range(nvars)], QQ)
+
+    def gen_eq_deg(d: int):
+        return reduce(add, [randrange(-10, 10) * reduce(mul, p) for p in itertools.product(variables, repeat=d)]) \
+               + randrange(-10, 10)
+
+    def gen_eq():
+        return reduce(add, [gen_eq_deg(d) for d in range(1, deg + 1)])
+
+    return PolynomialSystem([gen_eq() for _ in range(nvars)])
 
 
 def generate_circular(deg):
@@ -43,5 +59,5 @@ def generate_lifeware_conjecture(n):
 
 def selkov(a, b):
     R, x, y = ring(['x', 'y'], QQ)
-    return PolynomialSystem([-x + a*y + x**2 * y,
-                             b - a*y - x**2 * y])
+    return PolynomialSystem([-x + a * y + x ** 2 * y,
+                             b - a * y - x ** 2 * y])

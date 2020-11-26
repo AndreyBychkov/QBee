@@ -6,7 +6,6 @@ from sympy import *
 from collections import deque
 from typing import Callable, List, Optional, Generator, Set
 from functools import partial, reduce
-from itertools import product
 from operator import mul
 from random import randrange
 from heuristics import *  # replace with .heuristics if you want pip install
@@ -339,74 +338,9 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     return False
 
 
-# ------------------------------------------------------------------------------
-
-class SimpleGenerator:
-    def __init__(self, variables_num, system_degree):
-        self.nvars = variables_num
-        self.deg = system_degree
-        _, *self.vars = ring([f"x{i}" for i in range(self.nvars)], QQ)
-
-    def generate(self):
-        return [self._gen_eq() for _ in range(self.nvars)]
-
-    def _gen_eq(self):
-        return reduce(add, [self._gen_eq_deg(d) for d in range(1, self.deg + 1)])
-
-    def _gen_eq_deg(self, deg: int):
-        return reduce(add, [randrange(-10, 10) * reduce(mul, p) for p in
-                            itertools.product(self.vars, repeat=deg)]) + randrange(
-            -10, 10)
-
-
-# ------------------------------------------------------------------------------
-
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
 
 
 def with_le_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) <= system.original_degree, system.vars))
-
-
-def run_with_gen(N):
-    print(N)
-    gen = SimpleGenerator(2, N)
-    system = gen.generate()
-    poly_system = PolynomialSystem(system)
-    algo = BranchAndBound(poly_system, heuristics=aeqd_score,
-                          early_termination=[termination_by_best_nvars])
-    res = algo.quadratize(with_higher_degree_than_original)
-    print(res)
-
-
-# ------------------------------------------------------------------------------
-
-def generate_lifeware_conjecture(n):
-    """
-    Generate the system from Conjecture 3.1 from https://hal.inria.fr/hal-02900798v2/document
-    """
-    variables = ring([f"x{i}" for i in range(n)], QQ)[1:]
-    prod_all = 1
-    for i in range(n):
-        prod_all *= variables[i] ** 2
-
-    system = []
-    for i in range(n):
-        system.append(variables[(i + 1) % n] ** 2 + prod_all)
-    return PolynomialSystem(system)
-
-
-# ------------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    n = 3
-    system = generate_lifeware_conjecture(n)
-    algo = BranchAndBound(system, heuristics=aeqd_score, early_termination=[termination_by_square_bound])
-    res = algo.quadratize()
-    print(res)
-
-    algo2 = BranchAndBound(system, heuristics=aeqd_score,
-                           early_termination=[termination_by_C4_bound, termination_by_square_bound])
-    res = algo2.quadratize()
-    print(res)
