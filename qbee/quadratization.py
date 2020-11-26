@@ -8,8 +8,8 @@ from typing import Callable, List, Optional, Generator, Set
 from functools import partial, reduce
 from operator import mul
 from random import randrange
-from heuristics import *  # replace with .heuristics if you want pip install
-from util import *  # replace with .util if you want pip install
+from .heuristics import *  # replace with .heuristics if you want pip install
+from .util import *  # replace with .util if you want pip install
 
 from memory_profiler import profile
 
@@ -307,7 +307,7 @@ def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args)
     best_nvars, *_ = args
     total_monoms = len(part_res.squares) + len(part_res.nonsquares)
     lower_bound = int(math.ceil((math.sqrt(1. + 8. * total_monoms) - 1.) / 2.))
-    if lower_bound >= best_nvars - 1:
+    if lower_bound >= best_nvars - 1:  # TODO: check correctness here
         return True
     return False
 
@@ -333,7 +333,7 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     lb = 1
     while 4 * m ** 2 - 2 * lb * m - lb ** 2 * (lb + 1) > 0:
         lb += 1
-    if lb >= best_nvars - 1:
+    if lb >= best_nvars - 1:  # TODO: check correctness here
         return True
     return False
 

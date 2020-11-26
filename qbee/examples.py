@@ -1,7 +1,7 @@
 import itertools
-from quadratization import *
 from functools import partial, reduce
 from random import randrange
+from .quadratization import *
 
 
 def generate_x_plus_1(deg):
