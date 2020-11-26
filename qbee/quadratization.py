@@ -1,7 +1,7 @@
 import math
 import itertools
 import configparser
-import _pickle as cpickle
+import pickle
 from sympy import *
 from collections import deque
 from typing import Callable, List, Optional, Generator, Set
@@ -11,6 +11,8 @@ from operator import mul
 from random import randrange
 from heuristics import *  # replace with .heuristics if you want pip install
 from util import *  # replace with .util if you want pip install
+
+from memory_profiler import profile
 
 config = configparser.ConfigParser({'logging_enable': False, 'logging_file': '../log/log.csv'})
 config.read("../config.ini")
@@ -66,7 +68,7 @@ class PolynomialSystem:
             return list()
         new_gen = []
         for d in get_decompositions(self.get_smallest_nonsquare()):
-            c = cpickle.loads(cpickle.dumps(self, -1))
+            c = pickle.loads(pickle.dumps(self, -1))
             for v in d:
                 c.add_var(v)
             new_gen.append(c)
@@ -131,7 +133,7 @@ class Algorithm:
         self._system = poly_system
         self._heuristics = heuristics
         self._early_termination_funs = list(early_termination) if early_termination is not None else [
-            lambda a, b: False]
+            lambda a, b, *_: False]
         self._nodes_traversed = 0
 
     def quadratize(self) -> QuadratizationResult:
@@ -290,7 +292,7 @@ def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, 
 
 
 def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
-    if len(system.vars) >= nvars:
+    if system.new_vars_count() >= nvars:
         return True
     return False
 
