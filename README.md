@@ -35,7 +35,7 @@ We used only one new variable, so we achieved an *optimal* quadratization.
 QBee implements algorithms that **take** system of ODEs with elementary functions right-hand side and
 **return** *optimal monomial quadratization* - optimal quadratization constructed from monomial substitutions.
 
-We will demonstrate usage of QBee on the example below. Other interactive examples you can find in [examples section](examples). 
+We will demonstrate usage of QBee on the example below. Other interactive examples you can find in [examples section](old_examples). 
 
 ### 1. Importing QBee
 
