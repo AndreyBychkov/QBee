@@ -1,5 +1,6 @@
 import math
 import itertools
+import hashlib
 import configparser
 import pickle
 from sympy import *
@@ -13,11 +14,12 @@ from .util import *  # replace with .util if you want pip install
 
 from memory_profiler import profile
 
-config = configparser.ConfigParser({'logging_enable': False, 'logging_file': '../log/log.csv'})
+config = configparser.ConfigParser({'logging_enable': True, 'logging_file': 'log/log.csv'})
 config.read("../config.ini")
 log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
 log_file = config.get('DEFAULT', 'logging_file')
-
+if log_enable:
+    print(f"Log file will be produced as {log_file}")
 
 # ------------------------------------------------------------------------------
 
@@ -89,8 +91,8 @@ class PolynomialSystem:
         return f"{self._introduced_variables_str()}"
 
     def _introduced_variables_str(self):
-        return list(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
-                        self._remove_free_variables(self.vars)))
+        return sorted(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
+                          self._remove_free_variables(self.vars)))
 
     def _remove_free_variables(self, vars: Collection[tuple]):
         return tuple(filter(lambda v: monomial_deg(v) >= 2, vars))

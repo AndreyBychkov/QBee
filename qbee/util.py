@@ -67,7 +67,8 @@ def logged(method, enabled, log_file, is_stop=False):
             __log_records = list()
         else:
             part_res, *_ = args
-            __log_records.append([part_res, list(res)])
+            for r in list(res):
+                __log_records.append([part_res, r])
         return res
     if enabled:
         return wrapper
