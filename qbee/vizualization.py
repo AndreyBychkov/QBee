@@ -29,6 +29,10 @@ def remove_braces(df: pd.DataFrame):
     df['to'] = df['to'].apply(lambda x: str(x).replace('\'', '').replace('\'', ''))
 
 
+def get_processed_nodes(df: pd.DataFrame):
+    return pd.unique(df['from'])
+
+
 def get_df(log_file: str):
     log_df = pd.read_csv(log_file)
     make_edges(log_df)
@@ -49,6 +53,7 @@ def visualize_pyvis(log_file: str,
                     height=int(screen_height * 0.8)):
     df = get_df(log_file)
     g = nx.from_pandas_edgelist(df, "from", "to", edge_attr="edge", create_using=nx.DiGraph)
+    g = nx.subgraph(g, get_processed_nodes(df))
     for node, attributes in g.nodes.items():
         attributes['title'] = node
     g = nx.relabel_nodes(g, dict(zip(g.nodes.keys(), range(len(g.nodes)))))
