@@ -1,41 +1,65 @@
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
+import holoviews as hv
+import tkinter as tk
+from bokeh.plotting import show
+from pyvis.network import Network
 
-from typing import Tuple
+root = tk.Tk()
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+hv.extension('bokeh')
 
 
-def visualize(log_file: str,
-              figsize: Tuple[float, float] = (20, 20),
-              node_size: int = 50,
-              edge_width: float = 0.2,
-              edge_label_font_size=5,
-              ) -> None:
+def make_edges(df: pd.DataFrame):
+    df['edge'] = df.apply(lambda x: set(eval(x['to'])).difference(set(eval(x['from']))), axis=1)
+
+
+def remove_braces(df: pd.DataFrame):
+    df['edge'] = df['edge'].apply(lambda x: str(x).replace('{', '').replace('}', ''))
+    df['edge'] = df['edge'].apply(lambda x: str(x).replace('\'', '').replace('\'', ''))
+    df['from'] = df['from'].apply(lambda x: str(x).replace('[', '').replace(']', ''))
+    df['from'] = df['from'].apply(lambda x: str(x).replace('{', '').replace('}', ''))
+    df['from'] = df['from'].apply(lambda x: str(x).replace('\'', '').replace('\'', ''))
+    df['to'] = df['to'].apply(lambda x: str(x).replace('[', '').replace(']', ''))
+    df['to'] = df['to'].apply(lambda x: str(x).replace('{', '').replace('}', ''))
+    df['to'] = df['to'].apply(lambda x: str(x).replace('\'', '').replace('\'', ''))
+
+
+def get_df(log_file: str):
     log_df = pd.read_csv(log_file)
-    start_node, end_node, substitutions = log_df.tail(1).values[0]
-    substitutions = substitutions.strip('[]').split(', ')
-    log_df.drop(log_df.tail(1).index, inplace=True)
+    make_edges(log_df)
+    remove_braces(log_df)
+    return log_df
 
-    g = nx.from_pandas_edgelist(log_df, 'from', 'name', create_using=nx.DiGraph, edge_attr='substitution')
-    pos = nx.spring_layout(g, scale=5, k=2)
 
-    nodes = list(g.nodes)
-    node_color = [10] * len(nodes)
-    node_color[nodes.index(start_node)] = 0
-    node_color[nodes.index(end_node)] = 20
+def visualize_pyvis(log_file: str):
+    df = get_df(log_file)
+    g = nx.from_pandas_edgelist(df, "from", "to", edge_attr="edge", create_using=nx.DiGraph)
+    for node, attributes in g.nodes.items():
+        attributes['title'] = node
+    g = nx.relabel_nodes(g, dict(zip(g.nodes.keys(), range(len(g.nodes)))))
 
-    plt.figure(figsize=figsize)
-    nx.draw(g, pos=pos, node_size=node_size, width=edge_width, node_color=node_color)
+    nt = Network()
+    nt.add_nodes(list(g.nodes.keys()), title=[v['title'] for v in g.nodes.values()])
+    for (f, t), l in zip(g.edges, df['edge']):
+        nt.add_edge(f, t, label=l)
+    nt.show('quad.html')
 
-    shortest_path = nx.shortest_path(g, start_node, end_node)
-    shortest_path_edges = list(zip(shortest_path, shortest_path[1:]))
-    nx.draw_networkx_edges(g, pos, edgelist=shortest_path_edges, edge_color='r', width=edge_width * 2.5, arrowsize=10 * edge_width * 2.5)
 
-    edge_labels = dict([((fr, to), data['substitution']) for fr, to, data in g.edges(data=True)])
-    nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels, font_size=edge_label_font_size)
-
-    plt.show()
+def visualize_bokeh(log_file: str):
+    df = get_df(log_file)
+    g = hv.Graph(df)
+    g = g.relabel('Directed Graph').opts(directed=True,
+                                         node_size=10,
+                                         arrowhead_length=0.01,
+                                         width=int(screen_width * 0.8),
+                                         height=int(screen_height * 0.8), )
+    show(hv.render(g))
 
 
 if __name__ == '__main__':
-    visualize('visualization/log.csv')
+    visualize_pyvis('../log/log.csv')
