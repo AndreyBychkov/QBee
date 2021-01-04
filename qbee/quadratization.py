@@ -154,7 +154,7 @@ class Algorithm:
         if pred(part_res):
             res.add(part_res)
         else:
-            for next_system in part_res.next_generation():
+            for next_system in self.next_gen(part_res):
                 self._dls(next_system, to_depth, pred, res)
         return
 
@@ -166,7 +166,7 @@ class Algorithm:
     def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
         return self.traverse_all(depth, lambda s: s.is_quadratized())
 
-    def attach_early_termimation(self, termination_criteria: EarlyTermination) -> None:
+    def attach_early_termination(self, termination_criteria: EarlyTermination) -> None:
         self._early_termination_funs.append(termination_criteria)
 
     @property
@@ -176,6 +176,10 @@ class Algorithm:
     @heuristics.setter
     def heuristics(self, value):
         self._heuristics = value
+
+    @logged(log_enable, log_file)
+    def next_gen(self, part_res: PolynomialSystem):
+        return part_res.next_generation()
 
     @progress_bar(is_stop=True)
     @logged(log_enable, log_file, is_stop=True)

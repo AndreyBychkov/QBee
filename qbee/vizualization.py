@@ -36,17 +36,36 @@ def get_df(log_file: str):
     return log_df
 
 
-def visualize_pyvis(log_file: str):
+def in_edges_count(G: nx.DiGraph):
+    return [G.in_degree(n) for n in G.nodes]
+
+
+def nodes_with_multiple_in_edges_and_count(G: nx.DiGraph):
+    return list(filter(lambda nd: nd[1] > 1, zip(G.nodes, in_edges_count(G))))
+
+
+def visualize_pyvis(log_file: str,
+                    width=int(screen_width * 0.8),
+                    height=int(screen_height * 0.8)):
     df = get_df(log_file)
     g = nx.from_pandas_edgelist(df, "from", "to", edge_attr="edge", create_using=nx.DiGraph)
     for node, attributes in g.nodes.items():
         attributes['title'] = node
     g = nx.relabel_nodes(g, dict(zip(g.nodes.keys(), range(len(g.nodes)))))
 
-    nt = Network()
-    nt.add_nodes(list(g.nodes.keys()), title=[v['title'] for v in g.nodes.values()])
+    for (node, attributes), n_parents in zip(g.nodes.items(), in_edges_count(g)):
+        attributes['n_parents'] = n_parents
+        if n_parents > 1:
+            attributes['color'] = '#ffff66'  # light yellow
+        else:
+            attributes['color'] = '#87cefa'  # light sky bly
+
+    nt = Network(directed=True, height=f"{height}px", width=f"{width}px")
+    nt.add_nodes(list(g.nodes.keys()),
+                 title=[v['title'] for v in g.nodes.values()],
+                 color=[v['color'] for v in g.nodes.values()])
     for (f, t), l in zip(g.edges, df['edge']):
-        nt.add_edge(f, t, label=l)
+        nt.add_edge(f, t, label=l, arrowStrikethrough=True)
     nt.show('quad.html')
 
 
