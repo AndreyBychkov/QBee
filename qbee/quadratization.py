@@ -14,7 +14,7 @@ from .util import *  # replace with .util if you want pip install
 
 from memory_profiler import profile
 
-config = configparser.ConfigParser({'logging_enable': True, 'logging_file': 'log/log.csv'})
+config = configparser.ConfigParser({'logging_enable': True, 'logging_file': 'log/log.feather'})
 config.read("../config.ini")
 log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
 log_file = config.get('DEFAULT', 'logging_file')

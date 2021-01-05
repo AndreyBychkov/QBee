@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import holoviews as hv
@@ -38,7 +39,7 @@ def get_nodes_enumeration_in_process_order(df: pd.DataFrame) -> dict:
 
 
 def get_df(log_file: str):
-    log_df = pd.read_csv(log_file)
+    log_df = pd.read_feather(log_file)
     make_edges(log_df)
     remove_braces(log_df)
     return log_df
@@ -61,6 +62,11 @@ def visualize_pyvis(log_file: str,
     for node, attributes in g.nodes.items():
         attributes['title'] = node
     g = nx.relabel_nodes(g, get_nodes_enumeration_in_process_order(df))
+    nodes_in_edges_count = nodes_with_multiple_in_edges_and_count(g)
+
+    print(f"Count of nodes with multiple parents: {len(nodes_in_edges_count)} / {len(g.nodes)} "
+          f"= {np.round(len(nodes_in_edges_count) / len(g.nodes) * 100, 1)}%")
+    print(nodes_in_edges_count)
 
     for (node, attributes), n_parents in zip(g.nodes.items(), in_edges_count(g)):
         attributes['n_parents'] = n_parents
@@ -80,45 +86,6 @@ def visualize_pyvis(log_file: str,
     for (f, t), l in zip(g.edges, df['edge']):
         nt.add_edge(f, t, label=l, arrowStrikethrough=True)
     nt.show_buttons(filter_=['physics', 'layout'])
-    options = """
-    var options = {
-      "nodes": {
-        "borderWidth": 2,
-        "borderWidthSelected": 3
-      },
-      "edges": {
-        "color": {
-          "inherit": true
-        },
-        "smooth": false
-      },
-      "layout": {
-        "hierarchical": {
-          "enabled": true,
-          "levelSeparation": 315,
-          "nodeSpacing": 245,
-          "treeSpacing": 325
-        }
-      },
-      "interaction": {
-        "keyboard": {
-          "enabled": true
-        },
-        "navigationButtons": true,
-        "tooltipDelay": 100
-      },
-      "physics": {
-        "hierarchicalRepulsion": {
-          "centralGravity": 0,
-          "springLength": 180,
-          "springConstant": 0.15,
-          "nodeDistance": 380
-        },
-        "minVelocity": 0.75,
-        "solver": "hierarchicalRepulsion"
-      }
-    }
-    """
     nt.set_options(r"""
     var options = {
         "configure": {
@@ -186,4 +153,4 @@ def visualize_bokeh(log_file: str):
 
 
 if __name__ == '__main__':
-    visualize_pyvis('../log/log.csv')
+    visualize_pyvis('../log/log.feather')

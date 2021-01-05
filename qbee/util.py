@@ -63,7 +63,9 @@ def logged(method, enabled, log_file, is_stop=False):
         global __log_records
         res = method(self, *args, **kwargs)
         if is_stop:
-            pd.DataFrame(__log_records, columns=['from', 'to']).to_csv(log_file, index=None)
+            print("Saving log")
+            df = pd.DataFrame(__log_records, columns=['from', 'to']).applymap(str)
+            df.to_feather(log_file)
             __log_records = list()
         else:
             part_res, *_ = args
