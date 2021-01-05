@@ -38,7 +38,7 @@ def generate_hill(k):
     R, h, i, t = ring(['h', 'i', 't'], QQ)
     return PolynomialSystem([k * i ** 2 * t ** (k - 1),
                              -k * i ** 2 * t ** (k - 1),
-                             1])
+                             R.one])
 
 
 def generate_lifeware_conjecture(n):
