@@ -33,6 +33,10 @@ def get_processed_nodes(df: pd.DataFrame):
     return pd.unique(df['from'])
 
 
+def get_nodes_enumeration_in_process_order(df: pd.DataFrame) -> dict:
+    return dict([(v, k) for (k, v) in enumerate(df['from'].unique())])
+
+
 def get_df(log_file: str):
     log_df = pd.read_csv(log_file)
     make_edges(log_df)
@@ -56,21 +60,117 @@ def visualize_pyvis(log_file: str,
     g = nx.subgraph(g, get_processed_nodes(df))
     for node, attributes in g.nodes.items():
         attributes['title'] = node
-    g = nx.relabel_nodes(g, dict(zip(g.nodes.keys(), range(len(g.nodes)))))
+    g = nx.relabel_nodes(g, get_nodes_enumeration_in_process_order(df))
 
     for (node, attributes), n_parents in zip(g.nodes.items(), in_edges_count(g)):
         attributes['n_parents'] = n_parents
         if n_parents > 1:
             attributes['color'] = '#ffff66'  # light yellow
+        elif node == 0:
+            attributes['color'] = '#32cd32'  # lime green
         else:
             attributes['color'] = '#87cefa'  # light sky bly
 
-    nt = Network(directed=True, height=f"{height}px", width=f"{width}px")
+    nt = Network(directed=True,
+                 height=f"{height}px", width=f"{width}px",
+                 heading="Quadratization algorithm visualization")
     nt.add_nodes(list(g.nodes.keys()),
                  title=[v['title'] for v in g.nodes.values()],
                  color=[v['color'] for v in g.nodes.values()])
     for (f, t), l in zip(g.edges, df['edge']):
         nt.add_edge(f, t, label=l, arrowStrikethrough=True)
+    nt.show_buttons(filter_=['physics', 'layout'])
+    options = """
+    var options = {
+      "nodes": {
+        "borderWidth": 2,
+        "borderWidthSelected": 3
+      },
+      "edges": {
+        "color": {
+          "inherit": true
+        },
+        "smooth": false
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "levelSeparation": 315,
+          "nodeSpacing": 245,
+          "treeSpacing": 325
+        }
+      },
+      "interaction": {
+        "keyboard": {
+          "enabled": true
+        },
+        "navigationButtons": true,
+        "tooltipDelay": 100
+      },
+      "physics": {
+        "hierarchicalRepulsion": {
+          "centralGravity": 0,
+          "springLength": 180,
+          "springConstant": 0.15,
+          "nodeDistance": 380
+        },
+        "minVelocity": 0.75,
+        "solver": "hierarchicalRepulsion"
+      }
+    }
+    """
+    nt.set_options(r"""
+    var options = {
+        "configure": {
+            "enabled": true
+        },
+        "edges": {
+            "color": {
+                "inherit": true
+            },
+            "smooth": {
+                "enabled": false,
+                "type": "continuous"
+            }
+        },
+        "layout": {
+            "hierarchical": {
+              "enabled": true,
+              "levelSeparation": 315,
+              "nodeSpacing": 245,
+              "treeSpacing": 325
+            }
+        },
+        "interaction": {
+            "dragNodes": true,
+            "hideEdgesOnDrag": false,
+            "hideNodesOnDrag": false,
+            "keyboard": {
+                "enabled": true
+            },
+            "navigationButtons": true,
+            "tooltipDelay": 100
+        },
+        "physics": {
+            "enabled": true,
+            "stabilization": {
+                "enabled": true,
+                "fit": true,
+                "iterations": 1000,
+                "onlyDynamicEdges": false,
+                "updateInterval": 50
+            },
+            "hierarchicalRepulsion": {
+                "centralGravity": 0,
+                "springLength": 180,
+                "springConstant": 0.15,
+                "nodeDistance": 380
+            },
+            "minVelocity": 0.75,
+            "solver": "hierarchicalRepulsion"
+        }
+    }
+    """)
     nt.show('quad.html')
 
 
