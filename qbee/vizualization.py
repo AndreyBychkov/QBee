@@ -1,3 +1,4 @@
+import pickle
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -17,6 +18,13 @@ hv.extension('bokeh')
 
 def make_edges(df: pd.DataFrame):
     df['edge'] = df.apply(lambda x: set(eval(x['to'])).difference(set(eval(x['from']))), axis=1)
+
+
+def clear_system_str(s: str):
+    s = s.replace('{', '').replace('}', '')
+    s = s.replace('\'', '').replace('\'', '')
+    s = s.replace('[', '').replace(']', '')
+    return s
 
 
 def remove_braces(df: pd.DataFrame):
@@ -57,8 +65,16 @@ def visualize_pyvis(log_file: str,
                     width=int(screen_width * 0.8),
                     height=int(screen_height * 0.8)):
     df = get_df(log_file)
+    quad_systems = pickle.load(open('../log/quad_systems.pkl', 'rb'))
+    quad_systems = set(map(lambda s: clear_system_str(str(s)), quad_systems))
+    print(quad_systems)
     g = nx.from_pandas_edgelist(df, "from", "to", edge_attr="edge", create_using=nx.DiGraph)
+    quad_edges = list(filter(lambda e: e[1] in quad_systems, g.edges))
+    quad_edges_labels = list(map(lambda e: g.get_edge_data(*e)['edge'], quad_edges))
     g = nx.subgraph(g, get_processed_nodes(df))
+    g = nx.DiGraph(g)
+    for e, l in zip(quad_edges, quad_edges_labels):
+        g.add_edge(*e, edge=l)
     for node, attributes in g.nodes.items():
         attributes['title'] = node
     g = nx.relabel_nodes(g, get_nodes_enumeration_in_process_order(df))
@@ -77,14 +93,17 @@ def visualize_pyvis(log_file: str,
         else:
             attributes['color'] = '#87cefa'  # light sky bly
 
+        if attributes['title'] in quad_systems:
+            attributes['color'] = '#ff0000'  # red
+
     nt = Network(directed=True,
                  height=f"{height}px", width=f"{width}px",
                  heading="Quadratization algorithm visualization")
     nt.add_nodes(list(g.nodes.keys()),
                  title=[v['title'] for v in g.nodes.values()],
                  color=[v['color'] for v in g.nodes.values()])
-    for (f, t), l in zip(g.edges, df['edge']):
-        nt.add_edge(f, t, label=l, arrowStrikethrough=True)
+    for f, t in g.edges:
+        nt.add_edge(f, t, label=g.get_edge_data(f, t)['edge'], arrowStrikethrough=True)
     nt.show_buttons(filter_=['physics', 'layout'])
     nt.set_options(r"""
     var options = {
