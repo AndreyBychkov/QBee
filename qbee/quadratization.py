@@ -16,11 +16,13 @@ from memory_profiler import profile
 
 config = configparser.ConfigParser({
     'logging_enable': False,
+    'progress_bar_enable': False,
     'logging_file': 'log/log.feather',
     'quad_systems_file': 'log/quad_systems.pkl'
 })
 config.read("../config.ini")
 log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
+pb_enable = eval(config.get('DEFAULT', 'progress_bar_enable'))  # Security Error here, but does not matter I believe
 log_file = config.get('DEFAULT', 'logging_file')
 quad_systems_file = config.get('DEFAULT', 'quad_systems_file')
 if log_enable:
@@ -152,7 +154,7 @@ class Algorithm:
         self._final_iter()
         return res
 
-    @progress_bar(is_stop=False)
+    @progress_bar(is_stop=False, enabled=pb_enable)
     def _dls(self, part_res: PolynomialSystem, to_depth: int, pred: Callable[[PolynomialSystem], bool], res: set):
         if part_res.new_vars_count() > to_depth:
             return
@@ -189,7 +191,7 @@ class Algorithm:
     def next_gen(self, part_res: PolynomialSystem):
         return part_res.next_generation(self.heuristics)
 
-    @progress_bar(is_stop=True)
+    @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         pass
@@ -209,7 +211,7 @@ class BranchAndBound(Algorithm):
         self._final_iter()
         return QuadratizationResult(opt_system, nvars, traversed)
 
-    @progress_bar(is_stop=False)
+    @progress_bar(is_stop=False, enabled=pb_enable)
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
@@ -232,7 +234,7 @@ class BranchAndBound(Algorithm):
     def next_gen(self, part_res: PolynomialSystem):
         return part_res.next_generation(self.heuristics)
 
-    @progress_bar(is_stop=True)
+    @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
@@ -286,12 +288,12 @@ class ID_DLS(Algorithm):
                 else:
                     high_depth_stack.append((next_system, curr_depth + 1))
 
-    @progress_bar(is_stop=True)
+    @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
-    @progress_bar(is_stop=False)
+    @progress_bar(is_stop=False, enabled=pb_enable)
     def _iter(self):
         pass
 

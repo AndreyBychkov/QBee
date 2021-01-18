@@ -39,7 +39,7 @@ __log_records = list()
 
 
 @parametrized
-def progress_bar(func, is_stop):
+def progress_bar(func, is_stop, enabled=True):
     def wrapper(*args, **kwargs):
         global __log_pb_evaluated
         global __log_pb
@@ -55,8 +55,10 @@ def progress_bar(func, is_stop):
             __log_pb.refresh()
         return func(*args, **kwargs)
 
-    return wrapper
-
+    if enabled:
+        return wrapper
+    else:
+        return func
 
 @parametrized
 def logged(method, enabled, log_file, is_stop=False):
