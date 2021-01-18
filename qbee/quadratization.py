@@ -179,7 +179,7 @@ class Algorithm:
 
     @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
-        return part_res.next_generation()
+        return part_res.next_generation(self.heuristics)
 
     @progress_bar(is_stop=True)
     @logged(log_enable, log_file, is_stop=True)
