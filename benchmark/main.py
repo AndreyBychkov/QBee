@@ -52,6 +52,7 @@ if __name__ == '__main__':
     call_x_plus_1_series()
     call_circular()
     call_hill()
+
     # Takes too long by now
     # call_hard()
     # call_long_monomial()

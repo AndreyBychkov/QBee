@@ -21,5 +21,5 @@ def quadratize(order, heuristics: Heuristics, termination):
 @pytest.mark.parametrize('term', terminations)
 @pytest.mark.parametrize('heur', heuristics)
 @pytest.mark.parametrize('ord', order)
-def test_sigmoid(benchmark, ord, heur, term):
+def test_x_plus_1(benchmark, ord, heur, term):
     benchmark(quadratize, order=ord, heuristics=heur, termination=term)
