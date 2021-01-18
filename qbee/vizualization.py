@@ -62,12 +62,13 @@ def nodes_with_multiple_in_edges_and_count(G: nx.DiGraph):
 
 
 def visualize_pyvis(log_file: str,
+                    quad_systems_file: str,
                     output_html="quad.html",
                     width=int(screen_width * 0.8),
                     height=int(screen_height * 0.8)):
     df = get_df(log_file)
 
-    quad_systems = pickle.load(open('../log/quad_systems.pkl', 'rb'))
+    quad_systems = pickle.load(open(quad_systems_file, 'rb'))
     quad_systems = set(map(lambda s: clear_system_str(str(s)), quad_systems))
     print(quad_systems)
     g = nx.from_pandas_edgelist(df, "from", "to", edge_attr="edge", create_using=nx.DiGraph)
@@ -175,4 +176,4 @@ def visualize_bokeh(log_file: str):
 
 
 if __name__ == '__main__':
-    visualize_pyvis('../log/log.feather')
+    visualize_pyvis('../log/log.feather', '../log/quad_systems.pkl')
