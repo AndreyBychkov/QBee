@@ -9,7 +9,7 @@ R, x = sp.ring(["x"], sp.QQ)
 
 heuristics = [default_score, aeqd_score, smd_score]
 terminations = [termination_by_square_bound, termination_by_best_nvars, termination_by_C4_bound]
-systems = dict([(d, generate_hill(d)) for d in range(3, 8)])
+systems = dict([(d, generate_hill(d)) for d in [2, 3, 4, 5, 6, 7, 8, 10, 15]])
 order = systems.keys()
 
 

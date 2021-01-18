@@ -53,6 +53,6 @@ if __name__ == '__main__':
     call_circular()
     call_hill()
 
-    # Takes too long by now
+    # TODO: Takes too much memory (why?) by now
     # call_hard()
     # call_long_monomial()
