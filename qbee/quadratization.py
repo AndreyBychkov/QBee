@@ -14,12 +14,18 @@ from .util import *  # replace with .util if you want pip install
 
 from memory_profiler import profile
 
-config = configparser.ConfigParser({'logging_enable': True, 'logging_file': 'log/log.feather'})
+config = configparser.ConfigParser({
+    'logging_enable': True,
+    'logging_file': 'log/log.feather',
+    'quad_systems_file': 'log/quad_systems.pkl'
+})
 config.read("../config.ini")
 log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
 log_file = config.get('DEFAULT', 'logging_file')
+quad_systems_file = config.get('DEFAULT', 'quad_systems_file')
 if log_enable:
-    print(f"Log file will be produced as {log_file}")
+    print(f"Log file will be produced as {log_file}, quadratizations will be saved as {quad_systems_file}")
+
 
 # ------------------------------------------------------------------------------
 
@@ -158,11 +164,13 @@ class Algorithm:
                 self._dls(next_system, to_depth, pred, res)
         return
 
+    @dump_results(log_enable, quad_systems_file)
     def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
         optimal_first = self.quadratize()
         print(optimal_first)
         return self.get_quadratizations(optimal_first.introduced_vars)
 
+    @dump_results(log_enable, quad_systems_file)
     def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
         return self.traverse_all(depth, lambda s: s.is_quadratized())
 

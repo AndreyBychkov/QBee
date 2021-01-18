@@ -1,3 +1,4 @@
+import pickle
 import pandas as pd
 import sympy as sp
 import numpy as np
@@ -72,6 +73,20 @@ def logged(method, enabled, log_file, is_stop=False):
             for r in list(res):
                 __log_records.append([part_res, r])
         return res
+
+    if enabled:
+        return wrapper
+    else:
+        return method
+
+
+@parametrized
+def dump_results(method, enabled, log_file):
+    def wrapper(self, *args, **kwargs):
+        res = method(self, *args, **kwargs)
+        pickle.dump(res, open(log_file, "wb"))
+        return res
+
     if enabled:
         return wrapper
     else:
