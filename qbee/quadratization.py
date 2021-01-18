@@ -15,7 +15,7 @@ from .util import *  # replace with .util if you want pip install
 from memory_profiler import profile
 
 config = configparser.ConfigParser({
-    'logging_enable': True,
+    'logging_enable': False,
     'logging_file': 'log/log.feather',
     'quad_systems_file': 'log/quad_systems.pkl'
 })
