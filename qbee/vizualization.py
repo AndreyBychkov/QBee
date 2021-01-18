@@ -65,12 +65,14 @@ def visualize_pyvis(log_file: str,
                     width=int(screen_width * 0.8),
                     height=int(screen_height * 0.8)):
     df = get_df(log_file)
+
     quad_systems = pickle.load(open('../log/quad_systems.pkl', 'rb'))
     quad_systems = set(map(lambda s: clear_system_str(str(s)), quad_systems))
     print(quad_systems)
     g = nx.from_pandas_edgelist(df, "from", "to", edge_attr="edge", create_using=nx.DiGraph)
     quad_edges = list(filter(lambda e: e[1] in quad_systems, g.edges))
     quad_edges_labels = list(map(lambda e: g.get_edge_data(*e)['edge'], quad_edges))
+
     g = nx.subgraph(g, get_processed_nodes(df))
     g = nx.DiGraph(g)
     for e, l in zip(quad_edges, quad_edges_labels):
