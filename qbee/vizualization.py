@@ -62,6 +62,7 @@ def nodes_with_multiple_in_edges_and_count(G: nx.DiGraph):
 
 
 def visualize_pyvis(log_file: str,
+                    output_html="quad.html",
                     width=int(screen_width * 0.8),
                     height=int(screen_height * 0.8)):
     df = get_df(log_file)
@@ -159,7 +160,7 @@ def visualize_pyvis(log_file: str,
         }
     }
     """)
-    nt.show('quad.html')
+    nt.show(output_html)
 
 
 def visualize_bokeh(log_file: str):
