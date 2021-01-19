@@ -54,7 +54,7 @@ def test_parameter():
     poly_system = polynomialize(system)
 
     _, y0 = poly_system.variables.free
-    dot_y0 = derivatives(y0)
+    dot_y0 = derivatives(y0)[0]
     expected_system = EquationSystem([
         sp.Eq(dot_x, y0),
         sp.Eq(dot_y, y0),
