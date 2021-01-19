@@ -1,228 +1,362 @@
-import sys
 import math
-import sympy as sp
-import pandas as pd
-import multiprocessing as mp
-
-from .structures import *
-from .substitution_heuristics import get_heuristics, get_heuristic_sorter
-from tqdm.autonotebook import tqdm
-from copy import deepcopy
-from queue import Queue, Empty
+import itertools
+import hashlib
+import configparser
+import pickle
+from sympy import *
 from collections import deque
-from typing import List, Optional, Callable
-from .util import reset_progress_bar, refresh_and_close_progress_bars
+from typing import Callable, List, Optional, Generator, Set
+from functools import partial, reduce
+from operator import mul
+from random import randrange
+from .heuristics import *  # replace with .heuristics if you want pip install
+from .util import *  # replace with .util if you want pip install
+
+from memory_profiler import profile
+
+config = configparser.ConfigParser({
+    'logging_enable': False,
+    'progress_bar_enable': False,
+    'logging_file': 'log/log.feather',
+    'quad_systems_file': 'log/quad_systems.pkl'
+})
+config.read("../config.ini")
+log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
+pb_enable = eval(config.get('DEFAULT', 'progress_bar_enable'))  # Security Error here, but does not matter I believe
+log_file = config.get('DEFAULT', 'logging_file')
+quad_systems_file = config.get('DEFAULT', 'quad_systems_file')
+if log_enable:
+    print(f"Log file will be produced as {log_file}, quadratizations will be saved as {quad_systems_file}")
 
 
-def quadratize(system: EquationSystem, search_algorithm: str = "ID-DLS", auxiliary_eq_type: str = "differential", heuristics: str = "default",
-               initial_max_depth: int = 1, limit_depth: Optional[int] = None, debug: Optional[str] = None, log_file=None) -> QuadratizationResult:
-    """
-    Transforms the system into quadratic form using variable substitution technique.
+# ------------------------------------------------------------------------------
 
-    :param system: polynomial system of DAE
-    :param search_algorithm: graph search algorithm for quadratization.
-    :param auxiliary_eq_type: auxiliary equation form.
-    :param heuristics: next substitution choice method.
-    :param initial_max_depth: some search algorithms evaluate every systems where the number of substitutions does not exceed this number.
-                              Put here your assumption of how long a chain of optimal substitutions might be.
-    :param limit_depth: maximum number of substitutions. Raise error if no quadratic system is found within limit depth.
-    :param debug: printing mode while quadratization is performed.
-    :param log_file: output file for evaluation logging. Must be in 'csv' format.
-    :returns: quadratic polynomial system
+class PolynomialSystem:
+    def __init__(self, polynomials: List[sp.Poly]):
+        """
+        polynomials - right-hand sides of the ODE system listed in the same order as
+                      the variables in the polynomial ring
+        """
+        self.dim = len(polynomials[0].ring.gens)
+        self.gen_syms = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
 
-    Auxiliary equations type
-    -----------------
-    **algebraic**
-        adds auxiliary equations in form y = f(x, y)
-    **differential**
-         adds auxiliary equations in form y' = f(x, y)
+        # put not monomials but differents in the exponents between rhs and lhs
+        self.rhs = dict()
+        for i, p in enumerate(polynomials):
+            self.rhs[i] = set()
+            for m in p.to_dict().keys():
+                mlist = list(m)
+                mlist[i] -= 1
+                self.rhs[i].add(tuple(mlist))
 
-    Heuristics
-    -----------------
-    **random**
-        choose next possible substitution in random way;
-    **frequent-first**
-        choose most frequent possible substitution as the next one;
-    **free-variables-count**
-        choose a substitution with the least free variables;
-    **auxiliary-equation-degree**
-        choose a monomial substitution with the least generated auxiliary equation degree;
-    **auxiliary-equation-quadratic-discrepancy**
-        choose a monomial substitution which generated auxiliary equation is closest to quadratic form;
-    **summary-monomial-degree**
-        choose a monomial substitution with maximal reduction of system's degree;
+        self.vars, self.squares, self.nonsquares = set(), set(), set()
+        self.add_var(tuple([0] * self.dim))
+        for i in range(self.dim):
+            self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
+        self.original_degree = max(map(monomial_deg, self.nonsquares))
 
-    Method Optimal
-    -----------------
-    **BFS**
-        Heuristic Breadth-First Search
-    **Best-First**
-        Best-First Search: Heuristic Depth-First Search
-    **ID-DLS**
-        Iterative Deepening Depth-Limited Search with heuristics
+    def add_var(self, v):
+        for i in range(self.dim):
+            if v[i] > 0:
+                for m in self.rhs[i]:
+                    self.nonsquares.add(tuple([v[j] + m[j] for j in range(self.dim)]))
 
-    Debug
-    ---------------
-    **None** or **silent**
-        display nothing;
-    **info**
-        display progress bars;
+        self.vars.add(v)
+        for u in self.vars:
+            self.squares.add(tuple([u[i] + v[i] for i in range(self.dim)]))
+        self.nonsquares = set(filter(lambda s: s not in self.squares, self.nonsquares))
 
-    """
-    if not system.is_polynomial():
-        raise RuntimeError("System is not polynomialized. Polynomialize it first.")
+    def is_quadratized(self):
+        return not self.nonsquares
 
-    disable_pbar = True if (debug is None or debug == 'silent') else False
+    def get_smallest_nonsquare(self):
+        return min([(sum(m), m) for m in self.nonsquares])[1]
 
-    if limit_depth is None:
-        limit_depth = sys.maxsize
+    def next_generation(self, heuristics=default_score):
+        if len(self.nonsquares) == 0:
+            return list()
+        new_gen = []
+        for d in get_decompositions(self.get_smallest_nonsquare()):
+            c = pickle.loads(pickle.dumps(self, -1))
+            for v in d:
+                c.add_var(v)
+            new_gen.append(c)
 
-    log_rows_list = list() if log_file else None
-    algo = _quadratization_algorithms[search_algorithm]
-    result = algo(system, auxiliary_eq_type, heuristics, initial_max_depth, limit_depth, disable_pbar, log_rows_list)
+        return sorted(new_gen, key=heuristics)
 
-    if log_file:
-        log_rows_list.append(
-            {'from': system.equations_hash, 'name': result.system.equations_hash, 'substitution': list(result.substitutions)})
-        log_df = pd.DataFrame(log_rows_list)
-        log_df.to_csv(log_file, index=False)
-    return result
+    def new_vars_count(self):
+        return len(self.vars) - self.dim - 1
 
+    def apply_quadratizaton(self):
+        # TODO
+        new_variables = list(filter(lambda m: monomial_deg(m) >= 2, self.vars))
 
-def _best_first(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int,
-                disable_pbar: bool, log_rows_list: Optional[List]) -> QuadratizationResult:
-    # TODO(implement)
-    pass
+    def to_sympy(self, gens):
+        # TODO: Does not work correctly with PolyElement
+        return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
+
+    def __repr__(self):
+        return f"{self._introduced_variables_str()}"
+
+    def _introduced_variables_str(self):
+        return sorted(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
+                          self._remove_free_variables(self.vars)))
+
+    def _remove_free_variables(self, vars: Collection[tuple]):
+        return tuple(filter(lambda v: monomial_deg(v) >= 2, vars))
 
 
-def _bfs(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
-         log_rows_list: Optional[List]) -> QuadratizationResult:
-    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
-    queue_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
+# ------------------------------------------------------------------------------
 
-    if heuristics == "default":
-        heuristics = "none"
-    heuristic_sorter = get_heuristic_sorter(heuristics)
+class QuadratizationResult:
+    def __init__(self,
+                 system: Optional[PolynomialSystem],
+                 introduced_vars: int,
+                 nodes_traversed: int):
+        self.system = system
+        self.introduced_vars = introduced_vars
+        self.nodes_traversed = nodes_traversed
 
-    system_queue = Queue()
-    system_queue.put((system, list()), block=True)
-    initial_eq_number = len(system.equations)
-    statistics = EvaluationStatistics(depth=0, steps=0, method_name='BFS')
+    def sympy_str(self, variables):
+        pass  # TODO: apply quadratization to system
 
-    quad_reached = False
-    while not quad_reached:
-        if system_queue.empty():
-            raise RuntimeError("Limit depth passed. No quadratic system is found.")
+    def __repr__(self):
+        if self.system is None:
+            return "No quadratization found under the given condition\n" + \
+                   f"Nodes traversed: {self.nodes_traversed}"
+        return f"Number of introduced variables: {self.introduced_vars}\n" + \
+               f"Introduced variables: {self.system._introduced_variables_str()}\n" + \
+               f"Nodes traversed: {self.nodes_traversed}"
 
-        prev_system, substitution_chain = system_queue.get_nowait()
-        if substitution_chain:
-            last_substitution = substitution_chain[-1]
-            curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
 
-            if log_rows_list is not None:
-                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
+# ------------------------------------------------------------------------------
+
+EarlyTermination = Callable[..., bool]
+
+
+class Algorithm:
+    def __init__(self,
+                 poly_system: PolynomialSystem,
+                 heuristics: Heuristics = default_score,
+                 early_termination: Collection[EarlyTermination] = None):
+        self._system = poly_system
+        self._heuristics = heuristics
+        self._early_termination_funs = list(early_termination) if early_termination is not None else [
+            lambda a, b, *_: False]
+        self._nodes_traversed = 0
+
+    def quadratize(self) -> QuadratizationResult:
+        pass
+
+    def traverse_all(self, to_depth: int, pred: Callable[[PolynomialSystem], bool]):
+        res = set()
+        self._dls(self._system, to_depth, pred, res)
+        self._final_iter()
+        return res
+
+    @progress_bar(is_stop=False, enabled=pb_enable)
+    def _dls(self, part_res: PolynomialSystem, to_depth: int, pred: Callable[[PolynomialSystem], bool], res: set):
+        if part_res.new_vars_count() > to_depth:
+            return
+
+        if pred(part_res):
+            res.add(part_res)
         else:
-            curr_system = prev_system
+            for next_system in self.next_gen(part_res):
+                self._dls(next_system, to_depth, pred, res)
+        return
 
-        curr_depth = len(curr_system.equations) - initial_eq_number
+    @dump_results(log_enable, quad_systems_file)
+    def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
+        optimal_first = self.quadratize()
+        print(optimal_first)
+        return self.get_quadratizations(optimal_first.introduced_vars)
 
-        queue_pbar.update(-1)
-        statistics.steps += 1
-        processed_systems_pbar.update(1)
-        processed_systems_pbar.postfix = f"Current depth level: {curr_depth} / {limit_depth}"
+    @dump_results(log_enable, quad_systems_file)
+    def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
+        return self.traverse_all(depth, lambda s: s.is_quadratized())
 
-        if curr_system.is_quadratic():
-            statistics.depth = curr_depth
-            refresh_and_close_progress_bars(processed_systems_pbar, queue_pbar)
-            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
+    def attach_early_termination(self, termination_criteria: EarlyTermination) -> None:
+        self._early_termination_funs.append(termination_criteria)
 
-        if curr_depth == limit_depth:
-            continue
+    @property
+    def heuristics(self):
+        return self._heuristics
 
-        possible_substitutions = heuristic_sorter(curr_system)
-        for substitution in map(sp.Poly.as_expr, possible_substitutions):
-            system_queue.put((curr_system, substitution_chain + [substitution]))
-            queue_pbar.update(1)
+    @heuristics.setter
+    def heuristics(self, value):
+        self._heuristics = value
 
+    @logged(log_enable, log_file)
+    def next_gen(self, part_res: PolynomialSystem):
+        return part_res.next_generation(self.heuristics)
 
-def _iddls(system: EquationSystem, auxiliary_eq_type: str, heuristics: str, initial_max_depth: int, limit_depth: int, disable_pbar: bool,
-           log_rows_list: Optional[List]) -> QuadratizationResult:
-    processed_systems_pbar = tqdm(unit="node", desc="Systems processed: ", position=0, disable=disable_pbar)
-    stack_pbar = tqdm(unit="node", desc="Nodes in queue: ", position=1, disable=disable_pbar)
-    high_depth_stack_pbar = tqdm(unit="node", desc="Nodes in higher depth queue: ", position=2, disable=disable_pbar)
-
-    heuristic_sorter = get_heuristic_sorter(heuristics)
-    system_stack = deque()
-    system_high_depth_stack = deque()
-
-    curr_depth = 0
-    curr_max_depth = initial_max_depth
-    system_stack.append((system, curr_depth, list()))
-    stack_pbar.update(1)
-
-    statistics = EvaluationStatistics(depth=0, steps=0, method_name='ID-DLS')
-
-    quad_reached = False
-    while not quad_reached:
-        if len(system_stack) == 0:
-            if len(system_high_depth_stack) == 0:
-                raise RuntimeError("Limit depth passed. No quadratic system is found.")
-            system_stack = system_high_depth_stack
-            system_high_depth_stack = deque()
-            curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
-
-            reset_progress_bar(stack_pbar, len(system_stack))
-            reset_progress_bar(high_depth_stack_pbar, 0)
-
-        prev_system, curr_depth, substitution_chain = system_stack.popleft()
-        if substitution_chain:
-            last_substitution = substitution_chain[-1]
-            curr_system = _make_new_system(prev_system, auxiliary_eq_type, last_substitution)
-
-            if log_rows_list is not None:
-                _log_append(log_rows_list, prev_system.equations_hash, curr_system.equations_hash, last_substitution)
-        else:
-            curr_system = prev_system
-
-        stack_pbar.update(-1)
-        stack_pbar.refresh()
-        statistics.steps += 1
-        processed_systems_pbar.update(1)
-        processed_systems_pbar.postfix = f"Current max depth level: {curr_max_depth} / {limit_depth}"
-
-        if curr_system.is_quadratic():
-            statistics.depth = curr_depth
-            refresh_and_close_progress_bars(processed_systems_pbar, stack_pbar, high_depth_stack_pbar)
-            return QuadratizationResult(curr_system, statistics, tuple(substitution_chain))
-
-        if curr_depth == limit_depth:
-            continue
-
-        possible_substitutions = heuristic_sorter(curr_system)[::-1]
-        for substitution in map(sp.Poly.as_expr, possible_substitutions):
-            if curr_depth < curr_max_depth:
-                system_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
-                stack_pbar.update(1)
-            else:
-                system_high_depth_stack.appendleft((curr_system, curr_depth + 1, substitution_chain + [substitution]))
-                high_depth_stack_pbar.update(1)
+    @progress_bar(is_stop=True, enabled=pb_enable)
+    @logged(log_enable, log_file, is_stop=True)
+    def _final_iter(self):
+        pass
 
 
-def _make_new_system(system: EquationSystem, auxiliary_eq_type, substitution) -> EquationSystem:
-    new_system = deepcopy(system)
-    new_variable = new_system.variables.create_variable()
-    equation_add_fun = new_system.auxiliary_equation_type_choose(auxiliary_eq_type)
-    equation_add_fun(new_variable, substitution)
-    return new_system
+# ------------------------------------------------------------------------------
+
+class BranchAndBound(Algorithm):
+    def __init__(self, poly_system: PolynomialSystem,
+                 heuristics: Heuristics = default_score,
+                 early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
+        super().__init__(poly_system, heuristics, early_termination)
+
+    @timed
+    def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
+        nvars, opt_system, traversed = self._bnb_step(self._system, math.inf, cond)
+        self._final_iter()
+        return QuadratizationResult(opt_system, nvars, traversed)
+
+    @progress_bar(is_stop=False, enabled=pb_enable)
+    def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
+            -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
+        self._nodes_traversed += 1
+        if part_res.is_quadratized() and cond(part_res):
+            return part_res.new_vars_count(), part_res, 1
+        if any(map(lambda f: f(self, part_res, best_nvars), self._early_termination_funs)):
+            return math.inf, None, 1
+
+        traversed_total = 1
+        min_nvars, best_system = best_nvars, None
+        for next_system in self.next_gen(part_res):
+            nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars, cond)
+            traversed_total += traversed
+            if nvars < min_nvars:
+                min_nvars = nvars
+                best_system = opt_system
+        return min_nvars, best_system, traversed_total
+
+    @logged(log_enable, log_file)
+    def next_gen(self, part_res: PolynomialSystem):
+        return part_res.next_generation(self.heuristics)
+
+    @progress_bar(is_stop=True, enabled=pb_enable)
+    @logged(log_enable, log_file, is_stop=True)
+    def _final_iter(self):
+        self._nodes_traversed = 0
 
 
-def _log_append(row_list: List, hash_before, hash_after, substitution):
-    row_list.append({'from': hash_before, 'name': hash_after, 'substitution': substitution})
+# ------------------------------------------------------------------------------
+
+class ID_DLS(Algorithm):
+    def __init__(self, poly_system: PolynomialSystem,
+                 start_upper_bound: int,
+                 upper_bound: int,
+                 heuristics: Heuristics = default_score,
+                 early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
+        super().__init__(poly_system, heuristics, early_termination)
+        self.upper_bound = upper_bound
+        self.start_upper_bound = start_upper_bound
+
+    @timed
+    def quadratize(self) -> QuadratizationResult:
+        stack = deque()
+        high_depth_stack = deque()
+
+        curr_depth = 0
+        curr_max_depth = self.start_upper_bound
+        stack.append((self._system, curr_depth))
+
+        while True:
+            self._iter()
+            self._nodes_traversed += 1
+            if len(stack) == 0:
+                if len(high_depth_stack) == 0:
+                    raise RuntimeError("Limit depth passed. No quadratic system is found.")
+                stack = high_depth_stack
+                high_depth_stack = deque()
+                curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
+
+            system, curr_depth = stack.pop()
+            if (any(map(lambda f: f(self, system), self._early_termination_funs))):
+                return QuadratizationResult(None, -1, self._nodes_traversed)
+            if system.is_quadratized():
+                traversed = self._nodes_traversed
+                self._final_iter()
+                return QuadratizationResult(system, curr_depth, traversed)
+
+            if curr_depth > self.upper_bound:
+                continue
+
+            for next_system in system.next_generation(self.heuristics):
+                if curr_depth < curr_max_depth:
+                    stack.append((next_system, curr_depth + 1))
+                else:
+                    high_depth_stack.append((next_system, curr_depth + 1))
+
+    @progress_bar(is_stop=True, enabled=pb_enable)
+    @logged(log_enable, log_file, is_stop=True)
+    def _final_iter(self):
+        self._nodes_traversed = 0
+
+    @progress_bar(is_stop=False, enabled=pb_enable)
+    def _iter(self):
+        pass
 
 
-_quadratization_algorithms = \
-    {
-        "BFS"       : _bfs,
-        "Best-First": _best_first,
-        "ID-DLS"    : _iddls
-    }
+# ------------------------------------------------------------------------------
+
+def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
+    if algo._nodes_traversed >= nodes_processed:
+        return True
+    return False
+
+
+def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
+    if system.new_vars_count() >= nvars:
+        return True
+    return False
+
+
+def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
+    best_nvars, *_ = args
+    if part_res.new_vars_count() >= best_nvars - 1:
+        return True
+    return False
+
+
+def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args):
+    best_nvars, *_ = args
+    total_monoms = len(part_res.squares) + len(part_res.nonsquares)
+    lower_bound = int(math.ceil((math.sqrt(1. + 8. * total_monoms) - 1.) / 2.))
+    if lower_bound >= best_nvars - 1:  # TODO: check correctness here
+        return True
+    return False
+
+
+def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
+    best_nvars, *_ = args
+    no_C4_monoms = set()
+    sums_of_monoms = set()
+    for m in sorted(part_res.squares.union(part_res.nonsquares), key=sum, reverse=True):
+        new_sums = set()
+        to_add = True
+        for mm in no_C4_monoms:
+            s = tuple([m[i] + mm[i] for i in range(len(m))])
+            if s in sums_of_monoms:
+                to_add = False
+                break
+            new_sums.add(s)
+        if to_add:
+            sums_of_monoms = sums_of_monoms.union(new_sums)
+            no_C4_monoms.add(m)
+
+    m = len(no_C4_monoms)
+    lb = 1
+    while 4 * m ** 2 - 2 * lb * m - lb ** 2 * (lb + 1) > 0:
+        lb += 1
+    if lb >= best_nvars - 1:  # TODO: check correctness here
+        return True
+    return False
+
+
+def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
+    return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
+
+
+def with_le_degree_than_original(system: PolynomialSystem) -> bool:
+    return any(map(lambda m: monomial_deg(m) <= system.original_degree, system.vars))
