@@ -1,0 +1,92 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+<center>
+<h1>Quadratization algorithm visualization</h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 1536px;
+            height: 864px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+        #config {
+            float: left;
+            width: 400px;
+            height: 600px;
+        }
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<div id = "config"></div>
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"color": "#32cd32", "id": 0, "label": 0, "shape": "dot", "title": ""}, {"color": "#87cefa", "id": 34, "label": 34, "shape": "dot", "title": "i^2 t^3, i^2 t^4"}, {"color": "#87cefa", "id": 30, "label": 30, "shape": "dot", "title": "i^2 t^2, i^2 t^4"}, {"color": "#87cefa", "id": 65, "label": 65, "shape": "dot", "title": "i t^2, i t^3, i t^4"}, {"color": "#87cefa", "id": 52, "label": 52, "shape": "dot", "title": "i t^4, i^2 t^5, t^3"}, {"color": "#87cefa", "id": 67, "label": 67, "shape": "dot", "title": "i t^2, i t^3, i^2 t^6"}, {"color": "#87cefa", "id": 54, "label": 54, "shape": "dot", "title": "i t^2, i t^4, i^2 t^5"}, {"color": "#87cefa", "id": 11, "label": 11, "shape": "dot", "title": "i^2 t, t^2, t^4"}, {"color": "#87cefa", "id": 36, "label": 36, "shape": "dot", "title": "i^2 t, i^2 t^3, i^2 t^4"}, {"color": "#87cefa", "id": 40, "label": 40, "shape": "dot", "title": "i^2 t^5"}, {"color": "#87cefa", "id": 46, "label": 46, "shape": "dot", "title": "i t^2, i^2 t^5, i^2 t^6"}, {"color": "#87cefa", "id": 49, "label": 49, "shape": "dot", "title": "i t, i t^3, i^2 t^5"}, {"color": "#87cefa", "id": 15, "label": 15, "shape": "dot", "title": "i^2, i^2 t^2, t^3"}, {"color": "#87cefa", "id": 22, "label": 22, "shape": "dot", "title": "i^2 t^2, i^2 t^3, t^2"}, {"color": "#87cefa", "id": 56, "label": 56, "shape": "dot", "title": "i t, i^2 t^3, i^2 t^5"}, {"color": "#87cefa", "id": 58, "label": 58, "shape": "dot", "title": "i t^2, i^2 t^3, i^2 t^5"}, {"color": "#87cefa", "id": 39, "label": 39, "shape": "dot", "title": "i t, i t^2, i^2 t^4"}, {"color": "#87cefa", "id": 68, "label": 68, "shape": "dot", "title": "i t^2, i t^3, i t^7"}, {"color": "#87cefa", "id": 20, "label": 20, "shape": "dot", "title": "i^2 t, i^2 t^3, t^2"}, {"color": "#87cefa", "id": 38, "label": 38, "shape": "dot", "title": "i^2 t^2, i^2 t^3, i^2 t^4"}, {"color": "#87cefa", "id": 73, "label": 73, "shape": "dot", "title": "i t, i t^2, i t^4"}, {"color": "#87cefa", "id": 48, "label": 48, "shape": "dot", "title": "i t^2, i t^7, i^2 t^5"}, {"color": "#87cefa", "id": 8, "label": 8, "shape": "dot", "title": "i^2, t^3, t^5"}, {"color": "#87cefa", "id": 19, "label": 19, "shape": "dot", "title": "i t, i^2 t^3, t^2"}, {"color": "#87cefa", "id": 35, "label": 35, "shape": "dot", "title": "i t, i^2 t^3, i^2 t^4"}, {"color": "#87cefa", "id": 23, "label": 23, "shape": "dot", "title": "i^2 t^4"}, {"color": "#87cefa", "id": 51, "label": 51, "shape": "dot", "title": "i t^4, i^2 t^5"}, {"color": "#87cefa", "id": 14, "label": 14, "shape": "dot", "title": "i t, i^2 t^2, t^3"}, {"color": "#87cefa", "id": 3, "label": 3, "shape": "dot", "title": "i t^5, t^4"}, {"color": "#87cefa", "id": 7, "label": 7, "shape": "dot", "title": "i^2, t^2, t^5"}, {"color": "#87cefa", "id": 4, "label": 4, "shape": "dot", "title": "i t^4, i t^5"}, {"color": "#87cefa", "id": 18, "label": 18, "shape": "dot", "title": "i^2, i^2 t^3, t^2"}, {"color": "#87cefa", "id": 53, "label": 53, "shape": "dot", "title": "i t^3, i t^4, i^2 t^5"}, {"color": "#87cefa", "id": 61, "label": 61, "shape": "dot", "title": "i t^3, i^2 t^4, i^2 t^5"}, {"color": "#87cefa", "id": 9, "label": 9, "shape": "dot", "title": "i^2, t^4, t^5"}, {"color": "#87cefa", "id": 1, "label": 1, "shape": "dot", "title": "i t^5"}, {"color": "#87cefa", "id": 17, "label": 17, "shape": "dot", "title": "i^2 t^3, t^2"}, {"color": "#87cefa", "id": 25, "label": 25, "shape": "dot", "title": "i^2 t, i^2 t^4, t^2"}, {"color": "#87cefa", "id": 50, "label": 50, "shape": "dot", "title": "i^2 t^2, i^2 t^5, t^2"}, {"color": "#87cefa", "id": 64, "label": 64, "shape": "dot", "title": "i t^2, i t^3"}, {"color": "#87cefa", "id": 72, "label": 72, "shape": "dot", "title": "i t, i t^4, t^3"}, {"color": "#87cefa", "id": 62, "label": 62, "shape": "dot", "title": "i^2 t^2, i^2 t^4, i^2 t^5"}, {"color": "#87cefa", "id": 13, "label": 13, "shape": "dot", "title": "i^2 t^2, t^3"}, {"color": "#87cefa", "id": 28, "label": 28, "shape": "dot", "title": "i t, i t^3, i^2 t^4"}, {"color": "#87cefa", "id": 42, "label": 42, "shape": "dot", "title": "i^2 t, i^2 t^5, t^3"}, {"color": "#87cefa", "id": 16, "label": 16, "shape": "dot", "title": "i^2 t, i^2 t^2, t^3"}, {"color": "#87cefa", "id": 55, "label": 55, "shape": "dot", "title": "i^2 t^3, i^2 t^5"}, {"color": "#87cefa", "id": 70, "label": 70, "shape": "dot", "title": "i t, i t^3, i t^4"}, {"color": "#87cefa", "id": 10, "label": 10, "shape": "dot", "title": "i^2 t, t^4"}, {"color": "#87cefa", "id": 60, "label": 60, "shape": "dot", "title": "i^2 t^4, i^2 t^5"}, {"color": "#87cefa", "id": 47, "label": 47, "shape": "dot", "title": "i t^2, i^2 t^5, i^2 t^7"}, {"color": "#87cefa", "id": 33, "label": 33, "shape": "dot", "title": "i^2 t, i^2 t^2, i^2 t^4"}, {"color": "#87cefa", "id": 24, "label": 24, "shape": "dot", "title": "i^2, i^2 t^4, t^3"}, {"color": "#87cefa", "id": 71, "label": 71, "shape": "dot", "title": "i t, i t^4, t^2"}, {"color": "#87cefa", "id": 66, "label": 66, "shape": "dot", "title": "i t^2, i t^3, i^2 t^7"}, {"color": "#87cefa", "id": 31, "label": 31, "shape": "dot", "title": "i t, i^2 t^2, i^2 t^4"}, {"color": "#87cefa", "id": 41, "label": 41, "shape": "dot", "title": "i^2, i^2 t^5, t^4"}, {"color": "#87cefa", "id": 5, "label": 5, "shape": "dot", "title": "i t^3, i t^4, i t^5"}, {"color": "#87cefa", "id": 2, "label": 2, "shape": "dot", "title": "i t^3, i t^5"}, {"color": "#87cefa", "id": 6, "label": 6, "shape": "dot", "title": "i^2, t^5"}, {"color": "#87cefa", "id": 12, "label": 12, "shape": "dot", "title": "i^2 t, t^3, t^4"}, {"color": "#87cefa", "id": 27, "label": 27, "shape": "dot", "title": "i t^3, i^2 t^4, t^2"}, {"color": "#87cefa", "id": 37, "label": 37, "shape": "dot", "title": "i t^2, i^2 t^3, i^2 t^4"}, {"color": "#87cefa", "id": 63, "label": 63, "shape": "dot", "title": "i^2 t^3, i^2 t^4, i^2 t^5"}, {"color": "#87cefa", "id": 69, "label": 69, "shape": "dot", "title": "i t, i t^4"}, {"color": "#87cefa", "id": 57, "label": 57, "shape": "dot", "title": "i^2 t, i^2 t^3, i^2 t^5"}, {"color": "#87cefa", "id": 21, "label": 21, "shape": "dot", "title": "i t^2, i^2 t^3, t^2"}, {"color": "#87cefa", "id": 59, "label": 59, "shape": "dot", "title": "i^2 t^2, i^2 t^3, i^2 t^5"}, {"color": "#87cefa", "id": 44, "label": 44, "shape": "dot", "title": "i t^2, i t^5, i^2 t^5"}, {"color": "#87cefa", "id": 26, "label": 26, "shape": "dot", "title": "i t^3, i^2 t^4"}, {"color": "#87cefa", "id": 29, "label": 29, "shape": "dot", "title": "i t^2, i t^3, i^2 t^4"}, {"color": "#87cefa", "id": 43, "label": 43, "shape": "dot", "title": "i t^2, i^2 t^5"}, {"color": "#87cefa", "id": 45, "label": 45, "shape": "dot", "title": "i t^2, i^2 t^5, t^2"}, {"color": "#87cefa", "id": 32, "label": 32, "shape": "dot", "title": "i^2, i^2 t^2, i^2 t^4"}, {"color": "#ff0000", "id": "i t, i t^5, t^3", "label": "i t, i t^5, t^3", "shape": "dot", "title": "i t, i t^5, t^3"}, {"color": "#ff0000", "id": "i t^2, i t^5, t^2", "label": "i t^2, i t^5, t^2", "shape": "dot", "title": "i t^2, i t^5, t^2"}, {"color": "#ff0000", "id": "i t^2, i t^3, i t^5", "label": "i t^2, i t^3, i t^5", "shape": "dot", "title": "i t^2, i t^3, i t^5"}, {"color": "#ff0000", "id": "i t^3, i t^5, t^2", "label": "i t^3, i t^5, t^2", "shape": "dot", "title": "i t^3, i t^5, t^2"}, {"color": "#ff0000", "id": "i t, i t^3, i t^5", "label": "i t, i t^3, i t^5", "shape": "dot", "title": "i t, i t^3, i t^5"}, {"color": "#ff0000", "id": "i t^5, t^2, t^4", "label": "i t^5, t^2, t^4", "shape": "dot", "title": "i t^5, t^2, t^4"}, {"color": "#ff0000", "id": "i t^5, t^3, t^4", "label": "i t^5, t^3, t^4", "shape": "dot", "title": "i t^5, t^3, t^4"}, {"color": "#ff0000", "id": "i t^2, i t^4, i t^5", "label": "i t^2, i t^4, i t^5", "shape": "dot", "title": "i t^2, i t^4, i t^5"}, {"color": "#ff0000", "id": "i t^4, i t^5, t^3", "label": "i t^4, i t^5, t^3", "shape": "dot", "title": "i t^4, i t^5, t^3"}]);
+        edges = new vis.DataSet([{"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^5", "to": 1}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2, t^5", "to": 6}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "t^4, i^2 t", "to": 10}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^2, t^3", "to": 13}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^3, t^2", "to": 17}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^4", "to": 23}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^5", "to": 40}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^2, i t^3", "to": 64}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^4, i t", "to": 69}, {"arrowStrikethrough": true, "arrows": "to", "from": 34, "label": "i t", "to": 35}, {"arrowStrikethrough": true, "arrows": "to", "from": 34, "label": "i^2 t", "to": 36}, {"arrowStrikethrough": true, "arrows": "to", "from": 34, "label": "i t^2", "to": 37}, {"arrowStrikethrough": true, "arrows": "to", "from": 34, "label": "i^2 t^2", "to": 38}, {"arrowStrikethrough": true, "arrows": "to", "from": 30, "label": "i t", "to": 31}, {"arrowStrikethrough": true, "arrows": "to", "from": 30, "label": "i^2", "to": 32}, {"arrowStrikethrough": true, "arrows": "to", "from": 30, "label": "i^2 t", "to": 33}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "t^4, i^2", "to": 41}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "t^3, i^2 t", "to": 42}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "i t^2", "to": 43}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "i t^3, i t", "to": 49}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "i^2 t^2, t^2", "to": 50}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "i t^4", "to": 51}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "i^2 t^3", "to": 55}, {"arrowStrikethrough": true, "arrows": "to", "from": 40, "label": "i^2 t^4", "to": 60}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "i^2, t^3", "to": 24}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "i^2 t, t^2", "to": 25}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "i t^3", "to": 26}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "i^2 t^2", "to": 30}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "i^2 t^3", "to": 34}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "i t^2, i t", "to": 39}, {"arrowStrikethrough": true, "arrows": "to", "from": 51, "label": "t^3", "to": 52}, {"arrowStrikethrough": true, "arrows": "to", "from": 51, "label": "i t^3", "to": 53}, {"arrowStrikethrough": true, "arrows": "to", "from": 51, "label": "i t^2", "to": 54}, {"arrowStrikethrough": true, "arrows": "to", "from": 3, "label": "t^2", "to": "i t^5, t^2, t^4"}, {"arrowStrikethrough": true, "arrows": "to", "from": 3, "label": "t^3", "to": "i t^5, t^3, t^4"}, {"arrowStrikethrough": true, "arrows": "to", "from": 4, "label": "i t^3", "to": 5}, {"arrowStrikethrough": true, "arrows": "to", "from": 4, "label": "i t^2", "to": "i t^2, i t^4, i t^5"}, {"arrowStrikethrough": true, "arrows": "to", "from": 4, "label": "t^3", "to": "i t^4, i t^5, t^3"}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "i t^3", "to": 2}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "t^4", "to": 3}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "i t^4", "to": 4}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "t^3, i t", "to": "i t, i t^5, t^3"}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "i t^2, t^2", "to": "i t^2, i t^5, t^2"}, {"arrowStrikethrough": true, "arrows": "to", "from": 17, "label": "i^2", "to": 18}, {"arrowStrikethrough": true, "arrows": "to", "from": 17, "label": "i t", "to": 19}, {"arrowStrikethrough": true, "arrows": "to", "from": 17, "label": "i^2 t", "to": 20}, {"arrowStrikethrough": true, "arrows": "to", "from": 17, "label": "i t^2", "to": 21}, {"arrowStrikethrough": true, "arrows": "to", "from": 17, "label": "i^2 t^2", "to": 22}, {"arrowStrikethrough": true, "arrows": "to", "from": 64, "label": "i t^4", "to": 65}, {"arrowStrikethrough": true, "arrows": "to", "from": 64, "label": "i^2 t^7", "to": 66}, {"arrowStrikethrough": true, "arrows": "to", "from": 64, "label": "i^2 t^6", "to": 67}, {"arrowStrikethrough": true, "arrows": "to", "from": 64, "label": "i t^7", "to": 68}, {"arrowStrikethrough": true, "arrows": "to", "from": 64, "label": "i t^5", "to": "i t^2, i t^3, i t^5"}, {"arrowStrikethrough": true, "arrows": "to", "from": 13, "label": "i t", "to": 14}, {"arrowStrikethrough": true, "arrows": "to", "from": 13, "label": "i^2", "to": 15}, {"arrowStrikethrough": true, "arrows": "to", "from": 13, "label": "i^2 t", "to": 16}, {"arrowStrikethrough": true, "arrows": "to", "from": 55, "label": "i t", "to": 56}, {"arrowStrikethrough": true, "arrows": "to", "from": 55, "label": "i^2 t", "to": 57}, {"arrowStrikethrough": true, "arrows": "to", "from": 55, "label": "i t^2", "to": 58}, {"arrowStrikethrough": true, "arrows": "to", "from": 55, "label": "i^2 t^2", "to": 59}, {"arrowStrikethrough": true, "arrows": "to", "from": 10, "label": "t^2", "to": 11}, {"arrowStrikethrough": true, "arrows": "to", "from": 10, "label": "t^3", "to": 12}, {"arrowStrikethrough": true, "arrows": "to", "from": 60, "label": "i t^3", "to": 61}, {"arrowStrikethrough": true, "arrows": "to", "from": 60, "label": "i^2 t^2", "to": 62}, {"arrowStrikethrough": true, "arrows": "to", "from": 60, "label": "i^2 t^3", "to": 63}, {"arrowStrikethrough": true, "arrows": "to", "from": 2, "label": "i t^2", "to": "i t^2, i t^3, i t^5"}, {"arrowStrikethrough": true, "arrows": "to", "from": 2, "label": "t^2", "to": "i t^3, i t^5, t^2"}, {"arrowStrikethrough": true, "arrows": "to", "from": 2, "label": "i t", "to": "i t, i t^3, i t^5"}, {"arrowStrikethrough": true, "arrows": "to", "from": 6, "label": "t^2", "to": 7}, {"arrowStrikethrough": true, "arrows": "to", "from": 6, "label": "t^3", "to": 8}, {"arrowStrikethrough": true, "arrows": "to", "from": 6, "label": "t^4", "to": 9}, {"arrowStrikethrough": true, "arrows": "to", "from": 69, "label": "i t^3", "to": 70}, {"arrowStrikethrough": true, "arrows": "to", "from": 69, "label": "t^2", "to": 71}, {"arrowStrikethrough": true, "arrows": "to", "from": 69, "label": "t^3", "to": 72}, {"arrowStrikethrough": true, "arrows": "to", "from": 69, "label": "i t^2", "to": 73}, {"arrowStrikethrough": true, "arrows": "to", "from": 26, "label": "t^2", "to": 27}, {"arrowStrikethrough": true, "arrows": "to", "from": 26, "label": "i t", "to": 28}, {"arrowStrikethrough": true, "arrows": "to", "from": 26, "label": "i t^2", "to": 29}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "i t^5", "to": 44}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "t^2", "to": 45}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "i^2 t^6", "to": 46}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "i^2 t^7", "to": 47}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "i t^7", "to": 48}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {"configure": {"enabled": true}, "edges": {"color": {"inherit": true}, "smooth": {"enabled": false, "type": "continuous"}}, "layout": {"hierarchical": {"enabled": true, "levelSeparation": 315, "nodeSpacing": 245, "treeSpacing": 325, "sortMethod": "directed"}}, "interaction": {"dragNodes": true, "hideEdgesOnDrag": false, "hideNodesOnDrag": false, "keyboard": {"enabled": true}, "navigationButtons": true, "tooltipDelay": 100}, "physics": {"enabled": true, "stabilization": {"enabled": true, "fit": true, "iterations": 1000, "onlyDynamicEdges": false, "updateInterval": 50}, "hierarchicalRepulsion": {"centralGravity": 0, "springLength": 180, "springConstant": 0.15, "nodeDistance": 380}, "minVelocity": 0.75, "solver": "hierarchicalRepulsion"}};
+        
+        
+
+        
+        // if this network requires displaying the configure window,
+        // put it in its div
+        options.configure["container"] = document.getElementById("config");
+        
+
+        network = new vis.Network(container, data, options);
+
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>
