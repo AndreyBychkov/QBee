@@ -1,0 +1,92 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+<center>
+<h1>Quadratization algorithm visualization</h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 1536px;
+            height: 864px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+        #config {
+            float: left;
+            width: 400px;
+            height: 600px;
+        }
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<div id = "config"></div>
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"color": "#32cd32", "id": 0, "label": 0, "shape": "dot", "title": ""}, {"color": "#87cefa", "id": 3, "label": 3, "shape": "dot", "title": "x_0^2, x_0^2 x_1, x_1^2"}, {"color": "#87cefa", "id": 5, "label": 5, "shape": "dot", "title": "x_0^2, x_0^2 x_1^2, x_1^2"}, {"color": "#ffff66", "id": 10, "label": 10, "shape": "dot", "title": "x_0 x_1^2, x_0^2 x_1, x_1^3"}, {"color": "#87cefa", "id": 28, "label": 28, "shape": "dot", "title": "x_0 x_1^2, x_0^3 x_1, x_1^4"}, {"color": "#87cefa", "id": 6, "label": 6, "shape": "dot", "title": "x_0^2, x_0^2 x_1^3, x_1^2"}, {"color": "#87cefa", "id": 33, "label": 33, "shape": "dot", "title": "x_0 x_1, x_1^3"}, {"color": "#87cefa", "id": 34, "label": 34, "shape": "dot", "title": "x_0 x_1, x_0^2, x_1^3"}, {"color": "#87cefa", "id": 44, "label": 44, "shape": "dot", "title": "x_0 x_1^3, x_0^2 x_1^2, x_1^4"}, {"color": "#87cefa", "id": 27, "label": 27, "shape": "dot", "title": "x_0 x_1^2, x_0^3, x_1^4"}, {"color": "#ffff66", "id": 9, "label": 9, "shape": "dot", "title": "x_0 x_1^2, x_0^2 x_1, x_1^2"}, {"color": "#87cefa", "id": 2, "label": 2, "shape": "dot", "title": "x_0^2, x_1^2, x_1^3"}, {"color": "#87cefa", "id": 1, "label": 1, "shape": "dot", "title": "x_0^2, x_1^2"}, {"color": "#87cefa", "id": 32, "label": 32, "shape": "dot", "title": "x_0 x_1, x_0^3, x_1^2"}, {"color": "#87cefa", "id": 36, "label": 36, "shape": "dot", "title": "x_0^2 x_1^2"}, {"color": "#87cefa", "id": 24, "label": 24, "shape": "dot", "title": "x_0 x_1^2, x_0^2, x_1^2"}, {"color": "#87cefa", "id": 20, "label": 20, "shape": "dot", "title": "x_0 x_1^2"}, {"color": "#87cefa", "id": 48, "label": 48, "shape": "dot", "title": "x_0 x_1^4, x_0^2 x_1^2, x_0^3 x_1"}, {"color": "#87cefa", "id": 40, "label": 40, "shape": "dot", "title": "x_0^2 x_1^2, x_0^3 x_1, x_1^4"}, {"color": "#ffff66", "id": 11, "label": 11, "shape": "dot", "title": "x_0 x_1^2, x_0^2 x_1, x_1^4"}, {"color": "#87cefa", "id": 23, "label": 23, "shape": "dot", "title": "x_0 x_1^2, x_1^2"}, {"color": "#87cefa", "id": 13, "label": 13, "shape": "dot", "title": "x_0^2, x_0^2 x_1, x_1^3"}, {"color": "#87cefa", "id": 31, "label": 31, "shape": "dot", "title": "x_0 x_1, x_0^2, x_1^2"}, {"color": "#87cefa", "id": 17, "label": 17, "shape": "dot", "title": "x_0 x_1^3, x_0^2, x_0^2 x_1"}, {"color": "#87cefa", "id": 43, "label": 43, "shape": "dot", "title": "x_0 x_1^3, x_0^2 x_1^2"}, {"color": "#87cefa", "id": 14, "label": 14, "shape": "dot", "title": "x_0^2 x_1, x_0^4, x_1^3"}, {"color": "#87cefa", "id": 4, "label": 4, "shape": "dot", "title": "x_0 x_1^3, x_0^2, x_1^2"}, {"color": "#87cefa", "id": 41, "label": 41, "shape": "dot", "title": "x_0^2 x_1^2, x_0^4 x_1, x_1^4"}, {"color": "#87cefa", "id": 49, "label": 49, "shape": "dot", "title": "x_0 x_1^4, x_0^2 x_1^2, x_0^4 x_1"}, {"color": "#87cefa", "id": 45, "label": 45, "shape": "dot", "title": "x_0 x_1^3, x_0^2 x_1^2, x_1^5"}, {"color": "#87cefa", "id": 47, "label": 47, "shape": "dot", "title": "x_0 x_1^4, x_0^2 x_1^2, x_0^4"}, {"color": "#87cefa", "id": 37, "label": 37, "shape": "dot", "title": "x_0 x_1^2, x_0^2 x_1^2, x_1^2"}, {"color": "#87cefa", "id": 35, "label": 35, "shape": "dot", "title": "x_0 x_1, x_0^3, x_1^3"}, {"color": "#87cefa", "id": 22, "label": 22, "shape": "dot", "title": "x_0 x_1^2, x_0^3 x_1, x_1^3"}, {"color": "#87cefa", "id": 19, "label": 19, "shape": "dot", "title": "x_0 x_1^3, x_0^2 x_1, x_0^4"}, {"color": "#87cefa", "id": 15, "label": 15, "shape": "dot", "title": "x_0 x_1, x_0^2 x_1, x_1^2"}, {"color": "#87cefa", "id": 42, "label": 42, "shape": "dot", "title": "x_0 x_1, x_0^2 x_1^2, x_1^3"}, {"color": "#87cefa", "id": 26, "label": 26, "shape": "dot", "title": "x_0 x_1^2, x_1^4"}, {"color": "#87cefa", "id": 8, "label": 8, "shape": "dot", "title": "x_0 x_1^2, x_0^2 x_1"}, {"color": "#87cefa", "id": 29, "label": 29, "shape": "dot", "title": "x_0 x_1"}, {"color": "#87cefa", "id": 16, "label": 16, "shape": "dot", "title": "x_0 x_1^3, x_0^2 x_1"}, {"color": "#87cefa", "id": 7, "label": 7, "shape": "dot", "title": "x_0^2 x_1"}, {"color": "#87cefa", "id": 30, "label": 30, "shape": "dot", "title": "x_0 x_1, x_1^2"}, {"color": "#87cefa", "id": 46, "label": 46, "shape": "dot", "title": "x_0 x_1^4, x_0^2 x_1^2"}, {"color": "#87cefa", "id": 12, "label": 12, "shape": "dot", "title": "x_0^2 x_1, x_1^3"}, {"color": "#87cefa", "id": 25, "label": 25, "shape": "dot", "title": "x_0 x_1, x_0 x_1^2, x_1^2"}, {"color": "#87cefa", "id": 18, "label": 18, "shape": "dot", "title": "x_0 x_1^3, x_0^2 x_1, x_0^3"}, {"color": "#87cefa", "id": 21, "label": 21, "shape": "dot", "title": "x_0 x_1^2, x_1^3"}, {"color": "#87cefa", "id": 39, "label": 39, "shape": "dot", "title": "x_0^2 x_1^2, x_0^4, x_1^4"}, {"color": "#87cefa", "id": 38, "label": 38, "shape": "dot", "title": "x_0^2 x_1^2, x_1^4"}, {"color": "#ff0000", "id": "x_0^2 x_1, x_0^3, x_1^3", "label": "x_0^2 x_1, x_0^3, x_1^3", "shape": "dot", "title": "x_0^2 x_1, x_0^3, x_1^3"}, {"color": "#ff0000", "id": "x_0 x_1^2, x_0^3, x_1^3", "label": "x_0 x_1^2, x_0^3, x_1^3", "shape": "dot", "title": "x_0 x_1^2, x_0^3, x_1^3"}]);
+        edges = new vis.DataSet([{"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "x_0^2, x_1^2", "to": 1}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "x_0^2 x_1", "to": 7}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "x_0 x_1^2", "to": 20}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "x_0 x_1", "to": 29}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "x_0^2 x_1^2", "to": 36}, {"arrowStrikethrough": true, "arrows": "to", "from": 33, "label": "x_0^2", "to": 34}, {"arrowStrikethrough": true, "arrows": "to", "from": 33, "label": "x_0^3", "to": 35}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "x_1^3", "to": 2}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "x_0^2 x_1", "to": 3}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "x_0 x_1^3", "to": 4}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "x_0^2 x_1^2", "to": 5}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "x_0^2 x_1^3", "to": 6}, {"arrowStrikethrough": true, "arrows": "to", "from": 36, "label": "x_0 x_1^2, x_1^2", "to": 37}, {"arrowStrikethrough": true, "arrows": "to", "from": 36, "label": "x_1^4", "to": 38}, {"arrowStrikethrough": true, "arrows": "to", "from": 36, "label": "x_0 x_1, x_1^3", "to": 42}, {"arrowStrikethrough": true, "arrows": "to", "from": 36, "label": "x_0 x_1^3", "to": 43}, {"arrowStrikethrough": true, "arrows": "to", "from": 36, "label": "x_0 x_1^4", "to": 46}, {"arrowStrikethrough": true, "arrows": "to", "from": 20, "label": "x_1^3", "to": 21}, {"arrowStrikethrough": true, "arrows": "to", "from": 20, "label": "x_1^2", "to": 23}, {"arrowStrikethrough": true, "arrows": "to", "from": 20, "label": "x_1^4", "to": 26}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "x_0^2 x_1", "to": 9}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "x_0^2", "to": 24}, {"arrowStrikethrough": true, "arrows": "to", "from": 23, "label": "x_0 x_1", "to": 25}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "x_1^4", "to": 44}, {"arrowStrikethrough": true, "arrows": "to", "from": 43, "label": "x_1^5", "to": 45}, {"arrowStrikethrough": true, "arrows": "to", "from": 26, "label": "x_0^2 x_1", "to": 11}, {"arrowStrikethrough": true, "arrows": "to", "from": 26, "label": "x_0^3", "to": 27}, {"arrowStrikethrough": true, "arrows": "to", "from": 26, "label": "x_0^3 x_1", "to": 28}, {"arrowStrikethrough": true, "arrows": "to", "from": 8, "label": "x_1^2", "to": 9}, {"arrowStrikethrough": true, "arrows": "to", "from": 8, "label": "x_1^3", "to": 10}, {"arrowStrikethrough": true, "arrows": "to", "from": 8, "label": "x_1^4", "to": 11}, {"arrowStrikethrough": true, "arrows": "to", "from": 29, "label": "x_1^2", "to": 30}, {"arrowStrikethrough": true, "arrows": "to", "from": 29, "label": "x_1^3", "to": 33}, {"arrowStrikethrough": true, "arrows": "to", "from": 16, "label": "x_0^2", "to": 17}, {"arrowStrikethrough": true, "arrows": "to", "from": 16, "label": "x_0^3", "to": 18}, {"arrowStrikethrough": true, "arrows": "to", "from": 16, "label": "x_0^4", "to": 19}, {"arrowStrikethrough": true, "arrows": "to", "from": 7, "label": "x_0 x_1^2", "to": 8}, {"arrowStrikethrough": true, "arrows": "to", "from": 7, "label": "x_1^3", "to": 12}, {"arrowStrikethrough": true, "arrows": "to", "from": 7, "label": "x_0 x_1, x_1^2", "to": 15}, {"arrowStrikethrough": true, "arrows": "to", "from": 7, "label": "x_0 x_1^3", "to": 16}, {"arrowStrikethrough": true, "arrows": "to", "from": 30, "label": "x_0^2", "to": 31}, {"arrowStrikethrough": true, "arrows": "to", "from": 30, "label": "x_0^3", "to": 32}, {"arrowStrikethrough": true, "arrows": "to", "from": 46, "label": "x_0^4", "to": 47}, {"arrowStrikethrough": true, "arrows": "to", "from": 46, "label": "x_0^3 x_1", "to": 48}, {"arrowStrikethrough": true, "arrows": "to", "from": 46, "label": "x_0^4 x_1", "to": 49}, {"arrowStrikethrough": true, "arrows": "to", "from": 12, "label": "x_0^2", "to": 13}, {"arrowStrikethrough": true, "arrows": "to", "from": 12, "label": "x_0^4", "to": 14}, {"arrowStrikethrough": true, "arrows": "to", "from": 12, "label": "x_0^3", "to": "x_0^2 x_1, x_0^3, x_1^3"}, {"arrowStrikethrough": true, "arrows": "to", "from": 21, "label": "x_0^2 x_1", "to": 10}, {"arrowStrikethrough": true, "arrows": "to", "from": 21, "label": "x_0^3 x_1", "to": 22}, {"arrowStrikethrough": true, "arrows": "to", "from": 21, "label": "x_0^3", "to": "x_0 x_1^2, x_0^3, x_1^3"}, {"arrowStrikethrough": true, "arrows": "to", "from": 38, "label": "x_0^4", "to": 39}, {"arrowStrikethrough": true, "arrows": "to", "from": 38, "label": "x_0^3 x_1", "to": 40}, {"arrowStrikethrough": true, "arrows": "to", "from": 38, "label": "x_0^4 x_1", "to": 41}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {"configure": {"enabled": true}, "edges": {"color": {"inherit": true}, "smooth": {"enabled": false, "type": "continuous"}}, "layout": {"hierarchical": {"enabled": true, "levelSeparation": 315, "nodeSpacing": 245, "treeSpacing": 325, "sortMethod": "directed"}}, "interaction": {"dragNodes": true, "hideEdgesOnDrag": false, "hideNodesOnDrag": false, "keyboard": {"enabled": true}, "navigationButtons": true, "tooltipDelay": 100}, "physics": {"enabled": true, "stabilization": {"enabled": true, "fit": true, "iterations": 1000, "onlyDynamicEdges": false, "updateInterval": 50}, "hierarchicalRepulsion": {"centralGravity": 0, "springLength": 180, "springConstant": 0.15, "nodeDistance": 380}, "minVelocity": 0.75, "solver": "hierarchicalRepulsion"}};
+        
+        
+
+        
+        // if this network requires displaying the configure window,
+        // put it in its div
+        options.configure["container"] = document.getElementById("config");
+        
+
+        network = new vis.Network(container, data, options);
+
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>
