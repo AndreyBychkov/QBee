@@ -27,7 +27,6 @@ def hard3():
 
 
 if __name__ == '__main__':
-    reduce(add, range(10000000))  # Warmup
     system = generate_lifeware_conjecture(3)
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
     results = algo.quadratize()

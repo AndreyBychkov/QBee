@@ -3,7 +3,9 @@ import itertools
 import hashlib
 import configparser
 import pickle
+import numpy as np
 from sympy import *
+from sympy.polys.orderings import monomial_key
 from collections import deque
 from typing import Callable, List, Optional, Generator, Set
 from functools import partial, reduce
@@ -55,6 +57,15 @@ class PolynomialSystem:
             self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
         self.original_degree = max(map(monomial_deg, self.nonsquares))
 
+    @property
+    def quadratization(self):
+        return sorted(map(lambda v: monomial_to_poly(Monomial(v, self.gen_syms)).as_expr(),
+                          self.introduced_vars), key=monomial_key('grlex', self.gen_syms))
+
+    @property
+    def introduced_vars(self):
+        return tuple(filter(lambda v: monomial_deg(v) >= 2, self.vars))
+
     def add_var(self, v):
         for i in range(self.dim):
             if v[i] > 0:
@@ -87,23 +98,64 @@ class PolynomialSystem:
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
 
-    def apply_quadratizaton(self):
-        # TODO
-        new_variables = list(filter(lambda m: monomial_deg(m) >= 2, self.vars))
-
     def to_sympy(self, gens):
         # TODO: Does not work correctly with PolyElement
         return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
 
-    def __repr__(self):
-        return f"{self._introduced_variables_str()}"
+    def apply_quadratization(self):
+        """TODO: Not fully done yet"""
+        def add_introduced_equations():
+            rhs = self.rhs.copy()
+            n0 = len(rhs)
 
-    def _introduced_variables_str(self):
-        return sorted(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
-                          self._remove_free_variables(self.vars)))
+            pass
+        qvars = self._name_vars()
+        rhs = [list(v) for k, v in sorted(self.rhs.items(), key=lambda kv: kv[0])]
 
-    def _remove_free_variables(self, vars: Collection[tuple]):
-        return tuple(filter(lambda v: monomial_deg(v) >= 2, vars))
+        def quad_var_change(monom):
+            vs = self.vars
+            for v1 in vs:
+                for v2 in vs:
+                    if np.array_equal(np.array(v1) + np.array(v2), monom):
+                        return (v1, v2)
+            raise Exception("Monomial can not be represented as quadratic, but quadratization is found."
+                            " Contact developer team")
+
+        def quad_monom_to_latex(monom):
+            def to_symbol(m):
+                if any(m):
+                    return sp.Symbol(qvars[m])
+                return sp.Integer(1)
+            return latex(reduce(lambda a, b: a * b, [to_symbol(m) for m in sorted(monom)]))
+
+        for i, eq in enumerate(rhs):
+            for j, m in enumerate(eq):
+                m = list(m)
+                m[i] += 1
+                m = quad_var_change(m)
+                eq[j] = quad_monom_to_latex(m)
+        return reduce(lambda a, b: a + ' \n' + b, [reduce(lambda x, y: x + ' + ' + y, eq) for eq in rhs])
+
+    def _name_vars(self) -> dict:
+        return {**self._name_orig_vars(), **self._name_introduced_vars(), **self._name_constant_var()}
+
+    def _name_orig_vars(self):
+        def make_tuple(i: int):
+            t = [0, ] * len(self.gen_syms)
+            t[i] = 1
+            return tuple(t)
+
+        return dict([(make_tuple(i), latex(s)) for i, s in enumerate(self.gen_syms)])
+
+    def _name_constant_var(self):
+        return {(0,) * len(self.gen_syms): sp.Integer(1)}
+
+    def _name_introduced_vars(self):
+        base = 'w'
+        return dict([(v, f"{base}{i + 1}") for i, v in enumerate(self.introduced_vars)])
+
+    def __str__(self):
+        return '; '.join([latex(m) for m in self.quadratization])
 
 
 # ------------------------------------------------------------------------------
@@ -117,16 +169,13 @@ class QuadratizationResult:
         self.introduced_vars = introduced_vars
         self.nodes_traversed = nodes_traversed
 
-    def sympy_str(self, variables):
-        pass  # TODO: apply quadratization to system
-
     def __repr__(self):
         if self.system is None:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
-               f"Introduced variables: {self.system._introduced_variables_str()}\n" + \
-               f"Nodes traversed: {self.nodes_traversed}"
+               f"Nodes traversed: {self.nodes_traversed}" + \
+               f"Introduced variables: {self.system}\n"
 
 
 # ------------------------------------------------------------------------------
