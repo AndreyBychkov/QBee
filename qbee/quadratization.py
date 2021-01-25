@@ -4,6 +4,7 @@ import hashlib
 import configparser
 import pickle
 import numpy as np
+from scipy.spatial import ConvexHull, Delaunay
 from sympy import *
 from sympy.polys.orderings import monomial_key
 from collections import deque
@@ -104,11 +105,13 @@ class PolynomialSystem:
 
     def apply_quadratization(self):
         """TODO: Not fully done yet"""
+
         def add_introduced_equations():
             rhs = self.rhs.copy()
             n0 = len(rhs)
 
             pass
+
         qvars = self._name_vars()
         rhs = [list(v) for k, v in sorted(self.rhs.items(), key=lambda kv: kv[0])]
 
@@ -126,6 +129,7 @@ class PolynomialSystem:
                 if any(m):
                     return sp.Symbol(qvars[m])
                 return sp.Integer(1)
+
             return latex(reduce(lambda a, b: a * b, [to_symbol(m) for m in sorted(monom)]))
 
         for i, eq in enumerate(rhs):
@@ -174,8 +178,8 @@ class QuadratizationResult:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
-               f"Nodes traversed: {self.nodes_traversed}" + \
-               f"Introduced variables: {self.system}\n"
+               f"Nodes traversed: {self.nodes_traversed}\n" + \
+               f"Introduced variables: {self.system}"
 
 
 # ------------------------------------------------------------------------------
@@ -253,6 +257,8 @@ class BranchAndBound(Algorithm):
                  heuristics: Heuristics = default_score,
                  early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
         super().__init__(poly_system, heuristics, early_termination)
+        self.hull = Delaunay([m for eq in poly_system.rhs.values() for m in eq] + list(poly_system.vars))
+        pass
 
     @timed
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
@@ -401,6 +407,15 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     if lb >= best_nvars - 1:  # TODO: check correctness here
         return True
     return False
+
+
+def termination_by_newton_polyhedron(a: BranchAndBound, part_res: PolynomialSystem, *args):
+    def in_hull(p, hull):
+        if not p:
+            return [True, ]
+        return hull.find_simplex(p) >= 0
+
+    return not all(in_hull(part_res.introduced_vars, a.hull))
 
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
