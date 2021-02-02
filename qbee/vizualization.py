@@ -2,11 +2,13 @@ import pickle
 import pandas as pd
 import numpy as np
 import networkx as nx
-import matplotlib.pyplot as plt
 import holoviews as hv
 import tkinter as tk
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from bokeh.plotting import show
 from pyvis.network import Network
+from scipy.spatial import ConvexHull
 
 root = tk.Tk()
 
@@ -14,6 +16,23 @@ screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
 hv.extension('bokeh')
+
+
+def convex_hull_plot_3d(points):
+    points = np.asarray(points)
+    hull = ConvexHull(points)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    ax.plot(points.T[0], points.T[1], points.T[2], "ko")
+    for s in hull.simplices:
+        s = np.append(s, s[0])
+        ax.plot(points[s, 0], points[s, 1], points[s, 2], "r-")
+
+    for i in ["x", "y", "z"]:
+        eval("ax.set_{:s}label('{:s}')".format(i, i))
+
+    plt.show()
 
 
 def make_edges(df: pd.DataFrame):

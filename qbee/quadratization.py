@@ -159,7 +159,15 @@ class PolynomialSystem:
         return dict([(v, f"{base}{i + 1}") for i, v in enumerate(self.introduced_vars)])
 
     def __str__(self):
-        return '; '.join([latex(m) for m in self.quadratization])
+        return f"{self._introduced_variables_str()}"
+
+    def __repr__(self):
+        return f"{self._introduced_variables_str()}"
+
+    def _introduced_variables_str(self):
+        """Legacy compatibility str representation. TODO: refactor it"""
+        return sorted(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
+                          self.introduced_vars))
 
 
 # ------------------------------------------------------------------------------
@@ -257,8 +265,9 @@ class BranchAndBound(Algorithm):
                  heuristics: Heuristics = default_score,
                  early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
         super().__init__(poly_system, heuristics, early_termination)
-        self.hull = Delaunay([m for eq in poly_system.rhs.values() for m in eq] + list(poly_system.vars))
-        pass
+        self.hull = None
+        if len(list(poly_system.vars)[0]) > 1:
+            self.hull = Delaunay([m for eq in poly_system.rhs.values() for m in eq] + list(poly_system.vars))
 
     @timed
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:

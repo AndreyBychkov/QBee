@@ -57,7 +57,7 @@ def generate_lifeware_conjecture(n):
     return PolynomialSystem(system)
 
 
-def selkov(a, b):
+def generate_selkov(a, b):
     R, x, y = ring(['x', 'y'], QQ)
     return PolynomialSystem([-x + a * y + x ** 2 * y,
                              b - a * y - x ** 2 * y])
