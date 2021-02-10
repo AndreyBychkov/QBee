@@ -1,5 +1,4 @@
 from qbee.examples import *
-from qbee.vizualization import convex_hull_plot_3d
 
 
 def x6x4x3():
@@ -29,9 +28,8 @@ def hard3():
 
 if __name__ == '__main__':
     R, x, y = ring(['x', 'y'], QQ)
-    system = PolynomialSystem([y ** 4, x ** 2])
+    system = generate_lifeware_conjecture(6)
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    # algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_newton_polyhedron])
-    results = algo.get_quadratizations(4)
-    for r in results:
-        print(r)
+    algo.inside_newton_polyhedral_upper_bound()
+    quad_res = algo.quadratize()
+    print(quad_res)

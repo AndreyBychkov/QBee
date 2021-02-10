@@ -2,21 +2,20 @@ import pickle
 import pandas as pd
 import numpy as np
 import networkx as nx
-import holoviews as hv
 import tkinter as tk
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from bokeh.plotting import show
 from pyvis.network import Network
 from scipy.spatial import ConvexHull
 
-root = tk.Tk()
-
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-
-hv.extension('bokeh')
-
+try:
+    root = tk.Tk()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+except Exception as e:
+    screen_width = 1920
+    screen_height = 1080
+    print(f"Can not initialize display. Default screen_width={screen_width}, screen_height={screen_height}")
 
 def convex_hull_plot_3d(points):
     points = np.asarray(points)
@@ -181,17 +180,6 @@ def visualize_pyvis(log_file: str,
     }
     """)
     nt.show(output_html)
-
-
-def visualize_bokeh(log_file: str):
-    df = get_df(log_file)
-    g = hv.Graph(df)
-    g = g.relabel('Directed Graph').opts(directed=True,
-                                         node_size=10,
-                                         arrowhead_length=0.01,
-                                         width=int(screen_width * 0.8),
-                                         height=int(screen_height * 0.8), )
-    show(hv.render(g))
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ import pickle
 import pandas as pd
 import sympy as sp
 import numpy as np
+from scipy.spatial import ConvexHull
 from time import time
 from tqdm import tqdm
 from typing import Iterable, Collection, Union, Tuple
@@ -59,6 +60,7 @@ def progress_bar(func, is_stop, enabled=True):
         return wrapper
     else:
         return func
+
 
 @parametrized
 def logged(method, enabled, log_file, is_stop=False):
@@ -161,6 +163,10 @@ def make_derivative_symbol(symbol) -> sp.Symbol:
         return sp.Symbol(rf'\dot {str_symbol}')
 
 
+def monom2str(monom: tuple, gens):
+    return sp.latex(monomial_to_poly(sp.Monomial(monom, gens)).as_expr())
+
+
 def reset_progress_bar(pbar: tqdm, value):
     pbar.n = pbar.last_print_n = value
     pbar.start_t = pbar.last_print_t = time()
@@ -171,7 +177,6 @@ def refresh_and_close_progress_bars(*pbars: tqdm):
     for bar in pbars:
         bar.refresh()
         bar.close()
-
 
 def get_decompositions(monomial):
     if len(monomial) == 0:
@@ -199,6 +204,10 @@ def monomial_to_poly(monom: sp.Monomial) -> sp.Poly:
 
 def mlist_to_poly(mlist: Collection[sp.Monomial], gens) -> sp.Poly:
     return sp.Poly(reduce(add, mlist), gens)
+
+
+def get_hull_vertices(hull: ConvexHull):
+    return list(filter(lambda x: sum(x) > 1e-8, hull.points[hull.vertices].tolist()))
 
 
 def can_substitutions_quadratize(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:

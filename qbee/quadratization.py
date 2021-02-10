@@ -78,6 +78,9 @@ class PolynomialSystem:
             self.squares.add(tuple([u[i] + v[i] for i in range(self.dim)]))
         self.nonsquares = set(filter(lambda s: s not in self.squares, self.nonsquares))
 
+    def copy(self):
+        return pickle.loads(pickle.dumps(self, -1))
+
     def is_quadratized(self):
         return not self.nonsquares
 
@@ -89,7 +92,7 @@ class PolynomialSystem:
             return list()
         new_gen = []
         for d in get_decompositions(self.get_smallest_nonsquare()):
-            c = pickle.loads(pickle.dumps(self, -1))
+            c = self.copy()
             for v in d:
                 c.add_var(v)
             new_gen.append(c)
@@ -166,8 +169,7 @@ class PolynomialSystem:
 
     def _introduced_variables_str(self):
         """Legacy compatibility str representation. TODO: refactor it"""
-        return sorted(map(lambda v: latex(monomial_to_poly(Monomial(v, self.gen_syms)).as_expr()),
-                          self.introduced_vars))
+        return sorted(map(partial(monom2str, gens=self.gen_syms), self.introduced_vars))
 
 
 # ------------------------------------------------------------------------------
@@ -205,6 +207,16 @@ class Algorithm:
         self._early_termination_funs = list(early_termination) if early_termination is not None else [
             lambda a, b, *_: False]
         self._nodes_traversed = 0
+
+        self.hull: Optional[ConvexHull] = None
+        if len(list(poly_system.vars)[0]) > 1:
+            points = list()
+            for i, eq in poly_system.rhs.items():
+                for m in eq:
+                    new_m = list(m)
+                    new_m[i] += 1
+                    points.append(tuple(new_m))
+            self.hull = ConvexHull(points + list(poly_system.vars))
 
     def quadratize(self) -> QuadratizationResult:
         pass
@@ -261,13 +273,34 @@ class Algorithm:
 # ------------------------------------------------------------------------------
 
 class BranchAndBound(Algorithm):
-    def __init__(self, poly_system: PolynomialSystem,
-                 heuristics: Heuristics = default_score,
-                 early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
-        super().__init__(poly_system, heuristics, early_termination)
-        self.hull = None
-        if len(list(poly_system.vars)[0]) > 1:
-            self.hull = Delaunay([m for eq in poly_system.rhs.values() for m in eq] + list(poly_system.vars))
+
+    def newton_polyhedral_vertices_upper_bound(self):
+        system = self._system.copy()
+        hull_vars = list(map(tuple, self.hull.points.astype(int)))
+        hull_vars = list(filter(lambda v: v not in system.vars, hull_vars))
+        for v in hull_vars:
+            system.add_var(v)
+        algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
+        quad_res = algo.quadratize()
+        upper_bound = quad_res.introduced_vars
+        if upper_bound != math.inf:
+            self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
+            print(f"Upper bound for quadratization is {upper_bound}")
+        else:
+            print(f"Upper bound is not found")
+
+    def inside_newton_polyhedral_upper_bound(self):
+        system = self._system.copy()
+        algo = BranchAndBound(system, aeqd_score,
+                              [termination_by_best_nvars,
+                               partial(termination_by_newton_polyhedron, hull=Delaunay(self.hull.points))])
+        res = algo.quadratize()
+        upper_bound = res.introduced_vars
+        if upper_bound != math.inf:
+            self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
+            print(f"Upper bound for quadratization is {upper_bound}")
+        else:
+            print(f"Upper bound is not found")
 
     @timed
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
@@ -418,13 +451,11 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     return False
 
 
-def termination_by_newton_polyhedron(a: BranchAndBound, part_res: PolynomialSystem, *args):
-    def in_hull(p, hull):
-        if not p:
-            return [True, ]
-        return hull.find_simplex(p) >= 0
+def termination_by_newton_polyhedron(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
+    if not part_res.introduced_vars:
+        return False
 
-    return not all(in_hull(part_res.introduced_vars, a.hull))
+    return not all(hull.find_simplex(part_res.introduced_vars) >= 0)
 
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
