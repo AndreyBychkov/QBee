@@ -10,3 +10,4 @@ pytest-benchmark
 memory_profiler
 pyvis
 termcolor
+pyarrow
