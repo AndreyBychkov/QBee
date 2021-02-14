@@ -146,7 +146,8 @@ def visualize_pyvis(log_file: str,
               "enabled": true,
               "levelSeparation": 315,
               "nodeSpacing": 245,
-              "treeSpacing": 325
+              "treeSpacing": 325,
+              "sortMethod": "directed"
             }
         },
         "interaction": {
