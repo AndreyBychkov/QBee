@@ -58,8 +58,8 @@
         
 
         // parsing and collecting nodes and edges from the python
-        nodes = new vis.DataSet([{"color": "#32cd32", "id": 0, "label": 0, "shape": "dot", "title": ""}, {"color": "#87cefa", "id": 4, "label": 4, "shape": "dot", "title": "i^2 t^6"}, {"color": "#87cefa", "id": 1, "label": 1, "shape": "dot", "title": "i t^6"}, {"color": "#87cefa", "id": 2, "label": 2, "shape": "dot", "title": "i t^3"}, {"color": "#87cefa", "id": 3, "label": 3, "shape": "dot", "title": "i^2 t^5"}]);
-        edges = new vis.DataSet([{"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^6", "to": 1}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^3", "to": 2}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^5", "to": 3}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^6", "to": 4}]);
+        nodes = new vis.DataSet([{"color": "#32cd32", "id": 0, "label": 0, "shape": "dot", "title": ""}, {"color": "#87cefa", "id": 2, "label": 2, "shape": "dot", "title": "i t^3"}, {"color": "#87cefa", "id": 1, "label": 1, "shape": "dot", "title": "i t^6"}, {"color": "#87cefa", "id": 3, "label": 3, "shape": "dot", "title": "i^2 t^5"}, {"color": "#87cefa", "id": 4, "label": 4, "shape": "dot", "title": "i^2 t^6"}, {"color": "#ff0000", "id": "i t^3, i t^6, t^2", "label": "i t^3, i t^6, t^2", "shape": "dot", "title": "i t^3, i t^6, t^2"}]);
+        edges = new vis.DataSet([{"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^6", "to": 1}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i t^3", "to": 2}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^5", "to": 3}, {"arrowStrikethrough": true, "arrows": "to", "from": 0, "label": "i^2 t^6", "to": 4}, {"arrowStrikethrough": true, "arrows": "to", "from": 1, "label": "t^2, i t^3", "to": "i t^3, i t^6, t^2"}]);
 
         // adding nodes and edges to the graph
         data = {nodes: nodes, edges: edges};

@@ -306,6 +306,7 @@ class BranchAndBound(Algorithm):
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
         nvars, opt_system, traversed = self._bnb_step(self._system, math.inf, cond)
         self._final_iter()
+        self._save_results(opt_system)
         return QuadratizationResult(opt_system, nvars, traversed)
 
     @progress_bar(is_stop=False, enabled=pb_enable)
@@ -335,6 +336,10 @@ class BranchAndBound(Algorithm):
     @logged(log_enable, log_file, is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
+
+    @dump_results(enabled=True, log_file=quad_systems_file)
+    def _save_results(self, opt_system):
+        return [opt_system, ]
 
 
 # ------------------------------------------------------------------------------
