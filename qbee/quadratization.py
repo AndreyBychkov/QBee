@@ -92,7 +92,7 @@ class PolynomialSystem:
             return list()
         new_gen = []
         for d in get_decompositions(self.get_smallest_nonsquare()):
-            c = self.copy()
+            c = pickle.loads(pickle.dumps(self, -1))  # inline self.copy for speedup
             for v in d:
                 c.add_var(v)
             new_gen.append(c)
@@ -214,7 +214,7 @@ class Algorithm:
             for i, eq in poly_system.rhs.items():
                 for m in eq:
                     new_m = list(m)
-                    new_m[i] += 1
+                    new_m[i] = new_m[i] if new_m[i] > 0 else 0
                     points.append(tuple(new_m))
             self.hull = ConvexHull(points + list(poly_system.vars))
 
