@@ -218,6 +218,19 @@ class Algorithm:
                     points.append(tuple(new_m))
             self.hull = ConvexHull(points + list(poly_system.vars))
 
+        self.weak_hull: Optional[ConvexHull] = None
+        if self.hull:
+            points = [(0, ) * poly_system.dim, ]
+            max_order = max(list(map(sum, self.hull.points.astype(int).tolist())))
+            for v in range(poly_system.dim):
+                p = [0] * poly_system.dim
+                p[v] = max_order
+                points.append(tuple(p))
+            self.weak_hull = ConvexHull(points)
+            self.attach_early_termination(partial(termination_by_newton_polyhedron, hull=Delaunay(self.weak_hull.points)))
+            print(f"Weak convex hull is is set to order = {max_order}")
+
+
     def quadratize(self) -> QuadratizationResult:
         pass
 
