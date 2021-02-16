@@ -201,7 +201,8 @@ class Algorithm:
     def __init__(self,
                  poly_system: PolynomialSystem,
                  heuristics: Heuristics = default_score,
-                 early_termination: Collection[EarlyTermination] = None):
+                 early_termination: Collection[EarlyTermination] = None,
+                 use_weak_hull=True):
         self._system = poly_system
         self._heuristics = heuristics
         self._early_termination_funs = list(early_termination) if early_termination is not None else [
@@ -219,9 +220,9 @@ class Algorithm:
             self.hull = ConvexHull(points + list(poly_system.vars))
 
         self.weak_hull: Optional[ConvexHull] = None
-        if self.hull:
+        if self.hull and use_weak_hull:
             points = [(0, ) * poly_system.dim, ]
-            max_order = max(list(map(sum, self.hull.points.astype(int).tolist())))
+            max_order = max(list(map(sum, self.hull.points[self.hull.vertices].astype(int).tolist())))
             for v in range(poly_system.dim):
                 p = [0] * poly_system.dim
                 p[v] = max_order
@@ -289,7 +290,7 @@ class BranchAndBound(Algorithm):
 
     def newton_polyhedral_vertices_upper_bound(self):
         system = self._system.copy()
-        hull_vars = list(map(tuple, self.hull.points.astype(int)))
+        hull_vars = list(map(tuple, self.hull.points[self.hull.vertices].astype(int)))
         hull_vars = list(filter(lambda v: v not in system.vars, hull_vars))
         for v in hull_vars:
             system.add_var(v)
