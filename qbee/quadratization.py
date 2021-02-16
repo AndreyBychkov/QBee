@@ -228,7 +228,7 @@ class Algorithm:
                 p[v] = max_order
                 points.append(tuple(p))
             self.weak_hull = ConvexHull(points)
-            self.attach_early_termination(partial(termination_by_newton_polyhedron, hull=Delaunay(self.weak_hull.points)))
+            self.attach_early_termination(partial(termination_by_newton_polygon, hull=Delaunay(self.weak_hull.points)))
             print(f"Weak convex hull is is set to order = {max_order}")
 
 
@@ -288,7 +288,7 @@ class Algorithm:
 
 class BranchAndBound(Algorithm):
 
-    def newton_polyhedral_vertices_upper_bound(self):
+    def newton_polygon_vertices_upper_bound(self):
         system = self._system.copy()
         hull_vars = list(map(tuple, self.hull.points[self.hull.vertices].astype(int)))
         hull_vars = list(filter(lambda v: v not in system.vars, hull_vars))
@@ -303,11 +303,11 @@ class BranchAndBound(Algorithm):
         else:
             print(f"Upper bound is not found")
 
-    def inside_newton_polyhedral_upper_bound(self):
+    def inside_newton_polygon_upper_bound(self):
         system = self._system.copy()
         algo = BranchAndBound(system, aeqd_score,
                               [termination_by_best_nvars,
-                               partial(termination_by_newton_polyhedron, hull=Delaunay(self.hull.points))])
+                               partial(termination_by_newton_polygon, hull=Delaunay(self.hull.points))])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
         if upper_bound != math.inf:
@@ -470,7 +470,7 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     return False
 
 
-def termination_by_newton_polyhedron(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
+def termination_by_newton_polygon(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
     if not part_res.introduced_vars:
         return False
 

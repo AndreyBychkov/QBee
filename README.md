@@ -120,6 +120,22 @@ Nodes traversed: 17
 
 Introduced variables are optimal monomial quadratization.
 
+#### Setting up upper bound
+
+You can set up an upper bound for a search by using 2 different methods:
+
+1. Search for suboptimal quadratization inside Newton polygon of the given system
+```python
+algo = BranchAndBound(...)
+algo.inside_newton_polygon_upper_bound()
+```
+2. Search for suboptimal quadratization by partially building quadratization from vertices of Newton polygon of the given system.
+```python
+algo = BranchAndBound(...)
+algo.newton_polygon_vertices_upper_bound()
+```
+
+
 ### 4. Work inside of package
 
 #### 1. Configuration

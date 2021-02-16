@@ -2,7 +2,7 @@
 
 ---
 
-| System   |      Lifeware      |  QBee | Qbee in Newton Polyhedral | QBee with Newton Polyhedral vertices |
+| System   |      Lifeware      |  QBee | Qbee inside of Newton Polygon | QBee with Newton Polygon vertices |
 |:----------:|:-------------:|:------:|:-------:|:-------:|
 | Circular 3 |  83ms | 6ms | 13ms | 12ms |
 | Circular 4 |  107ms | 105ms | 155ms | 129ms |

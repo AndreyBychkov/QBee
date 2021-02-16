@@ -41,6 +41,6 @@ if __name__ == '__main__':
     R, x, y = ring(['x', 'y'], QQ)
     system = generate_lifeware_conjecture(6)
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    algo.newton_polyhedral_vertices_upper_bound()
+    algo.newton_polygon_vertices_upper_bound()
     quad_res = algo.quadratize()
     print(quad_res)
