@@ -10,7 +10,7 @@
 | Circular 6 | 37.8s | 3.23s | 3.42s | 1.94s |
 | Circular 7 | nt | 122ms | 325ms | 347ms |
 | Circular 8 | nt | 41s | 42.5s | 23.4s |
-| Hard 2 | ? | ? | na | 40.4s |
+| Hard 2 | ? | 35.5s | na | 40.4s |
 | Hard 3 | 1159ms* | 27.1s | na | 22.1s |
 | Hard 4 | 20s* | 375.4s | na | 317s |
 | Hard 5 | ? | 918s | na | 372s |

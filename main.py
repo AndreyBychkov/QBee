@@ -39,7 +39,7 @@ def hard3():
 if __name__ == '__main__':
     top_priority()
     R, x, y = ring(['x', 'y'], QQ)
-    system = generate_lifeware_conjecture(6)
+    system = generate_hard(2)
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
     algo.newton_polygon_vertices_upper_bound()
     quad_res = algo.quadratize()
