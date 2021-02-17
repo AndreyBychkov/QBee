@@ -202,12 +202,13 @@ class Algorithm:
                  poly_system: PolynomialSystem,
                  heuristics: Heuristics = default_score,
                  early_termination: Collection[EarlyTermination] = None,
-                 use_weak_hull=True):
+                 use_weak_hull=False):
         self._system = poly_system
         self._heuristics = heuristics
         self._early_termination_funs = list(early_termination) if early_termination is not None else [
             lambda a, b, *_: False]
         self._nodes_traversed = 0
+        self.preliminary_upper_bound = math.inf
 
         self.hull: Optional[ConvexHull] = None
         if len(list(poly_system.vars)[0]) > 1:
@@ -218,6 +219,10 @@ class Algorithm:
                     new_m[i] = new_m[i] if new_m[i] > 0 else 0
                     points.append(tuple(new_m))
             self.hull = ConvexHull(points + list(poly_system.vars))
+            self.dominating_monomials = set()
+            for m in points + list(poly_system.vars):
+                if not dominated(m, self.dominating_monomials):
+                    self.dominating_monomials.add(m)
 
         self.weak_hull: Optional[ConvexHull] = None
         if self.hull and use_weak_hull:
@@ -288,6 +293,20 @@ class Algorithm:
 
 class BranchAndBound(Algorithm):
 
+    def domination_upper_bound(self):
+        system = self._system.copy()
+        algo = BranchAndBound(system, aeqd_score,
+                              [termination_by_best_nvars,
+                               partial(termination_by_domination, dominators=self.dominating_monomials)])
+        res = algo.quadratize()
+        upper_bound = res.introduced_vars
+        self.preliminary_upper_bound = upper_bound
+        if upper_bound != math.inf:
+            self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
+            print(f"Upper bound for quadratization is {upper_bound}")
+        else:
+            print(f"Upper bound is not found")
+
     def newton_polygon_vertices_upper_bound(self):
         system = self._system.copy()
         hull_vars = list(map(tuple, self.hull.points[self.hull.vertices].astype(int)))
@@ -310,6 +329,7 @@ class BranchAndBound(Algorithm):
                                partial(termination_by_newton_polygon, hull=Delaunay(self.hull.points))])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
+        self.preliminary_upper_bound = upper_bound
         if upper_bound != math.inf:
             self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
             print(f"Upper bound for quadratization is {upper_bound}")
@@ -318,7 +338,7 @@ class BranchAndBound(Algorithm):
 
     @timed
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
-        nvars, opt_system, traversed = self._bnb_step(self._system, math.inf, cond)
+        nvars, opt_system, traversed = self._bnb_step(self._system, self.preliminary_upper_bound, cond)
         self._final_iter()
         self._save_results(opt_system)
         return QuadratizationResult(opt_system, nvars, traversed)
@@ -443,15 +463,44 @@ def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args)
         return True
     return False
 
+def termination_by_square_bound_refined(a: Algorithm, part_res: PolynomialSystem, *args):
+    best_nvars, *_ = args
+
+    degree_one_monomials = dict()
+    for ns in part_res.nonsquares:
+        for v in part_res.vars:
+            diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
+            if not any([x < 0 for x in diff]):
+                if diff in degree_one_monomials:
+                    degree_one_monomials[diff] += 1
+                else:
+                    degree_one_monomials[diff] = 1
+    degree_one_count = sorted(degree_one_monomials.values(), reverse=True)
+
+    needed_new_vars = 0
+    degree_two_monoms = len(part_res.nonsquares)
+    while True:
+        if needed_new_vars < len(degree_one_count):
+            degree_two_monoms -= degree_one_count[needed_new_vars]
+        needed_new_vars += 1
+        if degree_two_monoms <= (needed_new_vars * (needed_new_vars + 1)) // 2:
+            break
+
+    lower_bound = part_res.new_vars_count() + needed_new_vars
+
+    if lower_bound >= best_nvars:
+        return True
+    return False
 
 def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
+
     no_C4_monoms = set()
     sums_of_monoms = set()
-    for m in sorted(part_res.squares.union(part_res.nonsquares), key=sum, reverse=True):
+    for m in sorted(part_res.nonsquares, key=sum, reverse=True):
         new_sums = set()
         to_add = True
-        for mm in no_C4_monoms:
+        for mm in no_C4_monoms.union(set(m)):
             s = tuple([m[i] + mm[i] for i in range(len(m))])
             if s in sums_of_monoms:
                 to_add = False
@@ -461,13 +510,29 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
             sums_of_monoms = sums_of_monoms.union(new_sums)
             no_C4_monoms.add(m)
 
-    m = len(no_C4_monoms)
-    lb = 1
-    while 4 * m ** 2 - 2 * lb * m - lb ** 2 * (lb + 1) > 0:
-        lb += 1
-    if lb >= best_nvars - 1:  # TODO: check correctness here
-        return True
+    no_C4_edges = len(no_C4_monoms)
+
+    degree_one_monomials = dict()
+    for ns in part_res.nonsquares:
+        for v in part_res.vars:
+            diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
+            if not any([x < 0 for x in diff]):
+                if diff in degree_one_monomials:
+                    degree_one_monomials[diff] += 1
+                else:
+                    degree_one_monomials[diff] = 1
+    degree_one_count = sorted(degree_one_monomials.values(), reverse=True)
+
+    needed_new_vars = 0
+    while True:
+        if needed_new_vars < len(degree_one_count):
+            no_C4_edges -= degree_one_count[needed_new_vars]
+        needed_new_vars += 1
+        if degree_two_monoms <= 10000:
+            break
+
     return False
+
 
 
 def termination_by_newton_polygon(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
@@ -476,6 +541,11 @@ def termination_by_newton_polygon(a: BranchAndBound, part_res: PolynomialSystem,
 
     return not all(hull.find_simplex(part_res.introduced_vars) >= 0)
 
+def termination_by_domination(a: BranchAndBound, part_res: PolynomialSystem, *args, dominators):
+    if not part_res.introduced_vars:
+        return False
+
+    return not all([dominated(m, dominators) for m in part_res.introduced_vars])
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))

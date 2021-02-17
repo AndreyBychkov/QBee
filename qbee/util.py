@@ -234,3 +234,13 @@ def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
 
 def _can_quad_0(monom: sp.Monomial) -> bool:
     return monomial_deg(monom) == 0
+
+def dominated(monom, monom_set):
+    """
+    Returns true iff the monom is coordinate-wise <=
+    than one of the monoms in the set
+    """
+    for m in monom_set:
+        if all([monom[i] <= m[i] for i in range(len(m))]):
+            return True
+    return False
