@@ -297,6 +297,7 @@ class BranchAndBound(Algorithm):
         system = self._system.copy()
         algo = BranchAndBound(system, aeqd_score,
                               [termination_by_best_nvars,
+                               termination_by_square_bound,
                                partial(termination_by_domination, dominators=self.dominating_monomials)])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
@@ -454,16 +455,7 @@ def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
         return True
     return False
 
-
 def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args):
-    best_nvars, *_ = args
-    total_monoms = len(part_res.squares) + len(part_res.nonsquares)
-    lower_bound = int(math.ceil((math.sqrt(1. + 8. * total_monoms) - 1.) / 2.))
-    if lower_bound >= best_nvars - 1:  # TODO: check correctness here
-        return True
-    return False
-
-def termination_by_square_bound_refined(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
 
     degree_one_monomials = dict()
@@ -492,6 +484,20 @@ def termination_by_square_bound_refined(a: Algorithm, part_res: PolynomialSystem
         return True
     return False
 
+# the (i, j)-th element is the maximal number of edges in a graph
+# on i vertices with at most j loops without a four-cycle
+# the first items in each row can be checked against Thm 2 from https://doi.org/10.1002/jgt.3190130107
+MAX_C4_FREE_EDGES = [
+    [0],
+    [0, 1],
+    [1, 2, 2],
+    [3, 3, 4, 4],
+    [4, 5, 5, 6, 6],
+    [6, 6, 7, 7, 8, 8],
+    [7, 8, 9, 9, 9, 10, 10],
+    [9, 10, 11, 12, 12, 12, 12, 12]
+]
+
 def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
 
@@ -500,7 +506,7 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     for m in sorted(part_res.nonsquares, key=sum, reverse=True):
         new_sums = set()
         to_add = True
-        for mm in no_C4_monoms.union(set(m)):
+        for mm in no_C4_monoms.union(set([m])):
             s = tuple([m[i] + mm[i] for i in range(len(m))])
             if s in sums_of_monoms:
                 to_add = False
@@ -511,9 +517,10 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
             no_C4_monoms.add(m)
 
     no_C4_edges = len(no_C4_monoms)
+    max_loops = sum([1 for m in no_C4_monoms if all([i % 2 == 0 for i in m])])
 
     degree_one_monomials = dict()
-    for ns in part_res.nonsquares:
+    for ns in no_C4_monoms:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
             if not any([x < 0 for x in diff]):
@@ -528,8 +535,15 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
         if needed_new_vars < len(degree_one_count):
             no_C4_edges -= degree_one_count[needed_new_vars]
         needed_new_vars += 1
-        if degree_two_monoms <= 10000:
+        if needed_new_vars >= len(MAX_C4_FREE_EDGES):
             break
+        if no_C4_edges <= MAX_C4_FREE_EDGES[needed_new_vars][min(max_loops, needed_new_vars)]:
+            break
+
+    lower_bound = part_res.new_vars_count() + needed_new_vars
+
+    if lower_bound >= best_nvars:
+        return True
 
     return False
 
