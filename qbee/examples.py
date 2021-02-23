@@ -3,6 +3,7 @@ from functools import partial, reduce
 from random import randrange
 from .quadratization import *
 
+
 def generate_x_plus_1(deg):
     R, x = ring(['x'], QQ)
     return PolynomialSystem([(x + 1) ** deg])
@@ -61,12 +62,18 @@ def generate_selkov(a, b):
     return PolynomialSystem([-x + a * y + x ** 2 * y,
                              b - a * y - x ** 2 * y])
 
+
+def generate_cubic_cycle(n):
+    variables = ring([f"x{i}" for i in range(n)], QQ)[1:]
+    system = []
+    for i in range(n):
+        system.append(variables[(i + 1) % n] ** 3)
+    return PolynomialSystem(system)
+
+
 if __name__ == "__main__":
     system = generate_lifeware_conjecture(3)
-    #algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_square_bound_refined])
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
     algo.domination_upper_bound()
-    #algo.inside_newton_polygon_upper_bound()
     quad_res = algo.quadratize()
     print(quad_res)
-

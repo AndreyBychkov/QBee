@@ -226,7 +226,7 @@ class Algorithm:
 
         self.weak_hull: Optional[ConvexHull] = None
         if self.hull and use_weak_hull:
-            points = [(0, ) * poly_system.dim, ]
+            points = [(0,) * poly_system.dim, ]
             max_order = max(list(map(sum, self.hull.points[self.hull.vertices].astype(int).tolist())))
             for v in range(poly_system.dim):
                 p = [0] * poly_system.dim
@@ -235,7 +235,6 @@ class Algorithm:
             self.weak_hull = ConvexHull(points)
             self.attach_early_termination(partial(termination_by_newton_polygon, hull=Delaunay(self.weak_hull.points)))
             print(f"Weak convex hull is is set to order = {max_order}")
-
 
     def quadratize(self) -> QuadratizationResult:
         pass
@@ -298,15 +297,13 @@ class BranchAndBound(Algorithm):
         algo = BranchAndBound(system, aeqd_score,
                               [termination_by_best_nvars,
                                termination_by_square_bound,
+                               termination_by_C4_bound,
                                partial(termination_by_domination, dominators=self.dominating_monomials)])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
         self.preliminary_upper_bound = upper_bound
         if upper_bound != math.inf:
             self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
-            print(f"Upper bound for quadratization is {upper_bound}")
-        else:
-            print(f"Upper bound is not found")
 
     def newton_polygon_vertices_upper_bound(self):
         system = self._system.copy()
@@ -319,9 +316,6 @@ class BranchAndBound(Algorithm):
         upper_bound = quad_res.introduced_vars
         if upper_bound != math.inf:
             self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
-            print(f"Upper bound for quadratization is {upper_bound}")
-        else:
-            print(f"Upper bound is not found")
 
     def inside_newton_polygon_upper_bound(self):
         system = self._system.copy()
@@ -333,11 +327,8 @@ class BranchAndBound(Algorithm):
         self.preliminary_upper_bound = upper_bound
         if upper_bound != math.inf:
             self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
-            print(f"Upper bound for quadratization is {upper_bound}")
-        else:
-            print(f"Upper bound is not found")
 
-    @timed
+    @timed(enabled=pb_enable)
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
         nvars, opt_system, traversed = self._bnb_step(self._system, self.preliminary_upper_bound, cond)
         self._final_iter()
@@ -389,7 +380,7 @@ class ID_DLS(Algorithm):
         self.upper_bound = upper_bound
         self.start_upper_bound = start_upper_bound
 
-    @timed
+    @timed(enabled=pb_enable)
     def quadratize(self) -> QuadratizationResult:
         stack = deque()
         high_depth_stack = deque()
@@ -455,6 +446,7 @@ def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
         return True
     return False
 
+
 def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
 
@@ -484,6 +476,7 @@ def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args)
         return True
     return False
 
+
 # the (i, j)-th element is the maximal number of edges in a graph
 # on i vertices with at most j loops without a four-cycle
 # the first items in each row can be checked against Thm 2 from https://doi.org/10.1002/jgt.3190130107
@@ -497,6 +490,7 @@ MAX_C4_FREE_EDGES = [
     [7, 8, 9, 9, 9, 10, 10],
     [9, 10, 11, 12, 12, 12, 12, 12]
 ]
+
 
 def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
@@ -548,18 +542,19 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     return False
 
 
-
 def termination_by_newton_polygon(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
     if not part_res.introduced_vars:
         return False
 
     return not all(hull.find_simplex(part_res.introduced_vars) >= 0)
 
+
 def termination_by_domination(a: BranchAndBound, part_res: PolynomialSystem, *args, dominators):
     if not part_res.introduced_vars:
         return False
 
     return not all([dominated(m, dominators) for m in part_res.introduced_vars])
+
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))

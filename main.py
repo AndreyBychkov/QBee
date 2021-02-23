@@ -1,46 +1,83 @@
 from qbee.examples import *
-def top_priority():
-    """ Set the priority of the process to above-normal."""
-    import os
-    if os.name == 'posix':
-        os.nice(19)
-    else:
-        import win32api, win32process, win32con
+from qbee.util import top_priority
+from qbee.experiments import make_benchmark_report
 
-        pid = win32api.GetCurrentProcessId()
-        handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
-        win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
 
-def x6x4x3():
-    R, x = sp.ring('x', sp.QQ)
-    system = PolynomialSystem([x ** 6 + x ** 4 + x ** 3])
+
+def quad(system):
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    results = algo.get_optimal_quadratizations()
-    for res in results:
-        print(res)
+    start_t = time()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
 
 
-def circ4():
-    system = generate_circular(4)
+def quad_square_term(system):
+    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_square_bound])
+    start_t = time()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
+
+
+def quad_C4_term(system):
+    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_C4_bound])
+    start_t = time()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
+
+
+def quad_square_C4_term(system):
+    algo = BranchAndBound(system, aeqd_score,
+                          [termination_by_best_nvars, termination_by_C4_bound, termination_by_square_bound])
+    start_t = time()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
+
+
+def quad_dom(system):
     algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    results = algo.get_optimal_quadratizations()
-    for res in results:
-        print(res)
+    start_t = time()
+    algo.domination_upper_bound()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
 
 
-def hard3():
-    system = generate_hard(3)
-    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    results = algo.get_optimal_quadratizations()
-    for res in results:
-        print(res)
+def quad_dom_square_term(system):
+    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_square_bound])
+    start_t = time()
+    algo.domination_upper_bound()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
+
+
+def quad_dom_C4_term(system):
+    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_C4_bound])
+    start_t = time()
+    algo.domination_upper_bound()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
+
+
+def quad_dom_square_C4_term(system):
+    algo = BranchAndBound(system, aeqd_score,
+                          [termination_by_best_nvars, termination_by_C4_bound, termination_by_square_bound])
+    start_t = time()
+    algo.domination_upper_bound()
+    algo.quadratize()
+    end_t = time()
+    return end_t - start_t
 
 
 if __name__ == '__main__':
-    top_priority()
-    R, x, y = ring(['x', 'y'], QQ)
-    system = generate_hard(2)
-    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    algo.newton_polygon_vertices_upper_bound()
-    quad_res = algo.quadratize()
-    print(quad_res)
+    make_benchmark_report({"Default": quad_dom,
+                           "Square bound": quad_dom_square_term,
+                           "C4 bound": quad_dom_C4_term,
+                           "Square + C4 bounds": quad_dom_square_C4_term},
+                          n_samples=20, use_multiprocessing=True,
+                          title="Quadratization with domination and C4 report")

@@ -22,7 +22,8 @@ def parametrized(dec):
     return layer
 
 
-def timed(func):
+@parametrized
+def timed(func, enabled=True):
     def wrapper(*args, **kwargs):
         start_time = time()
         res = func(*args, **kwargs)
@@ -31,7 +32,10 @@ def timed(func):
         print(f"Elapsed time: {np.round(end_time - start_time, 3)}s.")
         return res
 
-    return wrapper
+    if enabled:
+        return wrapper
+    else:
+        return func
 
 
 __log_pb_evaluated = False
@@ -178,6 +182,7 @@ def refresh_and_close_progress_bars(*pbars: tqdm):
         bar.refresh()
         bar.close()
 
+
 def get_decompositions(monomial):
     if len(monomial) == 0:
         return {(tuple(), tuple())}
@@ -235,6 +240,7 @@ def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
 def _can_quad_0(monom: sp.Monomial) -> bool:
     return monomial_deg(monom) == 0
 
+
 def dominated(monom, monom_set):
     """
     Returns true iff the monom is coordinate-wise <=
@@ -244,3 +250,16 @@ def dominated(monom, monom_set):
         if all([monom[i] <= m[i] for i in range(len(m))]):
             return True
     return False
+
+
+def top_priority():
+    """ Set the priority of the process to above-normal."""
+    import os
+    if os.name == 'posix':
+        os.nice(19)
+    else:
+        import win32api, win32process, win32con
+
+        pid = win32api.GetCurrentProcessId()
+        handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
+        win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
