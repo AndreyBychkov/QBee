@@ -503,7 +503,9 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
 
     no_C4_monoms = set()
     sums_of_monoms = set()
-    for m in sorted(part_res.nonsquares, key=sum, reverse=True):
+    ns_ordered = sorted([m for m in part_res.nonsquares if sum(m) % 2 == 1], key=sum, reverse=True) + \
+            sorted([m for m in part_res.nonsquares if sum(m) % 2 == 0], key=sum, reverse=True)
+    for m in ns_ordered:
         new_sums = set()
         to_add = True
         for mm in no_C4_monoms.union(set([m])):
@@ -546,8 +548,6 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
         return True
 
     return False
-
-
 
 def termination_by_newton_polygon(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
     if not part_res.introduced_vars:
