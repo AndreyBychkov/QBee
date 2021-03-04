@@ -85,7 +85,7 @@ class PolynomialSystem:
         return not self.nonsquares
 
     def get_smallest_nonsquare(self):
-        return min([(sum(m), m) for m in self.nonsquares])[1]
+        return min([(np.prod([d + 1 for d in m]), m) for m in self.nonsquares])[1]
 
     def next_generation(self, heuristics=default_score):
         if len(self.nonsquares) == 0:
