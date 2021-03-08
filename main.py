@@ -1,7 +1,6 @@
 from qbee.examples import *
 from qbee.util import top_priority
-from qbee.experiments import make_benchmark_report
-
+from qbee.experiments import make_benchmark_report, get_examples
 
 
 def quad(system):

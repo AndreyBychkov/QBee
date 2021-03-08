@@ -119,8 +119,13 @@ def make_benchmark_report(quad_funcs: DictT[str, Callable[[PolynomialSystem], Se
                           n_jobs=mp.cpu_count() - 2,
                           title="Benchmark report"):
     def eval_no_mp(func, system, results):
-        time_s = func(system)
-        results.append(time_s)
+        if n_samples > 1:
+            times = [func(system) for i in range(n_samples)]
+            min_t, avg_t, std_t = np.min(times), np.average(times), np.std(times)
+            results.append((min_t, avg_t, std_t))
+        else:
+            time_s = func(system)
+            results.append(time_s)
 
     def eval_mp(func, system, results):
         with mp.Pool(n_jobs) as pool:
