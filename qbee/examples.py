@@ -56,13 +56,6 @@ def generate_lifeware_conjecture(n):
         system.append(variables[(i + 1) % n] ** 2 + prod_all)
     return PolynomialSystem(system)
 
-
-def generate_selkov(a, b):
-    R, x, y = ring(['x', 'y'], QQ)
-    return PolynomialSystem([-x + a * y + x ** 2 * y,
-                             b - a * y - x ** 2 * y])
-
-
 def generate_cubic_cycle(n):
     variables = ring([f"x{i}" for i in range(n)], QQ)[1:]
     system = []
@@ -70,10 +63,24 @@ def generate_cubic_cycle(n):
         system.append(variables[(i + 1) % n] ** 3)
     return PolynomialSystem(system)
 
+def generate_cubic_bicycle(n):
+    variables = ring([f"x{i}" for i in range(n)], QQ)[1:]
+    system = []
+    for i in range(n):
+        system.append(variables[(i + 1) % n] ** 3 + variables[(i - 1) % n] ** 3)
+    return PolynomialSystem(system)
+
+
+def generate_selkov(a, b):
+    R, x, y = ring(['x', 'y'], QQ)
+    return PolynomialSystem([-x + a * y + x ** 2 * y,
+                             b - a * y - x ** 2 * y])
 
 if __name__ == "__main__":
-    system = generate_lifeware_conjecture(3)
-    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-    algo.domination_upper_bound()
+    system = generate_cubic_bicycle(8)
+    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_square_bound])
+    quad_res = algo.quadratize()
+    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_C4_bound])
     quad_res = algo.quadratize()
     print(quad_res)
+
