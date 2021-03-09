@@ -434,6 +434,12 @@ def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, 
     return False
 
 
+def termination_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, start_t, max_t):
+    curr_t = time()
+    if curr_t - start_t >= max_t:
+        return True
+    return False
+
 def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
     if system.new_vars_count() >= nvars:
         return True
