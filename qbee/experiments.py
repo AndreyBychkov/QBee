@@ -105,8 +105,10 @@ def get_examples():
         examples[f'Hard {i}'] = generate_hard(i)
     for i in [2, 3]:
         examples[f'Lifeware Conjecture {i}'] = generate_lifeware_conjecture(i)
-    for i in [2, 3, 4, 5, 6]:
+    for i in [2, 3, 4, 5, 6, 7]:
         examples[f'Cubic Cycle {i}'] = generate_cubic_cycle(i)
+    for i in [6, 7, 8]:
+        examples[f'Cubic Bicycle {i}'] = generate_cubic_bicycle(i)
     return examples
 
 
@@ -114,10 +116,14 @@ Seconds = float
 
 
 def make_benchmark_report(quad_funcs: DictT[str, Callable[[PolynomialSystem], Seconds]],
+                          examples=None,
                           n_samples=mp.cpu_count(),
                           use_multiprocessing=True,
                           n_jobs=mp.cpu_count() - 2,
                           title="Benchmark report"):
+    if examples is None:
+        examples = get_examples()
+
     def eval_no_mp(func, system, results):
         if n_samples > 1:
             times = [func(system) for i in range(n_samples)]
@@ -135,7 +141,6 @@ def make_benchmark_report(quad_funcs: DictT[str, Callable[[PolynomialSystem], Se
 
     top_priority()
     report = BenchmarkReport(title, quad_funcs.keys())
-    examples = get_examples()
     for sys_name, system in examples.items():
         print(f"Processing {sys_name}...")
         results = list()
