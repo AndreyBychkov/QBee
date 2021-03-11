@@ -1,5 +1,5 @@
 from qbee.examples import *
-from qbee.util import top_priority
+from qbee.util import top_priority, calc_Lie_derivative, generalized_variables_dict
 from qbee.experiments import make_benchmark_report, get_examples
 
 
@@ -72,11 +72,8 @@ def quad_dom_square_C4_term(system):
     end_t = time()
     return end_t - start_t
 
-
 if __name__ == '__main__':
-    make_benchmark_report({"Default": quad_dom,
-                           "Square bound": quad_dom_square_term,
-                           "C4 bound": quad_dom_C4_term,
-                           "Square + C4 bounds": quad_dom_square_C4_term},
-                          n_samples=20, use_multiprocessing=True,
-                          title="Quadratization with domination and C4 report")
+    R, x = sp.ring('x', sp.QQ)
+    system = [x**5,]
+    res = quadratize(system)
+    print(res)

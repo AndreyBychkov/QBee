@@ -4,6 +4,7 @@ import hashlib
 import configparser
 import pickle
 import numpy as np
+from sympy.polys.rings import PolyElement
 from scipy.spatial import ConvexHull, Delaunay
 from sympy import *
 from sympy.polys.orderings import monomial_key
@@ -32,10 +33,22 @@ if log_enable:
     print(f"Log file will be produced as {log_file}, quadratizations will be saved as {quad_systems_file}")
 
 
+def quadratize(polynomials: List[PolyElement],
+               heuristics=default_score,
+               early_termination_criteria=tuple()):
+    system = PolynomialSystem(polynomials)
+    algo = BranchAndBound(system, heuristics, (termination_by_best_nvars,) + early_termination_criteria)
+    quad_res = algo.quadratize()
+    if pb_enable:
+        print(quad_res)
+    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars)
+    return quad_system
+
+
 # ------------------------------------------------------------------------------
 
 class PolynomialSystem:
-    def __init__(self, polynomials: List[sp.Poly]):
+    def __init__(self, polynomials: List[PolyElement]):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
@@ -101,65 +114,6 @@ class PolynomialSystem:
 
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
-
-    def to_sympy(self, gens):
-        # TODO: Does not work correctly with PolyElement
-        return [mlist_to_poly(mlist, gens) for mlist in self.rhs.values()]
-
-    def apply_quadratization(self):
-        """TODO: Not fully done yet"""
-
-        def add_introduced_equations():
-            rhs = self.rhs.copy()
-            n0 = len(rhs)
-
-            pass
-
-        qvars = self._name_vars()
-        rhs = [list(v) for k, v in sorted(self.rhs.items(), key=lambda kv: kv[0])]
-
-        def quad_var_change(monom):
-            vs = self.vars
-            for v1 in vs:
-                for v2 in vs:
-                    if np.array_equal(np.array(v1) + np.array(v2), monom):
-                        return (v1, v2)
-            raise Exception("Monomial can not be represented as quadratic, but quadratization is found."
-                            " Contact developer team")
-
-        def quad_monom_to_latex(monom):
-            def to_symbol(m):
-                if any(m):
-                    return sp.Symbol(qvars[m])
-                return sp.Integer(1)
-
-            return latex(reduce(lambda a, b: a * b, [to_symbol(m) for m in sorted(monom)]))
-
-        for i, eq in enumerate(rhs):
-            for j, m in enumerate(eq):
-                m = list(m)
-                m[i] += 1
-                m = quad_var_change(m)
-                eq[j] = quad_monom_to_latex(m)
-        return reduce(lambda a, b: a + ' \n' + b, [reduce(lambda x, y: x + ' + ' + y, eq) for eq in rhs])
-
-    def _name_vars(self) -> dict:
-        return {**self._name_orig_vars(), **self._name_introduced_vars(), **self._name_constant_var()}
-
-    def _name_orig_vars(self):
-        def make_tuple(i: int):
-            t = [0, ] * len(self.gen_syms)
-            t[i] = 1
-            return tuple(t)
-
-        return dict([(make_tuple(i), latex(s)) for i, s in enumerate(self.gen_syms)])
-
-    def _name_constant_var(self):
-        return {(0,) * len(self.gen_syms): sp.Integer(1)}
-
-    def _name_introduced_vars(self):
-        base = 'w'
-        return dict([(v, f"{base}{i + 1}") for i, v in enumerate(self.introduced_vars)])
 
     def __str__(self):
         return f"{self._introduced_variables_str()}"
@@ -440,6 +394,7 @@ def termination_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args
         return True
     return False
 
+
 def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
     if system.new_vars_count() >= nvars:
         return True
@@ -504,7 +459,7 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     no_C4_monoms = set()
     sums_of_monoms = set()
     ns_ordered = sorted([m for m in part_res.nonsquares if sum(m) % 2 == 1], key=sum, reverse=True) + \
-            sorted([m for m in part_res.nonsquares if sum(m) % 2 == 0], key=sum, reverse=True)
+                 sorted([m for m in part_res.nonsquares if sum(m) % 2 == 0], key=sum, reverse=True)
     for m in ns_ordered:
         new_sums = set()
         to_add = True

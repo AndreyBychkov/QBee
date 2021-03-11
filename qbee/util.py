@@ -2,14 +2,16 @@ import pickle
 import pandas as pd
 import sympy as sp
 import numpy as np
+from sympy.polys.rings import PolyElement
 from scipy.spatial import ConvexHull
 from time import time
 from tqdm import tqdm
-from typing import Iterable, Collection, Union, Tuple
+from typing import Iterable, Collection, Union, Tuple, List
 from sympy.polys.monomials import monomial_deg
-from itertools import combinations
+from itertools import combinations, product
 from functools import reduce, wraps
 from operator import add
+from copy import deepcopy
 
 
 def parametrized(dec):
@@ -215,32 +217,6 @@ def get_hull_vertices(hull: ConvexHull):
     return list(filter(lambda x: sum(x) > 1e-8, hull.points[hull.vertices].tolist()))
 
 
-def can_substitutions_quadratize(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
-    gens = tuple(monom.gens)
-    var_subs = set(map(lambda var: sp.Monomial(var, gens), gens))
-    var_subs.add(sp.Monomial((0,) * len(gens), gens))  # zero degree monomial
-    expanded_subs = var_subs.union(subs)
-    return _can_quad_0(monom) or _can_quad_2(monom, expanded_subs) or _can_quad_1(monom, expanded_subs)
-
-
-def _can_quad_2(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
-    for sub in subs:
-        if monom == sub ** 2:
-            return True
-    return False
-
-
-def _can_quad_1(monom: sp.Monomial, subs: Iterable[sp.Monomial]) -> bool:
-    for left, right in combinations(subs, 2):
-        if monom == left * right:
-            return True
-    return False
-
-
-def _can_quad_0(monom: sp.Monomial) -> bool:
-    return monomial_deg(monom) == 0
-
-
 def dominated(monom, monom_set):
     """
     Returns true iff the monom is coordinate-wise <=
@@ -263,3 +239,46 @@ def top_priority():
         pid = win32api.GetCurrentProcessId()
         handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
         win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
+
+
+def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var='w'):
+    result = list(polynomials)
+    for monom in quadratization:
+        result.append(calc_Lie_derivative(polynomials, monom))
+    subs = generalized_variables_dict(polynomials[0].ring.symbols, quadratization, new_var)
+    result = list(map(PolyElement.as_expr, result))
+    for i, poly in enumerate(result):
+        result[i] = poly.subs(subs, simultaneous=True)
+    return result
+
+
+def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[Tuple], new_vars_name):
+    orig_var_list = list(zip(orig_vars, orig_vars))
+
+    new_vars = sp.symbols([f'{new_vars_name}_{i + 1}' for i in range(len(quadratization))])
+    quad_syms = [monom2PolyElem(m, orig_vars) for m in quadratization]
+    quad_var_list = list(zip(quad_syms, new_vars))
+
+    res = dict(orig_var_list + quad_var_list)
+    for (left_k, left_v), (right_k, right_v) in product(orig_var_list + quad_var_list, repeat=2):
+        res[left_k * right_k] = left_v * right_v
+    return res
+
+
+def calc_Lie_derivative(polys: List[PolyElement], new_var: Tuple) -> PolyElement:
+    res = 0 * polys[0]  # Do it in order to attach the ring to 0
+    gens = polys[0].ring.gens
+    for i in range(len(new_var)):
+        if new_var[i] > 0:
+            monom = deepcopy(new_var)
+            poly = monom2PolyElem(monom, gens).diff(gens[i]) * polys[i]
+            res += poly
+    return res
+
+
+def monom2PolyElem(monom: tuple, gens):
+    return sp.prod([gen ** e for gen, e in zip(gens, monom)])
+
+
+def apply_quad_monom(monom, quad: List):
+    pass
