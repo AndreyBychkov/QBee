@@ -324,64 +324,6 @@ class BranchAndBound(Algorithm):
 
 # ------------------------------------------------------------------------------
 
-class ID_DLS(Algorithm):
-    def __init__(self, poly_system: PolynomialSystem,
-                 start_upper_bound: int,
-                 upper_bound: int,
-                 heuristics: Heuristics = default_score,
-                 early_termination: Union[EarlyTermination, Collection[EarlyTermination]] = None):
-        super().__init__(poly_system, heuristics, early_termination)
-        self.upper_bound = upper_bound
-        self.start_upper_bound = start_upper_bound
-
-    @timed(enabled=pb_enable)
-    def quadratize(self) -> QuadratizationResult:
-        stack = deque()
-        high_depth_stack = deque()
-
-        curr_depth = 0
-        curr_max_depth = self.start_upper_bound
-        stack.append((self._system, curr_depth))
-
-        while True:
-            self._iter()
-            self._nodes_traversed += 1
-            if len(stack) == 0:
-                if len(high_depth_stack) == 0:
-                    raise RuntimeError("Limit depth passed. No quadratic system is found.")
-                stack = high_depth_stack
-                high_depth_stack = deque()
-                curr_max_depth += int(math.ceil(math.log(curr_depth + 1)))
-
-            system, curr_depth = stack.pop()
-            if (any(map(lambda f: f(self, system), self._early_termination_funs))):
-                return QuadratizationResult(None, -1, self._nodes_traversed)
-            if system.is_quadratized():
-                traversed = self._nodes_traversed
-                self._final_iter()
-                return QuadratizationResult(system, curr_depth, traversed)
-
-            if curr_depth > self.upper_bound:
-                continue
-
-            for next_system in system.next_generation(self.heuristics):
-                if curr_depth < curr_max_depth:
-                    stack.append((next_system, curr_depth + 1))
-                else:
-                    high_depth_stack.append((next_system, curr_depth + 1))
-
-    @progress_bar(is_stop=True, enabled=pb_enable)
-    @logged(log_enable, log_file, is_stop=True)
-    def _final_iter(self):
-        self._nodes_traversed = 0
-
-    @progress_bar(is_stop=False, enabled=pb_enable)
-    def _iter(self):
-        pass
-
-
-# ------------------------------------------------------------------------------
-
 def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
     if algo._nodes_traversed >= nodes_processed:
         return True
