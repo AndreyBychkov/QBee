@@ -155,8 +155,7 @@ class Algorithm:
     def __init__(self,
                  poly_system: PolynomialSystem,
                  heuristics: Heuristics = default_score,
-                 early_termination: Collection[EarlyTermination] = None,
-                 use_weak_hull=False):
+                 early_termination: Collection[EarlyTermination] = None):
         self._system = poly_system
         self._heuristics = heuristics
         self._early_termination_funs = list(early_termination) if early_termination is not None else [
@@ -164,7 +163,6 @@ class Algorithm:
         self._nodes_traversed = 0
         self.preliminary_upper_bound = math.inf
 
-        self.hull: Optional[ConvexHull] = None
         if len(list(poly_system.vars)[0]) > 1:
             points = list()
             for i, eq in poly_system.rhs.items():
@@ -172,23 +170,10 @@ class Algorithm:
                     new_m = list(m)
                     new_m[i] = new_m[i] if new_m[i] > 0 else 0
                     points.append(tuple(new_m))
-            self.hull = ConvexHull(points + list(poly_system.vars))
             self.dominating_monomials = set()
             for m in points + list(poly_system.vars):
                 if not dominated(m, self.dominating_monomials):
                     self.dominating_monomials.add(m)
-
-        self.weak_hull: Optional[ConvexHull] = None
-        if self.hull and use_weak_hull:
-            points = [(0,) * poly_system.dim, ]
-            max_order = max(list(map(sum, self.hull.points[self.hull.vertices].astype(int).tolist())))
-            for v in range(poly_system.dim):
-                p = [0] * poly_system.dim
-                p[v] = max_order
-                points.append(tuple(p))
-            self.weak_hull = ConvexHull(points)
-            self.attach_early_termination(partial(termination_by_newton_polygon, hull=Delaunay(self.weak_hull.points)))
-            print(f"Weak convex hull is is set to order = {max_order}")
 
     def quadratize(self) -> QuadratizationResult:
         pass
@@ -253,29 +238,6 @@ class BranchAndBound(Algorithm):
                                termination_by_square_bound,
                                termination_by_C4_bound,
                                partial(termination_by_domination, dominators=self.dominating_monomials)])
-        res = algo.quadratize()
-        upper_bound = res.introduced_vars
-        self.preliminary_upper_bound = upper_bound
-        if upper_bound != math.inf:
-            self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
-
-    def newton_polygon_vertices_upper_bound(self):
-        system = self._system.copy()
-        hull_vars = list(map(tuple, self.hull.points[self.hull.vertices].astype(int)))
-        hull_vars = list(filter(lambda v: v not in system.vars, hull_vars))
-        for v in hull_vars:
-            system.add_var(v)
-        algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars])
-        quad_res = algo.quadratize()
-        upper_bound = quad_res.introduced_vars
-        if upper_bound != math.inf:
-            self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
-
-    def inside_newton_polygon_upper_bound(self):
-        system = self._system.copy()
-        algo = BranchAndBound(system, aeqd_score,
-                              [termination_by_best_nvars,
-                               partial(termination_by_newton_polygon, hull=Delaunay(self.hull.points))])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
         self.preliminary_upper_bound = upper_bound
