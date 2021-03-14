@@ -27,13 +27,15 @@ if log_enable:
 
 
 def quadratize(polynomials: List[PolyElement],
-               selection_strategy=default_strategy,
-               pruning_functions=tuple()):
+               selection_strategy=aeqd_strategy,
+               pruning_functions: Optional[Union[Tuple, List]] = None):
+    if pruning_functions is None:
+        pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound)
     system = PolynomialSystem(polynomials)
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
-        print(quad_res)
+        print("Quadratized system:", quad_res)
     quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars)
     return quad_system
 
