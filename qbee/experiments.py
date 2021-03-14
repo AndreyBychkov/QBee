@@ -29,13 +29,14 @@ Seconds = float
 
 
 def make_benchmark_report(quad_funcs: DictT[str, Callable[[PolynomialSystem], Seconds]],
-                          examples=None,
+                          examples: Optional[DictT[str, List[PolyElement]]] = None,
                           n_samples=mp.cpu_count(),
                           use_multiprocessing=True,
                           n_jobs=mp.cpu_count() - 2,
                           title="Benchmark report"):
     if examples is None:
         examples = get_examples()
+    examples = {name : PolynomialSystem(system) for name, system in examples.items()}
 
     def eval_no_mp(func, system, results):
         if n_samples > 1:
