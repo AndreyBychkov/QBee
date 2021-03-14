@@ -4,9 +4,9 @@ import pickle
 import numpy as np
 from sympy.polys.rings import PolyElement
 from sympy import *
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional, Set, Collection
 from functools import partial
-from .heuristics import *  # replace with .heuristics if you want pip install
+from .selection import *  # replace with .selection if you want pip install
 from .util import *  # replace with .util if you want pip install
 
 from memory_profiler import profile
@@ -27,10 +27,10 @@ if log_enable:
 
 
 def quadratize(polynomials: List[PolyElement],
-               heuristics=default_score,
+               selection_strategy=default_strategy,
                pruning_functions=tuple()):
     system = PolynomialSystem(polynomials)
-    algo = BranchAndBound(system, heuristics, (pruning_by_best_nvars,) + pruning_functions)
+    algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
         print(quad_res)
@@ -88,7 +88,7 @@ class PolynomialSystem:
     def get_smallest_nonsquare(self):
         return min([(np.prod([d + 1 for d in m]), m) for m in self.nonsquares])[1]
 
-    def next_generation(self, heuristics=default_score):
+    def next_generation(self, strategy=default_strategy):
         if len(self.nonsquares) == 0:
             return list()
         new_gen = []
@@ -98,7 +98,7 @@ class PolynomialSystem:
                 c.add_var(v)
             new_gen.append(c)
 
-        return sorted(new_gen, key=heuristics)
+        return sorted(new_gen, key=strategy)
 
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
@@ -142,10 +142,10 @@ Pruning = Callable[..., bool]
 class Algorithm:
     def __init__(self,
                  poly_system: PolynomialSystem,
-                 heuristics: Heuristics = default_score,
+                 strategy: SelectionStrategy = default_strategy,
                  pruning_funcs: Collection[Pruning] = None):
         self._system = poly_system
-        self._heuristics = heuristics
+        self._strategy = strategy
         self._pruning_funs = list(pruning_funcs) if pruning_funcs is not None else [lambda a, b, *_: False]
         self._nodes_traversed = 0
         self.preliminary_upper_bound = math.inf
@@ -197,16 +197,16 @@ class Algorithm:
         self._pruning_funs.append(termination_criteria)
 
     @property
-    def heuristics(self):
-        return self._heuristics
+    def selection_strategy(self):
+        return self._strategy
 
-    @heuristics.setter
-    def heuristics(self, value):
-        self._heuristics = value
+    @selection_strategy.setter
+    def selection_strategy(self, value):
+        self._strategy = value
 
     @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
-        return part_res.next_generation(self.heuristics)
+        return part_res.next_generation(self.selection_strategy)
 
     @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)
@@ -220,7 +220,7 @@ class BranchAndBound(Algorithm):
 
     def domination_upper_bound(self):
         system = self._system.copy()
-        algo = BranchAndBound(system, aeqd_score,
+        algo = BranchAndBound(system, aeqd_strategy,
                               [pruning_by_best_nvars,
                                pruning_by_quadratic_upper_bound,
                                pruning_by_squarefree_graphs,
@@ -259,7 +259,7 @@ class BranchAndBound(Algorithm):
 
     @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
-        return part_res.next_generation(self.heuristics)
+        return part_res.next_generation(self.selection_strategy)
 
     @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)

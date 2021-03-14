@@ -3,7 +3,7 @@ import multiprocessing as mp
 import platform
 from textwrap import dedent
 from typing import Dict as DictT
-from .heuristics import aeqd_score
+from .selection import aeqd_strategy
 from .quadratization import PolynomialSystem
 from .examples import *
 
