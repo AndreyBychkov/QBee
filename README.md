@@ -57,7 +57,7 @@ from discussing how to quadratize them.
 First, we define a system of ODEs. In the list `system` defined right-hand side of input ODE in linear order. For
 example, consider the system:
 
-![\begin{cases} \dot{x} = y^3 \\ \dot{y} = x^3 \end{cases}](https://render.githubusercontent.com/render/math?math=%5Cbegin%7Bcases%7D%20%5Cdot%7Bx%7D_1%20%3D%20x_1%20x_2%20%5C%5C%20%5Cdot%7Bx%7D_2%20%3D%20-x_2%20y%20%5C%5C%20%5Cdot%7By%7D%20%3D%20x_2%20y%20-%202y%5E2%20%5Cend%7Bcases%7D)
+![\begin{cases} \dot{x} = y^3 \\ \dot{y} = x^3 \end{cases}](https://latex.codecogs.com/gif.latex?%5Chuge%20%5Cbegin%7Bcases%7D%20x%27%20%3D%20y%5E3%20%5C%5C%20y%27%20%3D%20x%5E3%20%5Cend%7Bcases%7D)
 
 ```python
 x, y, _ = sympy.ring(['x', 'y'], sympy.QQ)
