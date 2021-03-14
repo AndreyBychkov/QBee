@@ -4,7 +4,6 @@ import numpy as np
 import networkx as nx
 import tkinter as tk
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from pyvis.network import Network
 from scipy.spatial import ConvexHull
 
@@ -16,6 +15,7 @@ except Exception as e:
     screen_width = 1920
     screen_height = 1080
     print(f"Can not initialize display. Default screen_width={screen_width}, screen_height={screen_height}")
+
 
 def convex_hull_plot_3d(points):
     points = np.asarray(points)

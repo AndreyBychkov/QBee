@@ -3,14 +3,11 @@ import pandas as pd
 import sympy as sp
 import numpy as np
 from sympy.polys.rings import PolyElement
-from scipy.spatial import ConvexHull
 from time import time
 from tqdm import tqdm
-from typing import Iterable, Collection, Union, Tuple, List
-from sympy.polys.monomials import monomial_deg
-from itertools import combinations, product
-from functools import reduce, wraps
-from operator import add
+from typing import Iterable, Union, Tuple, List
+from itertools import product
+from functools import reduce
 from copy import deepcopy
 
 
@@ -118,6 +115,18 @@ def memoize_first(func, max_size):
     return wrapper
 
 
+def get_decompositions(monomial):
+    if len(monomial) == 0:
+        return {(tuple(), tuple())}
+    result = set()
+    prev_result = get_decompositions(tuple(monomial[:-1]))
+    for r in prev_result:
+        for i in range(monomial[-1] + 1):
+            a, b = tuple(list(r[0]) + [i]), tuple(list(r[1]) + [monomial[-1] - i])
+            result.add((min(a, b), max(a, b)))
+    return result
+
+
 def derivatives(names) -> Union[sp.Symbol, Tuple[sp.Symbol]]:
     """
     Add dot to input symbols.
@@ -173,48 +182,12 @@ def monom2str(monom: tuple, gens):
     return sp.latex(monomial_to_poly(sp.Monomial(monom, gens)).as_expr())
 
 
-def reset_progress_bar(pbar: tqdm, value):
-    pbar.n = pbar.last_print_n = value
-    pbar.start_t = pbar.last_print_t = time()
-    pbar.refresh()
-
-
-def refresh_and_close_progress_bars(*pbars: tqdm):
-    for bar in pbars:
-        bar.refresh()
-        bar.close()
-
-
-def get_decompositions(monomial):
-    if len(monomial) == 0:
-        return {(tuple(), tuple())}
-    result = set()
-    prev_result = get_decompositions(tuple(monomial[:-1]))
-    for r in prev_result:
-        for i in range(monomial[-1] + 1):
-            a, b = tuple(list(r[0]) + [i]), tuple(list(r[1]) + [monomial[-1] - i])
-            result.add((min(a, b), max(a, b)))
-    return result
-
-
 def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
     return sp.Symbol(str(derivative).replace(r"\dot ", '', 1))
 
 
-def poly_to_monomial(poly: sp.Poly) -> sp.Monomial:
-    return sp.Monomial(poly.monoms()[0], poly.gens)
-
-
 def monomial_to_poly(monom: sp.Monomial) -> sp.Poly:
     return sp.Poly(sp.prod([gen ** e for gen, e in zip(monom.gens, monom.exponents)]), monom.gens)
-
-
-def mlist_to_poly(mlist: Collection[sp.Monomial], gens) -> sp.Poly:
-    return sp.Poly(reduce(add, mlist), gens)
-
-
-def get_hull_vertices(hull: ConvexHull):
-    return list(filter(lambda x: sum(x) > 1e-8, hull.points[hull.vertices].tolist()))
 
 
 def dominated(monom, monom_set):
@@ -278,7 +251,3 @@ def calc_Lie_derivative(polys: List[PolyElement], new_var: Tuple) -> PolyElement
 
 def monom2PolyElem(monom: tuple, gens):
     return sp.prod([gen ** e for gen, e in zip(gens, monom)])
-
-
-def apply_quad_monom(monom, quad: List):
-    pass

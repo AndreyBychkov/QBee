@@ -72,11 +72,6 @@ class PolynomialSystem:
         self.original_degree = max(map(monomial_deg, self.nonsquares))
 
     @property
-    def quadratization(self):
-        return sorted(map(lambda v: monomial_to_poly(Monomial(v, self.gen_syms)).as_expr(),
-                          self.introduced_vars), key=monomial_key('grlex', self.gen_syms))
-
-    @property
     def introduced_vars(self):
         return tuple(filter(lambda v: monomial_deg(v) >= 2, self.vars))
 
@@ -122,7 +117,7 @@ class PolynomialSystem:
         return f"{self._introduced_variables_str()}"
 
     def _introduced_variables_str(self):
-        """Legacy compatibility str representation. TODO: refactor it"""
+        """Representation for visualization"""
         return sorted(map(partial(monom2str, gens=self.gen_syms), self.introduced_vars))
 
 
