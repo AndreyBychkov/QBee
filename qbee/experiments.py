@@ -20,8 +20,8 @@ def get_examples():
         examples[f'Lifeware Conjecture {i}'] = generate_lifeware_conjecture(i)
     for i in [2, 3, 4, 5, 6, 7]:
         examples[f'Cubic Cycle {i}'] = generate_cubic_cycle(i)
-    # for i in [6, 7, 8]:
-    #     examples[f'Cubic Bicycle {i}'] = generate_cubic_bicycle(i)
+    for i in [6, 7, 8]:
+        examples[f'Cubic Bicycle {i}'] = generate_cubic_bicycle(i)
     return examples
 
 
@@ -120,22 +120,3 @@ class BenchmarkReport:
         else:
             std_format = f'{np.round(std_t, 1)}'
         return f"{min_format}<br>{avg_format}+-{std_format}"
-
-
-# ======================================================================
-
-def make_graphs(n=2, i=None, j=None):
-    """Make a graph recursively, by either including, or skipping each edge.
-
-    Edges are given in lexicographical order by construction."""
-    out = []
-    if i is None:  # First call
-        out = [[(0, 1)] + r for r in make_graphs(n=n, i=0, j=1)]
-    elif j < n - 1:
-        out += [[(i, j + 1)] + r for r in make_graphs(n=n, i=i, j=j + 1)]
-        out += [r for r in make_graphs(n=n, i=i, j=j + 1)]
-    elif i < n - 1:
-        out = make_graphs(n=n, i=i + 1, j=i + 1)
-    else:
-        out = [[]]
-    return out
