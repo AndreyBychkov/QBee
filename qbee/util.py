@@ -221,7 +221,12 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
     subs = generalized_variables_dict(polynomials[0].ring.symbols, quadratization, new_var)
     result = list(map(PolyElement.as_expr, result))
     for i, poly in enumerate(result):
-        result[i] = poly.subs(subs, simultaneous=True)
+        ppoly = sp.Poly(poly)
+        res_lst = list()
+        for monom, coef in ppoly.terms():
+            subs_monom = monom2PolyElem(monom, ppoly.gens).as_expr().xreplace(subs)
+            res_lst.append(coef * subs_monom)
+        result[i] = sp.Add(*res_lst)
     return result
 
 
@@ -234,7 +239,10 @@ def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[
 
     res = dict(orig_var_list + quad_var_list)
     for (left_k, left_v), (right_k, right_v) in product(orig_var_list + quad_var_list, repeat=2):
-        res[left_k * right_k] = left_v * right_v
+        key = left_k * right_k
+        val = left_v * right_v
+        if key != val:
+            res[key] = val
     return res
 
 
