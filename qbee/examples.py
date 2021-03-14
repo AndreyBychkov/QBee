@@ -78,9 +78,9 @@ def generate_selkov(a, b):
 
 if __name__ == "__main__":
     system = generate_cubic_bicycle(8)
-    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_square_bound])
+    algo = BranchAndBound(system, aeqd_score, [pruning_by_best_nvars, pruning_by_quadratic_upper_bound])
     quad_res = algo.quadratize()
-    algo = BranchAndBound(system, aeqd_score, [termination_by_best_nvars, termination_by_C4_bound])
+    algo = BranchAndBound(system, aeqd_score, [pruning_by_best_nvars, pruning_by_squarefree_graphs])
     quad_res = algo.quadratize()
     print(quad_res)
 

@@ -35,9 +35,9 @@ if log_enable:
 
 def quadratize(polynomials: List[PolyElement],
                heuristics=default_score,
-               early_termination_criteria=tuple()):
+               pruning_functions=tuple()):
     system = PolynomialSystem(polynomials)
-    algo = BranchAndBound(system, heuristics, (termination_by_best_nvars,) + early_termination_criteria)
+    algo = BranchAndBound(system, heuristics, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
         print(quad_res)
@@ -148,18 +148,17 @@ class QuadratizationResult:
 
 # ------------------------------------------------------------------------------
 
-EarlyTermination = Callable[..., bool]
+Pruning = Callable[..., bool]
 
 
 class Algorithm:
     def __init__(self,
                  poly_system: PolynomialSystem,
                  heuristics: Heuristics = default_score,
-                 early_termination: Collection[EarlyTermination] = None):
+                 pruning_funcs: Collection[Pruning] = None):
         self._system = poly_system
         self._heuristics = heuristics
-        self._early_termination_funs = list(early_termination) if early_termination is not None else [
-            lambda a, b, *_: False]
+        self._pruning_funs = list(pruning_funcs) if pruning_funcs is not None else [lambda a, b, *_: False]
         self._nodes_traversed = 0
         self.preliminary_upper_bound = math.inf
 
@@ -206,8 +205,8 @@ class Algorithm:
     def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
         return self.traverse_all(depth, lambda s: s.is_quadratized())
 
-    def attach_early_termination(self, termination_criteria: EarlyTermination) -> None:
-        self._early_termination_funs.append(termination_criteria)
+    def add_pruning(self, termination_criteria: Pruning) -> None:
+        self._pruning_funs.append(termination_criteria)
 
     @property
     def heuristics(self):
@@ -234,15 +233,15 @@ class BranchAndBound(Algorithm):
     def domination_upper_bound(self):
         system = self._system.copy()
         algo = BranchAndBound(system, aeqd_score,
-                              [termination_by_best_nvars,
-                               termination_by_square_bound,
-                               termination_by_C4_bound,
-                               partial(termination_by_domination, dominators=self.dominating_monomials)])
+                              [pruning_by_best_nvars,
+                               pruning_by_quadratic_upper_bound,
+                               pruning_by_squarefree_graphs,
+                               partial(pruning_by_domination, dominators=self.dominating_monomials)])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
         self.preliminary_upper_bound = upper_bound
         if upper_bound != math.inf:
-            self.attach_early_termination(partial(termination_by_vars_number, nvars=upper_bound))
+            self.add_pruning(partial(pruning_by_vars_number, nvars=upper_bound))
 
     @timed(enabled=pb_enable)
     def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
@@ -257,7 +256,7 @@ class BranchAndBound(Algorithm):
         self._nodes_traversed += 1
         if part_res.is_quadratized() and cond(part_res):
             return part_res.new_vars_count(), part_res, 1
-        if any(map(lambda f: f(self, part_res, best_nvars), self._early_termination_funs)):
+        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
             return math.inf, None, 1
 
         traversed_total = 1
@@ -286,33 +285,57 @@ class BranchAndBound(Algorithm):
 
 # ------------------------------------------------------------------------------
 
-def termination_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
+def pruning_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
+    """
+    Stops a search if it's computer 'nodes_processed' nodes.
+
+    :examples
+        >>> from functools import partial
+        >>> pruning = partial(pruning_by_nodes_processed, nodes_processed=100000)
+    """
     if algo._nodes_traversed >= nodes_processed:
         return True
     return False
 
 
-def termination_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, start_t, max_t):
+def pruning_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, start_t, max_t):
+    """
+    Stops a search if 'max_t' was exceeded.
+
+    :examples
+        >>> from functools import partial
+        >>> pruning = partial(pruning_by_elapsed_time, start_t=time(), max_t=100) # 100 seconds
+    :return:
+    """
     curr_t = time()
     if curr_t - start_t >= max_t:
         return True
     return False
 
 
-def termination_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
+def pruning_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars: int):
+    """
+    Search for quadratization with at most 'nvars' components
+
+    :Examples
+        >>> from functools import partial
+        >>> pruning = partial(pruning_by_vars_number, nvars=10)
+
+    """
     if system.new_vars_count() >= nvars:
         return True
     return False
 
 
-def termination_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
+def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
+    """Branch-and-Bound default pruning """
     best_nvars, *_ = args
     if part_res.new_vars_count() >= best_nvars - 1:
         return True
     return False
 
 
-def termination_by_square_bound(a: Algorithm, part_res: PolynomialSystem, *args):
+def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
 
     degree_one_monomials = dict()
@@ -357,7 +380,7 @@ MAX_C4_FREE_EDGES = [
 ]
 
 
-def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
+def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args):
     best_nvars, *_ = args
 
     no_C4_monoms = set()
@@ -409,19 +432,14 @@ def termination_by_C4_bound(a: Algorithm, part_res: PolynomialSystem, *args):
     return False
 
 
-def termination_by_newton_polygon(a: BranchAndBound, part_res: PolynomialSystem, *args, hull: Delaunay):
-    if not part_res.introduced_vars:
-        return False
-
-    return not all(hull.find_simplex(part_res.introduced_vars) >= 0)
-
-
-def termination_by_domination(a: BranchAndBound, part_res: PolynomialSystem, *args, dominators):
+def pruning_by_domination(a: BranchAndBound, part_res: PolynomialSystem, *args, dominators):
     if not part_res.introduced_vars:
         return False
 
     return not all([dominated(m, dominators) for m in part_res.introduced_vars])
 
+
+# ------------------------------------------------------------------------------------------------
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
