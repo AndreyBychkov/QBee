@@ -1,18 +1,11 @@
 import math
-import itertools
-import hashlib
 import configparser
 import pickle
 import numpy as np
 from sympy.polys.rings import PolyElement
-from scipy.spatial import ConvexHull, Delaunay
 from sympy import *
-from sympy.polys.orderings import monomial_key
-from collections import deque
-from typing import Callable, List, Optional, Generator, Set
-from functools import partial, reduce
-from operator import mul
-from random import randrange
+from typing import Callable, List, Optional, Set
+from functools import partial
 from .heuristics import *  # replace with .heuristics if you want pip install
 from .util import *  # replace with .util if you want pip install
 
@@ -56,7 +49,7 @@ class PolynomialSystem:
         self.dim = len(polynomials[0].ring.gens)
         self.gen_syms = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
 
-        # put not monomials but differents in the exponents between rhs and lhs
+        # put not monomials but differences in the exponents between rhs and lhs
         self.rhs = dict()
         for i, p in enumerate(polynomials):
             self.rhs[i] = set()
