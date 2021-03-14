@@ -3,9 +3,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import tkinter as tk
-import matplotlib.pyplot as plt
 from pyvis.network import Network
-from scipy.spatial import ConvexHull
 
 try:
     root = tk.Tk()
@@ -15,23 +13,6 @@ except Exception as e:
     screen_width = 1920
     screen_height = 1080
     print(f"Can not initialize display. Default screen_width={screen_width}, screen_height={screen_height}")
-
-
-def convex_hull_plot_3d(points):
-    points = np.asarray(points)
-    hull = ConvexHull(points)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-
-    ax.plot(points.T[0], points.T[1], points.T[2], "ko")
-    for s in hull.simplices:
-        s = np.append(s, s[0])
-        ax.plot(points[s, 0], points[s, 1], points[s, 2], "r-")
-
-    for i in ["x", "y", "z"]:
-        eval("ax.set_{:s}label('{:s}')".format(i, i))
-
-    plt.show()
 
 
 def make_edges(df: pd.DataFrame):

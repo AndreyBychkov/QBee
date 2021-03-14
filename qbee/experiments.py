@@ -1,17 +1,10 @@
 import sympy as sp
-import networkx as nx
 import multiprocessing as mp
 import platform
 from textwrap import dedent
-from typing import Optional, Collection, Dict as DictT
-from termcolor import colored
-from functools import partial
-from scipy.spatial import Delaunay, ConvexHull
-from sympy.polys.orderings import monomial_key
-from collections import OrderedDict
+from typing import Dict as DictT
 from .heuristics import aeqd_score
-from .quadratization import BranchAndBound, PolynomialSystem, pruning_by_best_nvars
-from .util import monom2str
+from .quadratization import PolynomialSystem
 from .examples import *
 
 
