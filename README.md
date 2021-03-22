@@ -62,12 +62,12 @@ example, consider the system:
 ```python
 x, y, _ = sympy.ring(['x', 'y'], sympy.QQ)
 system = [
-    y ** 3.
+    y ** 3,
     x ** 3
 ]
 ```
 
-Then we need to run quadratization algorithm. For the most systems high-level function `quadratiza` should be enough.
+Then we need to run quadratization algorithm. For the most systems high-level function `quadratize` should be enough.
 
 ```python
 quad_system = quadratize(system)
