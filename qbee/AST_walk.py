@@ -46,13 +46,10 @@ def _find_non_polynomial_backward(expr: sp.Expr) -> Union[sp.Expr, None]:
 def is_polynomial_function(expr: sp.Expr):
     return True if expr.is_Add or \
                    expr.is_Mul or \
-                   _is_positive_numeric_power(expr) \
+                   _is_positive_integer_power(expr) \
         else False
 
 
-def _is_positive_numeric_power(expr: sp.Expr):
-    if not expr.is_Pow:
-        return False
+def _is_positive_integer_power(expr: sp.Expr):
+    return expr.is_Pow and expr.exp > 0 and expr.exp.is_integer
 
-    power = expr.args[1]
-    return power.is_Number and power > 0
