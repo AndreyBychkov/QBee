@@ -110,10 +110,14 @@ class EquationSystem:
     def substitution_equations(self):
         return self._substitution_equations
 
-    def replace_expression(self, old: sp.Expr, new: sp.Expr):
+    def subs_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
         for i in range(len(self._equations)):
             self._equations[i] = self._equations[i].subs(old, new)
+
+    def replace_equation(self, old: sp.Expr, new: sp.Expr):
+        for i in range(len(self._equations)):
+            self._equations[i] = self._equations[i].replace(old, new)
 
     def expand_equations(self):
         """Apply SymPy 'expand' function to each of equation."""
@@ -166,9 +170,19 @@ class EquationSystem:
         :param substitution: right part, f(x)
         """
         new_variable_dot = make_derivative_symbol(new_variable)
-        self.replace_expression(substitution, new_variable)
-        self._substitution_equations.append(sp.Eq(new_variable, substitution))
-        self._equations.append(sp.Eq(new_variable_dot, self._calculate_Lie_derivative(substitution)).expand())
+        if is_noninteger_positive_exp(substitution):
+            int_part = int(substitution.exp)
+            rem_part = substitution.exp - int_part
+            var = substitution.args[0]
+            # x^2.3 -> z x^3
+            self.replace_equation(substitution, new_variable * var ** (int_part + 1))
+            print(f"{new_variable} = {var ** (rem_part - 1)}")
+            # self._substitution_equations.append(sp.Eq(new_variable, var ** (rem_part - 1)))
+            self._equations.append(sp.Eq(new_variable_dot, new_variable ** 2))
+        else:
+            self.subs_expression(substitution, new_variable)
+            self._substitution_equations.append(sp.Eq(new_variable, substitution))
+            self._equations.append(sp.Eq(new_variable_dot, self._calculate_Lie_derivative(substitution)).expand())
 
     def algebraic_auxiliary_equation_add(self, new_variable: sp.Symbol, substitution: sp.Expr) -> None:
         """
@@ -180,7 +194,7 @@ class EquationSystem:
         :param new_variable: left part, y
         :param substitution: right part, f(x)
         """
-        self.replace_expression(substitution, new_variable)
+        self.subs_expression(substitution, new_variable)
         self._substitution_equations.append(sp.Eq(new_variable, substitution))
         self._equations.append(sp.Eq(new_variable, substitution).expand())
 
@@ -292,3 +306,7 @@ def _polynomialize_differential_iter(system: EquationSystem):
             new_variable = system.variables.create_variable()
             system.differential_auxiliary_equation_add(new_variable, non_poly_elem)
             break
+
+
+def is_noninteger_positive_exp(expr: sp.Expr):
+    return expr.is_Pow and expr.exp > 0 and (not expr.exp.is_integer)
