@@ -24,7 +24,7 @@ class VariablesHolder:
         self._input_variables = input_variables
         self._original_variables = list(variables)
         self._generated_variables = list()
-        self._base_name = "y_"
+        self._base_name = "w_"
 
     @property
     def free(self):
@@ -145,7 +145,7 @@ class EquationSystem:
 
     def _is_polynomial_full(self) -> bool:
         for eq in self._equations:
-            if not eq.args[1].is_polynomial(*self.variables.free):
+            if not eq.args[1].is_polynomial(*self.variables.free, *self.variables.input):
                 return False
         return True
 
@@ -310,3 +310,7 @@ def _polynomialize_differential_iter(system: EquationSystem):
 
 def is_noninteger_positive_exp(expr: sp.Expr):
     return expr.is_Pow and expr.exp > 0 and (not expr.exp.is_integer)
+
+
+def has_common_symbol(lhs: Set[sp.Symbol], *rhs: Set[sp.Symbol]):
+    return any([len(lhs.intersection(r)) > 0 for r in rhs])
