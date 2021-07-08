@@ -284,7 +284,7 @@ def _polynomialize_algebraic(system: EquationSystem) -> EquationSystem:
 
 def _polynomialize_algebraic_iter(system: EquationSystem):
     for eq in system.equations:
-        non_poly_elem = find_non_polynomial(eq.args[1])
+        non_poly_elem = find_non_polynomial(eq.args[1], {})
         if non_poly_elem:
             new_variable = system.variables.create_variable()
             system.algebraic_auxiliary_equation_add(new_variable, non_poly_elem)
@@ -301,7 +301,7 @@ def _polynomialize_differential(system: EquationSystem) -> EquationSystem:
 
 def _polynomialize_differential_iter(system: EquationSystem):
     for eq in system.equations:
-        non_poly_elem = find_non_polynomial(eq.args[1])
+        non_poly_elem = find_non_polynomial(eq.args[1], set(system.variables.free) | system.variables.input)
         if non_poly_elem:
             new_variable = system.variables.create_variable()
             system.differential_auxiliary_equation_add(new_variable, non_poly_elem)
@@ -310,7 +310,3 @@ def _polynomialize_differential_iter(system: EquationSystem):
 
 def is_noninteger_positive_exp(expr: sp.Expr):
     return expr.is_Pow and expr.exp > 0 and (not expr.exp.is_integer)
-
-
-def has_common_symbol(lhs: Set[sp.Symbol], *rhs: Set[sp.Symbol]):
-    return any([len(lhs.intersection(r)) > 0 for r in rhs])
