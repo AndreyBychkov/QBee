@@ -151,6 +151,13 @@ In order to visualize work of an algorithm you can pass logging data to `qbee.vi
 visualize_pyvis('log.feather', 'quad_systems.pkl')
 ```
 
+## Papers
+
+* Optimal Monomial Quadratization for ODE systems: [arxiv](https://arxiv.org/abs/2103.08013), [Springer](https://link.springer.com/chapter/10.1007/978-3-030-79987-8_9)
+
+## Citation
+
+If you find this code useful in your research, please consider citing the above paper that works best for you. 
 
 
 
