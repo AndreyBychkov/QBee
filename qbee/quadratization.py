@@ -6,8 +6,10 @@ from sympy.polys.rings import PolyElement
 from sympy import *
 from typing import Callable, List, Optional, Set, Collection
 from functools import partial
+from operator import add
 from .selection import *  # replace with .selection if you want pip install
 from .util import *  # replace with .util if you want pip install
+from .polynomialization import EquationSystem
 
 from memory_profiler import profile
 
@@ -28,7 +30,8 @@ if log_enable:
 
 def quadratize(polynomials: List[PolyElement],
                selection_strategy=aeqd_strategy,
-               pruning_functions: Optional[Union[Tuple, List]] = None):
+               pruning_functions: Optional[Union[Tuple, List]] = None,
+               new_vars_name='w'):
     if pruning_functions is None:
         pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound)
     system = PolynomialSystem(polynomials)
@@ -36,7 +39,7 @@ def quadratize(polynomials: List[PolyElement],
     quad_res = algo.quadratize()
     if pb_enable:
         print("Quadratized system:", quad_res)
-    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars)
+    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
     return quad_system
 
 
@@ -65,6 +68,23 @@ class PolynomialSystem:
         for i in range(self.dim):
             self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
         self.original_degree = max(map(monomial_deg, self.nonsquares))
+
+    @staticmethod
+    def from_EquationSystem(system: EquationSystem) -> list:
+        # noinspection PyTypeChecker
+        # R = QQ[reduce(add, map(list, [system.variables.free, system.variables.input, system.variables.parameter]))]
+        R = QQ[list(filter(lambda s: '\'' not in str(s), system.variables.free))]
+        for v in map(R.from_sympy, system.variables.input):
+            dv = sp.Symbol(r"\dot{" + str(v) + r"}")
+            ddv = sp.Symbol(fr"\ddot\{{v}}")
+            R = R.unify(QQ[dv, ddv])
+        equations =  [R.from_sympy(eq.rhs) for eq in system.equations]
+        for dv, ddv in zip(filter(lambda g: r"\dot" in g, R.gens), filter(lambda g: r"\ddot" in g, R.gens)):
+            equations.append(dv)
+            equations.append(ddv)
+        return equations
+
+
 
     @property
     def introduced_vars(self):
