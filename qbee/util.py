@@ -173,9 +173,9 @@ def make_derivative_symbol(symbol) -> sp.Symbol:
     str_symbol = str(symbol)
     if '_' in str_symbol:
         name, index, *other = str(symbol).split('_')
-        return sp.Symbol(rf'\dot {name}' + '_' + '%s' % index)
+        return sp.Symbol(rf"{name}_{index}'")
     else:
-        return sp.Symbol(rf'\dot {str_symbol}')
+        return sp.Symbol(rf"{symbol}'")
 
 
 def monom2str(monom: tuple, gens):

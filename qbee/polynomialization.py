@@ -239,7 +239,7 @@ class EquationSystem:
 
     def _print_simple(self):
         for eq in self.equations:
-            print(rf"{symbol_from_derivative(eq.args[0])}' = {sp.collect(eq.args[1], self.variables.free)}")
+            print(rf"{eq.args[0]} = {sp.collect(eq.args[1], self.variables.free)}")
 
     def __len__(self):
         return len(self._equations)
