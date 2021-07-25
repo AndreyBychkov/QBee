@@ -173,12 +173,15 @@ class EquationSystem:
         if is_noninteger_positive_exp(substitution):
             int_part = int(substitution.exp)
             rem_part = substitution.exp - int_part
+            coef = rem_part - 1
             var = substitution.args[0]
-            # x^2.3 -> z x^3
-            self.replace_equation(substitution, new_variable * var ** (int_part + 1))
+
             print(f"{new_variable} = {var ** (rem_part - 1)}")
             # self._substitution_equations.append(sp.Eq(new_variable, var ** (rem_part - 1)))
-            self._equations.append(sp.Eq(new_variable_dot, new_variable ** 2))
+            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0].rhs
+            self._equations.append(sp.Eq(new_variable_dot, coef * new_variable**2 * var_diff_eq / substitution * var**int_part))
+            # x^2.3 -> z x^3
+            self.replace_equation(substitution, new_variable * var ** (int_part + 1))
         else:
             self.subs_expression(substitution, new_variable)
             self._substitution_equations.append(sp.Eq(new_variable, substitution))
