@@ -29,12 +29,13 @@ if log_enable:
 
 
 def quadratize(polynomials: List[PolyElement],
+               parameters: Optional[List[PolyElement]] = None,
                selection_strategy=aeqd_strategy,
                pruning_functions: Optional[Union[Tuple, List]] = None,
                new_vars_name='w'):
     if pruning_functions is None:
         pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound)
-    system = PolynomialSystem(polynomials)
+    system = PolynomialSystem(polynomials, parameters)
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
@@ -46,19 +47,23 @@ def quadratize(polynomials: List[PolyElement],
 # ------------------------------------------------------------------------------
 
 class PolynomialSystem:
-    def __init__(self, polynomials: List[PolyElement]):
+    def __init__(self, polynomials: List[PolyElement], parameters: Optional[List] = None):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
         """
-        self.dim = len(polynomials[0].ring.gens)
-        self.gen_syms = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
+        gens = list(filter(lambda g: g not in parameters, polynomials[0].ring.gens))
+        self.dim = len(gens)
+        self.all_symbols = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
+        self.gen_symbols = list(map(lambda g: sp.Symbol(str(g)), gens))
+
+        poly_mlists = [p.as_expr().as_poly(self.gen_symbols).monoms() for p in polynomials]
 
         # put not monomials but differences in the exponents between rhs and lhs
         self.rhs = dict()
-        for i, p in enumerate(polynomials):
+        for i, monoms in enumerate(poly_mlists):
             self.rhs[i] = set()
-            for m in p.to_dict().keys():
+            for m in monoms:
                 mlist = list(m)
                 mlist[i] -= 1
                 self.rhs[i].add(tuple(mlist))
@@ -133,7 +138,7 @@ class PolynomialSystem:
 
     def _introduced_variables_str(self):
         """Representation for visualization"""
-        return sorted(map(partial(monom2str, gens=self.gen_syms), self.introduced_vars))
+        return sorted(map(partial(monom2str, gens=self.gen_symbols), self.introduced_vars))
 
 
 # ------------------------------------------------------------------------------
