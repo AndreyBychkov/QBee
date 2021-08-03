@@ -49,8 +49,7 @@ def quadratize(polynomials: List[PolyElement],
 # ------------------------------------------------------------------------------
 
 class PolynomialSystem:
-    def __init__(self, polynomials: List[PolyElement],
-                 inputs: Optional[List[PolyElement]] = None):
+    def __init__(self, polynomials: List[PolyElement]):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
@@ -58,8 +57,6 @@ class PolynomialSystem:
         gens = polynomials[0].ring.gens
         self.dim = len(gens)
         self.gen_symbols = list(map(lambda g: sp.Symbol(str(g)), gens))
-
-        # poly_mlists = [p.as_expr().as_poly(self.gen_symbols).monoms() for p in polynomials]
 
         # put not monomials but differences in the exponents between rhs and lhs
         self.rhs = dict()
@@ -77,7 +74,7 @@ class PolynomialSystem:
         self.original_degree = max(map(monomial_deg, self.nonsquares))
 
     @staticmethod
-    def from_EquationSystem(system: EquationSystem, inputs_ord: dict, return_equations=False):
+    def from_EquationSystem(system: EquationSystem, inputs_ord: dict) -> ("PolynomialSystem", List["Pruning"]):
         d_inputs = generate_derivatives(inputs_ord)
         R = QQ[list(system.variables.free + flatten(d_inputs))]
         equations = [R.from_sympy(eq.rhs.subs({p: 1 for p in system.variables.parameter})) for eq in system.equations]
@@ -85,12 +82,9 @@ class PolynomialSystem:
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(dv)
-
-        inputs = [g for g in R.gens if
-                  str(g) in map(str, system.variables.input) or str(g) in map(str, flatten(d_inputs))]
-        if return_equations:
-            return PolynomialSystem(equations, inputs), equations
-        return PolynomialSystem(equations, inputs)
+        inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
+        pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=inputs_to_exclude)
+        return PolynomialSystem(equations), [pruning_by_inputs,]
 
     @property
     def introduced_vars(self):
@@ -356,6 +350,13 @@ def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     """Branch-and-Bound default pruning """
     best_nvars, *_ = args
     if part_res.new_vars_count() >= best_nvars - 1:
+        return True
+    return False
+
+
+def pruning_by_excluding_variables(_: Algorithm, part_res: PolynomialSystem, *args, excl_vars: List[Tuple]):
+    excl_indices = [np.argmax(v) for v in excl_vars]
+    if any([any([v[i] != 0 for i in excl_indices]) for v in part_res.introduced_vars]):
         return True
     return False
 
