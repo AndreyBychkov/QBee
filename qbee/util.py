@@ -190,6 +190,10 @@ def monomial_to_poly(monom: sp.Monomial) -> sp.Poly:
     return sp.Poly(sp.prod([gen ** e for gen, e in zip(monom.gens, monom.exponents)]), monom.gens)
 
 
+def tuple_to_monom(m: tuple, gens) -> sp.Expr:
+    return sp.prod([g ** e for g, e in zip(gens, m)])
+
+
 def dominated(monom, monom_set):
     """
     Returns true iff the monom is coordinate-wise <=
@@ -264,6 +268,6 @@ def monom2PolyElem(monom: tuple, gens):
 
 def generate_derivatives(inputs: Dict[PolyElement, int]) -> List[List[str]]:
     return [
-        [sp.Symbol(str(var) + '\'' * n) for n in range(1, max_order + 1)]
+        [sp.Symbol(str(var) + '\'' * n) for n in range(0, max_order + 1)]
         for var, max_order in inputs.items()
     ]

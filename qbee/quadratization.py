@@ -42,7 +42,7 @@ def quadratize(polynomials: List[PolyElement],
     quad_res = algo.quadratize()
     if pb_enable:
         print("Quadratized system:", quad_res)
-    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, list(), new_vars_name)
+    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, parameters, new_vars_name)
     return quad_system
 
 
@@ -79,13 +79,12 @@ class PolynomialSystem:
     @staticmethod
     def from_EquationSystem(system: EquationSystem, inputs_ord: dict, return_equations=False):
         d_inputs = generate_derivatives(inputs_ord)
-        # noinspection PyTypeChecker
-        R = QQ[list(set(system.variables.free + list(system.variables.input) + flatten(d_inputs)))]
+        R = QQ[list(system.variables.free + flatten(d_inputs))]
         equations = [R.from_sympy(eq.rhs.subs({p: 1 for p in system.variables.parameter})) for eq in system.equations]
         for i, v in enumerate(inputs_ord.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
-            equations.append(R(0))
+            equations.append(dv)
 
         inputs = [g for g in R.gens if
                   str(g) in map(str, system.variables.input) or str(g) in map(str, flatten(d_inputs))]
