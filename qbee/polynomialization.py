@@ -224,6 +224,10 @@ class EquationSystem:
         for eq in self.equations:
             print(rf"{eq.args[0]} = {sp.collect(eq.args[1], self.variables.free)}")
 
+    def print_substitution_equations(self):
+        for eq in self._substitution_equations:
+            print(f"{eq.lhs} = {eq.rhs}")
+
     def __len__(self):
         return len(self._equations)
 
