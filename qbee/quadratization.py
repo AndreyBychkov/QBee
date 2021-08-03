@@ -31,7 +31,6 @@ if log_enable:
 
 def quadratize(polynomials: List[PolyElement],
                parameters: Optional[List[PolyElement]] = None,
-               inputs: Optional[List[PolyElement]] = None,
                selection_strategy=default_strategy,
                pruning_functions: Optional[Union[Tuple, List]] = None,
                new_vars_name='w'):
@@ -84,7 +83,7 @@ class PolynomialSystem:
             equations.append(dv)
         inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
         pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=inputs_to_exclude)
-        return PolynomialSystem(equations), [pruning_by_inputs,]
+        return PolynomialSystem(equations), [pruning_by_inputs, ]
 
     @property
     def introduced_vars(self):
@@ -273,10 +272,14 @@ class BranchAndBound(Algorithm):
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
-        if part_res.is_quadratized() and cond(part_res):
-            return part_res.new_vars_count(), part_res, 1
+        # The order of this blocks can be important
+        # Pruning checks in the beginning guarantee that they will not be violated but they must be true for all cases
+        # Pruning checks after quadratization checks could be heuristic but have no guarantee that the final system satisfies them
+        # TODO: make different types of pruning rules? Utilize `cond`?
         if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
             return math.inf, None, 1
+        if part_res.is_quadratized() and cond(part_res):
+            return part_res.new_vars_count(), part_res, 1
 
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
@@ -354,7 +357,7 @@ def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     return False
 
 
-def pruning_by_excluding_variables(_: Algorithm, part_res: PolynomialSystem, *args, excl_vars: List[Tuple]):
+def pruning_by_excluding_variables(a: Algorithm, part_res: PolynomialSystem, *args, excl_vars: List[Tuple]):
     excl_indices = [np.argmax(v) for v in excl_vars]
     if any([any([v[i] != 0 for i in excl_indices]) for v in part_res.introduced_vars]):
         return True

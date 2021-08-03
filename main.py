@@ -23,18 +23,32 @@ def temp_quad(system: EquationSystem, inputs: dict):
 
 
 if __name__ == '__main__':
-    c1, c2, c3, c4 = sp.symbols("c1, c2, c3, c4")
-    A, Ea, Ru = sp.symbols("A, Ea, Ru")
-    T = sp.Symbol("T")
-    tmp = -A * sp.exp(-Ea / (Ru * T)) * c1 ** 0.2 * c2 ** 1.3
-    dc1, dc2, dc3, dc4 = derivatives([c1, c2, c3, c4])
-    system = EquationSystem([
-        sp.Eq(dc1, tmp.copy()),
-        sp.Eq(dc2, 2 * tmp.copy()),
-        sp.Eq(dc3, -tmp.copy()),
-        sp.Eq(dc4, -2 * tmp.copy())
-    ], [A, Ea, Ru], [T])
-    print("Original system:")
-    system.print()
-    print("=" * 100)
-    temp_quad(system, {T: 2})
+    A = QQ(1, 2)
+    E_a = QQ(3, 2)
+    R_u = QQ(1, 1)
+    R, c1, c2, c3, c4, w1, w2, w3, w4, w5, w6, T, dT, ddT = ring(
+        ['c1', 'c2', 'c3', 'c4', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'T', 'dT', 'ddT'], QQ)
+    tmp = -A * w1 * w3 * w5
+    system = [
+        tmp,
+        2 * tmp,
+        -tmp,
+        -2 * tmp,
+        QQ(1, 5) * w1 * w2 * tmp,
+        -w2 ** 2 * tmp,
+        QQ(13, 10) * w3 * w4 * 2 * tmp,
+        -w4 ** 2 * 2 * tmp,
+        E_a * R_u * w5 * w6 * dT,
+        -2 * T * w6 ** 2,
+        dT,
+        ddT,
+        R.zero
+    ]
+    input_pruning = partial(pruning_by_excluding_variables, excl_vars=list(map(tuple, [dT, ddT])))
+    time_pruning = partial(pruning_by_elapsed_time, start_t=time(), max_t=10)
+    quad_system = quadratize(system, pruning_functions=(pruning_by_squarefree_graphs,
+                                                        pruning_by_quadratic_upper_bound,
+                                                        input_pruning,
+                                                        time_pruning),
+                             new_vars_name='z')
+    print(quad_system)
