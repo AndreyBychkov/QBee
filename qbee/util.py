@@ -179,7 +179,7 @@ def make_derivative_symbol(symbol) -> sp.Symbol:
 
 
 def monom2str(monom: tuple, gens):
-    return sp.latex(monomial_to_poly(sp.Monomial(monom, gens)).as_expr())
+    return str(monomial_to_poly(sp.Monomial(monom, gens)).as_expr())
 
 
 def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
@@ -218,15 +218,15 @@ def top_priority():
         win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
 
 
-def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], params, new_var_name='z_'):
-    gens = [g for g in polynomials[0].ring.gens if str(g) not in map(str, params)]
+def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var_name='z_'):
+    gens = polynomials[0].ring.gens
     result = list(polynomials)
     for monom in quadratization:
-        result.append(calc_Lie_derivative(polynomials, monom, gens))
-    subs = generalized_variables_dict(gens, list(map(PolyElement.as_expr, quadratization)), new_var_name)
+        result.append(calc_Lie_derivative(polynomials, monom2PolyElem(monom, gens)))
+    subs = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name)
     result = list(map(PolyElement.as_expr, result))
     for i, poly in enumerate(result):
-        ppoly = sp.Poly(poly, *[m.as_expr() for m in gens if m.as_expr() not in params])
+        ppoly = sp.Poly(poly, [g.as_expr() for g in gens])
         res_lst = list()
         for monom, coef in ppoly.terms():
             subs_monom = monom2PolyElem(monom, ppoly.gens).as_expr().xreplace(subs)
@@ -237,13 +237,13 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
 
 def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name):
     orig_vars = list(map(lambda m: m.as_expr(), orig_vars))
-    orig_var_list = list(zip(orig_vars, orig_vars))
+    orig_var_dup = list(zip(orig_vars, orig_vars))
 
     new_vars = sp.symbols([new_vars_name + "{%d}" % i for i in range(len(quadratization))])
     quad_var_list = list(zip(map(lambda m: m.as_expr(), quadratization), new_vars))
 
-    res = dict(orig_var_list + quad_var_list)
-    for (left_k, left_v), (right_k, right_v) in product(orig_var_list + quad_var_list, repeat=2):
+    res = dict(orig_var_dup + quad_var_list)
+    for (left_k, left_v), (right_k, right_v) in product(orig_var_dup + quad_var_list, repeat=2):
         key = left_k * right_k
         val = left_v * right_v
         if key != val:
@@ -251,13 +251,13 @@ def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[
     return res
 
 
-def calc_Lie_derivative(polys: List[PolyElement], new_var: PolyElement, gens) -> PolyElement:
-    res = polys[0].ring(0)
+def calc_Lie_derivative(polys: List[PolyElement], new_var: PolyElement) -> PolyElement:
+    res = polys[0].ring.zero
     new_var_tup = new_var.monoms()[0]
+    gens = polys[0].ring.gens
     for i in range(len(new_var_tup)):
         if new_var_tup[i] > 0:
-            dx = new_var.ring(sp.Symbol(str(gens[i])))
-            poly = new_var.diff(dx).set_ring(polys[0].ring) * polys[i]
+            poly = new_var.diff(gens[i]) * polys[i]
             res += poly
     return res
 

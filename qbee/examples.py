@@ -78,3 +78,18 @@ def generate_selkov(a, b):
     R, x, y = ring(['x', 'y'], QQ)
     return [-x + a * y + x ** 2 * y,
             b - a * y - x ** 2 * y]
+
+
+def generate_exponential():
+    coef_field = FractionField(QQ, ["Apsi", "Atheta", "bpsi", "btheta", "gamma", "B", "D"])
+    Apsi, Atheta, bpsi, btheta, gamma, B, D = coef_field.gens
+    R, psi, theta, exp, thinv2, u, du = ring(["psi", "theta", "exp", "thinv2", "u", "u'"], coef_field)
+    eqs = [
+        Apsi * psi + bpsi * u - D * psi * exp,
+        Atheta * theta + btheta * u + B * D * psi * exp
+    ]
+    eqs.append(gamma * eqs[0] * thinv2 * exp)
+    eqs.append(eqs[0] * (-2) * thinv2 * psi)
+    eqs.append(du)
+    eqs.append(du ** 2)
+    return eqs

@@ -10,7 +10,7 @@ from functools import partial
 from operator import add
 from .selection import *  # replace with .selection if you want pip install
 from .util import *  # replace with .util if you want pip install
-from .polynomialization import EquationSystem
+from .polynomialization import EquationSystem, polynomialize
 
 from memory_profiler import profile
 
@@ -30,7 +30,6 @@ if log_enable:
 
 
 def quadratize(polynomials: List[PolyElement],
-               parameters: Optional[List[PolyElement]] = None,
                selection_strategy=default_strategy,
                pruning_functions: Optional[Union[Tuple, List]] = None,
                new_vars_name='w'):
@@ -40,8 +39,28 @@ def quadratize(polynomials: List[PolyElement],
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
-        print("Quadratized system:", quad_res)
-    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, parameters, new_vars_name)
+        print(quad_res.print(new_vars_name))
+    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
+    return quad_system
+
+
+def polynomialize_and_quadratize(system: EquationSystem, inputs: dict, new_var_name="w_") -> EquationSystem:
+    """
+    :param system: System of nonlinear equations
+    :param inputs: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
+    :return: quadratized system
+    """
+    poly_system = polynomialize(system)
+    system.variables.base_var_name = new_var_name
+    quad, gen_prunings = PolynomialSystem.from_EquationSystem(poly_system, inputs)
+    quad_res = BranchAndBound(quad, pruning_funcs=[pruning_by_best_nvars] + default_pruning_rules + gen_prunings) \
+        .quadratize()
+
+    quad_system = deepcopy(poly_system)
+    quad_monoms = [tuple_to_monom(m, quad_res.system.gen_symbols) for m in quad_res.system.introduced_vars]
+    for m in quad_monoms:
+        new_var = quad_system.variables.create_variable()
+        quad_system.differential_auxiliary_equation_add(new_var, m)
     return quad_system
 
 
@@ -124,7 +143,7 @@ class PolynomialSystem:
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
 
-    def print(self, new_var_name='z_'):
+    def to_str(self, new_var_name='z_'):
         return [
             new_var_name + ("{%d}" % i) + " = " + monom2str(m, self.gen_symbols)
             for i, m in enumerate(self.introduced_vars)
@@ -158,7 +177,7 @@ class QuadratizationResult:
                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
                f"Nodes traversed: {self.nodes_traversed}\n" + \
-               f"Introduced variables: {self.system.print(new_var_name)}"
+               f"Introduced variables: {self.system.to_str(new_var_name)}"
 
     def __repr__(self):
         return self.print()
@@ -466,6 +485,12 @@ def pruning_by_domination(a: BranchAndBound, part_res: PolynomialSystem, *args, 
         return False
 
     return not all([dominated(m, dominators) for m in part_res.introduced_vars])
+
+
+default_pruning_rules = [
+    pruning_by_quadratic_upper_bound,
+    pruning_by_squarefree_graphs
+]
 
 
 # ------------------------------------------------------------------------------------------------

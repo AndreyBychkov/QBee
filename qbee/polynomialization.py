@@ -13,7 +13,8 @@ class VariablesHolder:
 
     def __init__(self, variables: Iterable[sp.Symbol],
                  parameter_variables: Optional[Set[sp.Symbol]] = None,
-                 input_variables: Optional[Set[sp.Symbol]] = None):
+                 input_variables: Optional[Set[sp.Symbol]] = None,
+                 new_var_base_name="w_"):
         if parameter_variables is None:
             parameter_variables = set()
         if input_variables is None:
@@ -24,7 +25,7 @@ class VariablesHolder:
         self._input_variables = input_variables
         self._original_variables = list(variables)
         self._generated_variables = list()
-        self._base_name = "w_"
+        self._base_name = new_var_base_name
 
     @property
     def free(self):
@@ -41,6 +42,14 @@ class VariablesHolder:
     @property
     def original(self):
         return self._original_variables
+
+    @property
+    def base_var_name(self):
+        return self._base_name
+
+    @base_var_name.setter
+    def base_var_name(self, value: str):
+        self._base_name = value
 
     def create_variable(self) -> sp.Symbol:
         """
