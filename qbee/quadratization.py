@@ -5,6 +5,7 @@ import numpy as np
 from sympy.polys.rings import PolyElement
 from sympy import *
 from typing import Callable, List, Optional, Set, Collection
+from typing import Dict as DictT
 from functools import partial
 from operator import add
 from .selection import *  # replace with .selection if you want pip install
@@ -30,24 +31,27 @@ if log_enable:
 
 def quadratize(polynomials: List[PolyElement],
                parameters: Optional[List[PolyElement]] = None,
+               inputs: Optional[List[PolyElement]] = None,
                selection_strategy=aeqd_strategy,
                pruning_functions: Optional[Union[Tuple, List]] = None,
                new_vars_name='w'):
     if pruning_functions is None:
-        pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound)
-    system = PolynomialSystem(polynomials, parameters)
+        pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound, pruning_by_inputs)
+    system = PolynomialSystem(polynomials, parameters, inputs)
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
         print("Quadratized system:", quad_res)
-    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
+    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, list(), new_vars_name)
     return quad_system
 
 
 # ------------------------------------------------------------------------------
 
 class PolynomialSystem:
-    def __init__(self, polynomials: List[PolyElement], parameters: Optional[List] = None):
+    def __init__(self, polynomials: List[PolyElement],
+                 parameters: Optional[List[PolyElement]] = None,
+                 inputs: Optional[List[PolyElement]] = None):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
@@ -75,21 +79,25 @@ class PolynomialSystem:
         self.original_degree = max(map(monomial_deg, self.nonsquares))
 
     @staticmethod
-    def from_EquationSystem(system: EquationSystem) -> list:
+    def from_EquationSystem(system: EquationSystem, inputs_ord: dict, return_equations=False):
         # noinspection PyTypeChecker
-        # R = QQ[reduce(add, map(list, [system.variables.free, system.variables.input, system.variables.parameter]))]
-        R = QQ[list(filter(lambda s: '\'' not in str(s), system.variables.free))]
-        for v in map(R.from_sympy, system.variables.input):
-            dv = sp.Symbol(r"\dot{" + str(v) + r"}")
-            ddv = sp.Symbol(fr"\ddot\{{v}}")
-            R = R.unify(QQ[dv, ddv])
-        equations =  [R.from_sympy(eq.rhs) for eq in system.equations]
-        for dv, ddv in zip(filter(lambda g: r"\dot" in g, R.gens), filter(lambda g: r"\ddot" in g, R.gens)):
-            equations.append(dv)
-            equations.append(ddv)
-        return equations
+        R = QQ[list(filter(lambda s: '\'' not in str(s),
+                           system.variables.free + list(system.variables.parameter) + list(system.variables.input)))]
+        dvars = generate_derivatives(inputs_ord)
+        for dv in dvars:
+            for v in dv:
+                R = R.unify(QQ[v])
+        equations = [R.from_sympy(eq.rhs) for eq in system.equations]
+        for i, v in enumerate(inputs_ord.keys()):
+            for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
+                equations.append(dv)
+            equations.append(R(0))
 
-
+        params = [g for g in R.gens if str(g) in map(str, system.variables.parameter)]
+        inputs = [g for g in R.gens if str(g) in map(str, system.variables.input) or str(g) in map(str, flatten(dvars))]
+        if return_equations:
+            return PolynomialSystem(equations, params, inputs), equations
+        return PolynomialSystem(equations, params, inputs)
 
     @property
     def introduced_vars(self):
@@ -130,6 +138,12 @@ class PolynomialSystem:
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
 
+    def print(self, new_var_name='z_'):
+        return [
+            new_var_name + ("{%d}" % i) + " = " + monom2str(m, self.gen_symbols)
+            for i, m in enumerate(self.introduced_vars)
+        ]
+
     def __str__(self):
         return f"{self._introduced_variables_str()}"
 
@@ -152,13 +166,16 @@ class QuadratizationResult:
         self.introduced_vars = introduced_vars
         self.nodes_traversed = nodes_traversed
 
-    def __repr__(self):
+    def print(self, new_var_name="z_"):
         if self.system is None:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
                f"Nodes traversed: {self.nodes_traversed}\n" + \
-               f"Introduced variables: {self.system}"
+               f"Introduced variables: {self.system.print(new_var_name)}"
+
+    def __repr__(self):
+        return self.print()
 
 
 # ------------------------------------------------------------------------------
@@ -269,10 +286,10 @@ class BranchAndBound(Algorithm):
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
-        if part_res.is_quadratized() and cond(part_res):
-            return part_res.new_vars_count(), part_res, 1
         if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
             return math.inf, None, 1
+        if part_res.is_quadratized() and cond(part_res):
+            return part_res.new_vars_count(), part_res, 1
 
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
@@ -348,6 +365,15 @@ def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     if part_res.new_vars_count() >= best_nvars - 1:
         return True
     return False
+
+
+def pruning_by_inputs(a: Algorithm, part_res: PolynomialSystem, *args, max_deg=1):
+    def indices_le(monom: tuple, indices: list):
+        return any([monom[i] <= max_deg for i in indices])
+
+    if all([indices_le(v, part_res.inputs_idx) for v in part_res.introduced_vars]):
+        return False
+    return True
 
 
 def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *args):

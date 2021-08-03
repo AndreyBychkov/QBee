@@ -5,8 +5,8 @@ import numpy as np
 from sympy.polys.rings import PolyElement
 from time import time
 from tqdm import tqdm
-from typing import Iterable, Union, Tuple, List
-from itertools import product
+from typing import Iterable, Union, Tuple, List, Dict
+from itertools import product, chain, combinations
 from functools import reduce
 from copy import deepcopy
 
@@ -183,7 +183,7 @@ def monom2str(monom: tuple, gens):
 
 
 def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
-    return sp.Symbol(str(derivative).replace(r"\dot ", '', 1))
+    return sp.Symbol(str(derivative).replace("\'", '', 1))
 
 
 def monomial_to_poly(monom: sp.Monomial) -> sp.Poly:
@@ -214,14 +214,15 @@ def top_priority():
         win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
 
 
-def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var='w'):
+def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], params, new_var_name='z_'):
+    gens = [g for g in polynomials[0].ring.gens if str(g) not in map(str, params)]
     result = list(polynomials)
     for monom in quadratization:
-        result.append(calc_Lie_derivative(polynomials, monom))
-    subs = generalized_variables_dict(polynomials[0].ring.symbols, quadratization, new_var)
+        result.append(calc_Lie_derivative(polynomials, monom, gens))
+    subs = generalized_variables_dict(gens, list(map(PolyElement.as_expr, quadratization)), new_var_name)
     result = list(map(PolyElement.as_expr, result))
     for i, poly in enumerate(result):
-        ppoly = sp.Poly(poly)
+        ppoly = sp.Poly(poly, *[m.as_expr() for m in gens if m.as_expr() not in params])
         res_lst = list()
         for monom, coef in ppoly.terms():
             subs_monom = monom2PolyElem(monom, ppoly.gens).as_expr().xreplace(subs)
@@ -230,12 +231,12 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
     return result
 
 
-def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[Tuple], new_vars_name):
+def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name):
+    orig_vars = list(map(lambda m: m.as_expr(), orig_vars))
     orig_var_list = list(zip(orig_vars, orig_vars))
 
-    new_vars = sp.symbols([f'{new_vars_name}_{i + 1}' for i in range(len(quadratization))])
-    quad_syms = [monom2PolyElem(m, orig_vars) for m in quadratization]
-    quad_var_list = list(zip(quad_syms, new_vars))
+    new_vars = sp.symbols([new_vars_name + "{%d}" % i for i in range(len(quadratization))])
+    quad_var_list = list(zip(map(lambda m: m.as_expr(), quadratization), new_vars))
 
     res = dict(orig_var_list + quad_var_list)
     for (left_k, left_v), (right_k, right_v) in product(orig_var_list + quad_var_list, repeat=2):
@@ -246,16 +247,23 @@ def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[
     return res
 
 
-def calc_Lie_derivative(polys: List[PolyElement], new_var: Tuple) -> PolyElement:
-    res = 0 * polys[0]  # Do it in order to attach the ring to 0
-    gens = polys[0].ring.gens
-    for i in range(len(new_var)):
-        if new_var[i] > 0:
-            monom = deepcopy(new_var)
-            poly = monom2PolyElem(monom, gens).diff(gens[i]) * polys[i]
+def calc_Lie_derivative(polys: List[PolyElement], new_var: PolyElement, gens) -> PolyElement:
+    res = polys[0].ring(0)
+    new_var_tup = new_var.monoms()[0]
+    for i in range(len(new_var_tup)):
+        if new_var_tup[i] > 0:
+            dx = new_var.ring(sp.Symbol(str(gens[i])))
+            poly = new_var.diff(dx).set_ring(polys[0].ring) * polys[i]
             res += poly
     return res
 
 
 def monom2PolyElem(monom: tuple, gens):
     return sp.prod([gen ** e for gen, e in zip(gens, monom)])
+
+
+def generate_derivatives(inputs: Dict[PolyElement, int]) -> List[List[str]]:
+    return [
+        [sp.Symbol(str(var) + '\'' * n) for n in range(1, max_order + 1)]
+        for var, max_order in inputs.items()
+    ]
