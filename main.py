@@ -1,6 +1,7 @@
 from qbee import *
 from qbee.examples import *
 
+
 def temp_quad(system: EquationSystem, inputs: dict):
     pol = polynomialize(system)
     pol.print()
@@ -22,18 +23,33 @@ def temp_quad(system: EquationSystem, inputs: dict):
 
 
 if __name__ == '__main__':
-    c1, c2, c3, c4 = sp.symbols("c1, c2, c3, c4")
-    A, Ea_Ru = sp.symbols("A, Ea_Ru")
-    T = sp.Symbol("T")
-    tmp = -A * sp.exp(-Ea_Ru / T) * c1 ** 0.2 * c2 ** 1.3
-    dc1, dc2, dc3, dc4 = derivatives([c1, c2, c3, c4])
-    system = EquationSystem([
-        sp.Eq(dc1, tmp.copy()),
-        sp.Eq(dc2, 2 * tmp.copy()),
-        sp.Eq(dc3, -tmp.copy()),
-        sp.Eq(dc4, -2*tmp.copy())
-    ], [A, Ea_Ru], [T])
-    print("Original system:")
-    system.print()
-    print("="*100)
-    temp_quad(system, {T: 2})
+    # c1, c2, c3, c4 = sp.symbols("c1, c2, c3, c4")
+    # A, Ea_Ru = sp.symbols("A, Ea_Ru")
+    # T = sp.Symbol("T")
+    # tmp = -A * sp.exp(-Ea_Ru / T) * c1 ** 0.2 * c2 ** 1.3
+    # dc1, dc2, dc3, dc4 = derivatives([c1, c2, c3, c4])
+    # system = EquationSystem([
+    #     sp.Eq(dc1, tmp.copy()),
+    #     sp.Eq(dc2, 2 * tmp.copy()),
+    #     sp.Eq(dc3, -tmp.copy()),
+    #     sp.Eq(dc4, -2*tmp.copy())
+    # ], [A, Ea_Ru], [T])
+    # print("Original system:")
+    # system.print()
+    # print("="*100)
+    # temp_quad(system, {T: 2})
+    R, c1, c2, c3, c4, w0, w1, w2, w3, T, dT, ddT = sp.ring("c1, c2, c3, c4, w0, w1, w2, w3, T, T', T''", QQ)
+    equations = [
+        w0 * c1 * w1 * c2 ** 2 * w3,
+        w0 * c1 * w1 * c2 ** 2 * w3,
+        w0 * c1 * w1 * c2 ** 2 * w3,
+        w0 * c1 * w1 * c2 ** 2 * w3,
+        w0**2 * w1 * c2**2 * w3,
+        w0 * c1 * c1**2 * c2 * w3,
+        w2**2 * dT,
+        w2**2 * dT * w3,
+        dT,
+        ddT,
+        R(0)
+    ]
+    quadratize(equations, new_vars_name="z")

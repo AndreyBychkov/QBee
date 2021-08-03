@@ -32,12 +32,12 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                parameters: Optional[List[PolyElement]] = None,
                inputs: Optional[List[PolyElement]] = None,
-               selection_strategy=aeqd_strategy,
+               selection_strategy=default_strategy,
                pruning_functions: Optional[Union[Tuple, List]] = None,
                new_vars_name='w'):
     if pruning_functions is None:
-        pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound, pruning_by_inputs)
-    system = PolynomialSystem(polynomials, parameters, inputs)
+        pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound)
+    system = PolynomialSystem(polynomials)
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
     quad_res = algo.quadratize()
     if pb_enable:
@@ -50,24 +50,22 @@ def quadratize(polynomials: List[PolyElement],
 
 class PolynomialSystem:
     def __init__(self, polynomials: List[PolyElement],
-                 parameters: Optional[List[PolyElement]] = None,
                  inputs: Optional[List[PolyElement]] = None):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
         """
-        gens = list(filter(lambda g: g not in parameters, polynomials[0].ring.gens))
+        gens = polynomials[0].ring.gens
         self.dim = len(gens)
-        self.all_symbols = list(map(lambda g: sp.Symbol(str(g)), polynomials[0].ring.gens))
         self.gen_symbols = list(map(lambda g: sp.Symbol(str(g)), gens))
 
-        poly_mlists = [p.as_expr().as_poly(self.gen_symbols).monoms() for p in polynomials]
+        # poly_mlists = [p.as_expr().as_poly(self.gen_symbols).monoms() for p in polynomials]
 
         # put not monomials but differences in the exponents between rhs and lhs
         self.rhs = dict()
-        for i, monoms in enumerate(poly_mlists):
+        for i, p in enumerate(polynomials):
             self.rhs[i] = set()
-            for m in monoms:
+            for m in p.to_dict().keys():
                 mlist = list(m)
                 mlist[i] -= 1
                 self.rhs[i].add(tuple(mlist))
@@ -80,24 +78,20 @@ class PolynomialSystem:
 
     @staticmethod
     def from_EquationSystem(system: EquationSystem, inputs_ord: dict, return_equations=False):
+        d_inputs = generate_derivatives(inputs_ord)
         # noinspection PyTypeChecker
-        R = QQ[list(filter(lambda s: '\'' not in str(s),
-                           system.variables.free + list(system.variables.parameter) + list(system.variables.input)))]
-        dvars = generate_derivatives(inputs_ord)
-        for dv in dvars:
-            for v in dv:
-                R = R.unify(QQ[v])
-        equations = [R.from_sympy(eq.rhs) for eq in system.equations]
+        R = QQ[list(set(system.variables.free + list(system.variables.input) + flatten(d_inputs)))]
+        equations = [R.from_sympy(eq.rhs.subs({p: 1 for p in system.variables.parameter})) for eq in system.equations]
         for i, v in enumerate(inputs_ord.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(R(0))
 
-        params = [g for g in R.gens if str(g) in map(str, system.variables.parameter)]
-        inputs = [g for g in R.gens if str(g) in map(str, system.variables.input) or str(g) in map(str, flatten(dvars))]
+        inputs = [g for g in R.gens if
+                  str(g) in map(str, system.variables.input) or str(g) in map(str, flatten(d_inputs))]
         if return_equations:
-            return PolynomialSystem(equations, params, inputs), equations
-        return PolynomialSystem(equations, params, inputs)
+            return PolynomialSystem(equations, inputs), equations
+        return PolynomialSystem(equations, inputs)
 
     @property
     def introduced_vars(self):
@@ -286,10 +280,10 @@ class BranchAndBound(Algorithm):
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
-        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
-            return math.inf, None, 1
         if part_res.is_quadratized() and cond(part_res):
             return part_res.new_vars_count(), part_res, 1
+        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
+            return math.inf, None, 1
 
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
@@ -365,15 +359,6 @@ def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     if part_res.new_vars_count() >= best_nvars - 1:
         return True
     return False
-
-
-def pruning_by_inputs(a: Algorithm, part_res: PolynomialSystem, *args, max_deg=1):
-    def indices_le(monom: tuple, indices: list):
-        return any([monom[i] <= max_deg for i in indices])
-
-    if all([indices_le(v, part_res.inputs_idx) for v in part_res.introduced_vars]):
-        return False
-    return True
 
 
 def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *args):
