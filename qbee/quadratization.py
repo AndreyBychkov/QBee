@@ -44,7 +44,7 @@ def quadratize(polynomials: List[PolyElement],
     return quad_system
 
 
-def polynomialize_and_quadratize(system: EquationSystem, inputs: dict, new_var_name="w_") -> EquationSystem:
+def polynomialize_and_quadratize(system: EquationSystem, inputs: dict, pruning_functions=None, new_var_name="w_") -> Optional[EquationSystem]:
     """
     :param system: System of nonlinear equations
     :param inputs: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
@@ -53,8 +53,13 @@ def polynomialize_and_quadratize(system: EquationSystem, inputs: dict, new_var_n
     poly_system = polynomialize(system)
     system.variables.base_var_name = new_var_name
     quad, gen_prunings = PolynomialSystem.from_EquationSystem(poly_system, inputs)
-    quad_res = BranchAndBound(quad, pruning_funcs=[pruning_by_best_nvars] + default_pruning_rules + gen_prunings) \
+    if pruning_functions is None:
+        pruning_functions = default_pruning_rules
+    quad_res = BranchAndBound(quad, pruning_funcs=[pruning_by_best_nvars] + pruning_functions + gen_prunings) \
         .quadratize()
+    if quad_res.system is None:
+        print(quad_res)
+        return None
 
     quad_system = deepcopy(poly_system)
     quad_monoms = [tuple_to_monom(m, quad_res.system.gen_symbols) for m in quad_res.system.introduced_vars]
