@@ -21,7 +21,7 @@ if __name__ == '__main__':
     system.print()
     print("=" * 50)
     timeout = partial(pruning_by_elapsed_time, start_t=time(), max_t=10)
-    # {T: 1} means than T has a derivative of order at most one => T'
+    # {T: 1} means than T can have a derivative of order at most one => T'
     quadr_system = polynomialize_and_quadratize(system, {T: 1}, [timeout] + default_pruning_rules)
     if quadr_system:
         quadr_system.print_substitution_equations()
