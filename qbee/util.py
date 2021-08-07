@@ -4,7 +4,7 @@ import sympy as sp
 import numpy as np
 from sympy.polys.rings import PolyElement
 from time import time
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from typing import Iterable, Union, Tuple, List, Dict
 from itertools import product, chain, combinations
 from functools import reduce
