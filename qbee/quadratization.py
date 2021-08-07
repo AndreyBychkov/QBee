@@ -40,7 +40,7 @@ def quadratize(polynomials: List[PolyElement],
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
     quad_res = algo.quadratize()
     if pb_enable:
-        print(quad_res.print(new_vars_name))
+        print(quad_res.print(new_vars_name, start_new_vars_with))
     if quad_res.system is not None:
         quad_eqs, eq_vars = apply_quadratization(polynomials, quad_res.system.introduced_vars,
                                                  new_vars_name, start_new_vars_with)
@@ -144,10 +144,10 @@ class PolynomialSystem:
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
 
-    def to_str(self, new_var_name='z_'):
+    def to_str(self, new_var_name='z_', start_id=0):
         return [
             new_var_name + ("{%d}" % i) + " = " + monom2str(m, self.gen_symbols)
-            for i, m in enumerate(self.introduced_vars)
+            for i, m in enumerate(self.introduced_vars, start_id)
         ]
 
     def __str__(self):
@@ -172,13 +172,13 @@ class AlgorithmResult:
         self.introduced_vars = introduced_vars
         self.nodes_traversed = nodes_traversed
 
-    def print(self, new_var_name="z_"):
+    def print(self, new_var_name="z_", start_new_vars_with=0):
         if self.system is None:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
         return f"Number of introduced variables: {self.introduced_vars}\n" + \
                f"Nodes traversed: {self.nodes_traversed}\n" + \
-               f"Introduced variables: {self.system.to_str(new_var_name)}"
+               "Introduced variables:\n" + '\n'.join(self.system.to_str(new_var_name, start_new_vars_with))
 
     def __repr__(self):
         return self.print()
