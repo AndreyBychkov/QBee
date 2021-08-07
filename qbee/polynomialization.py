@@ -14,7 +14,8 @@ class VariablesHolder:
     def __init__(self, variables: Iterable[sp.Symbol],
                  parameter_variables: Optional[Set[sp.Symbol]] = None,
                  input_variables: Optional[Set[sp.Symbol]] = None,
-                 new_var_base_name="w_"):
+                 new_var_base_name="w_",
+                 start_new_vars_with=0):
         if parameter_variables is None:
             parameter_variables = set()
         if input_variables is None:
@@ -26,6 +27,7 @@ class VariablesHolder:
         self._original_variables = list(variables)
         self._generated_variables = list()
         self._base_name = new_var_base_name
+        self._start_id = start_new_vars_with
 
     @property
     def free(self):
@@ -51,6 +53,14 @@ class VariablesHolder:
     def base_var_name(self, value: str):
         self._base_name = value
 
+    @property
+    def start_new_vars_with(self):
+        return self._start_id
+
+    @start_new_vars_with.setter
+    def start_new_vars_with(self, value):
+        self._start_id = value
+
     def create_variable(self) -> sp.Symbol:
         """
         Creates a new variable and stores it within itself.
@@ -60,7 +70,7 @@ class VariablesHolder:
 
         :return: Created variable
         """
-        new_index = len(self._generated_variables)
+        new_index = len(self._generated_variables) + self._start_id
         new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
         self._free_variables.append(new_variable)

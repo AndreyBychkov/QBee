@@ -33,7 +33,7 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                selection_strategy=default_strategy,
                pruning_functions: Optional[Iterable] = None,
-               new_vars_name='w') -> Optional["QuadratizationResult"]:
+               new_vars_name='w', start_new_vars_with=0) -> Optional["QuadratizationResult"]:
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
@@ -42,7 +42,8 @@ def quadratize(polynomials: List[PolyElement],
     if pb_enable:
         print(quad_res.print(new_vars_name))
     if quad_res.system is not None:
-        quad_eqs, eq_vars = apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
+        quad_eqs, eq_vars = apply_quadratization(polynomials, quad_res.system.introduced_vars,
+                                                 new_vars_name, start_new_vars_with)
         return QuadratizationResult(quad_eqs, eq_vars)
     return None
 
@@ -51,7 +52,7 @@ def polynomialize_and_quadratize(system: EquationSystem,
                                  inputs_orders=None,
                                  selection_strategy=default_strategy,
                                  pruning_functions=None,
-                                 new_var_name="w_") -> Optional["QuadratizationResult"]:
+                                 new_var_name="w_", start_new_vars_with=0) -> Optional["QuadratizationResult"]:
     """
     :param system: System of nonlinear equations
     :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
@@ -59,6 +60,8 @@ def polynomialize_and_quadratize(system: EquationSystem,
     """
     if inputs_orders is None:
         inputs_orders = dict()
+    system.variables.base_var_name = new_var_name
+    system.variables.start_new_vars_with = start_new_vars_with
     poly_system = polynomialize(system)
     if pb_enable:
         poly_system.print_substitution_equations()
@@ -70,7 +73,8 @@ def polynomialize_and_quadratize(system: EquationSystem,
     quad_equations = quadratize(poly_equations,
                                 selection_strategy,
                                 [pruning_by_best_nvars, pruning_by_inputs] + pruning_functions,
-                                new_var_name)
+                                new_var_name,
+                                start_new_vars_with + len(poly_system.equations) - len(system.equations))
     return quad_equations
 
 
