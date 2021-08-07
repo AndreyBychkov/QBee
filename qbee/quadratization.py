@@ -31,42 +31,43 @@ if log_enable:
 
 def quadratize(polynomials: List[PolyElement],
                selection_strategy=default_strategy,
-               pruning_functions: Optional[Union[Tuple, List]] = None,
-               new_vars_name='w'):
+               pruning_functions: Optional[Iterable] = None,
+               new_vars_name='w') -> Optional[List[PolyElement]]:
     if pruning_functions is None:
-        pruning_functions = (pruning_by_squarefree_graphs, pruning_by_quadratic_upper_bound)
+        pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
-    algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + pruning_functions)
+    algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
     quad_res = algo.quadratize()
     if pb_enable:
         print(quad_res.print(new_vars_name))
-    quad_system = apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
-    return quad_system
+    if quad_res.system is not None:
+        return apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
+    return None
 
 
-def polynomialize_and_quadratize(system: EquationSystem, inputs: dict, pruning_functions=None, new_var_name="w_") -> Optional[EquationSystem]:
+def polynomialize_and_quadratize(system: EquationSystem,
+                                 inputs_orders=None,
+                                 selection_strategy=default_strategy,
+                                 pruning_functions=None,
+                                 new_var_name="w_") -> Optional[List[PolyElement]]:
     """
     :param system: System of nonlinear equations
-    :param inputs: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
+    :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
     :return: quadratized system
     """
+    if inputs_orders is None:
+        inputs_orders = dict()
     poly_system = polynomialize(system)
     system.variables.base_var_name = new_var_name
-    quad, gen_prunings = PolynomialSystem.from_EquationSystem(poly_system, inputs)
+    poly_equations, excl_inputs = poly_system.to_poly_equations(inputs_orders)
+    pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=excl_inputs)
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
-    quad_res = BranchAndBound(quad, pruning_funcs=[pruning_by_best_nvars] + pruning_functions + gen_prunings) \
-        .quadratize()
-    if quad_res.system is None:
-        print(quad_res)
-        return None
-
-    quad_system = deepcopy(poly_system)
-    quad_monoms = [tuple_to_monom(m, quad_res.system.gen_symbols) for m in quad_res.system.introduced_vars]
-    for m in quad_monoms:
-        new_var = quad_system.variables.create_variable()
-        quad_system.differential_auxiliary_equation_add(new_var, m)
-    return quad_system
+    quad_equations = quadratize(poly_equations,
+                                selection_strategy,
+                                [pruning_by_best_nvars, pruning_by_inputs] + pruning_functions,
+                                new_var_name)
+    return quad_equations
 
 
 # ------------------------------------------------------------------------------
@@ -95,19 +96,6 @@ class PolynomialSystem:
         for i in range(self.dim):
             self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
         self.original_degree = max(map(monomial_deg, self.nonsquares))
-
-    @staticmethod
-    def from_EquationSystem(system: EquationSystem, inputs_ord: dict) -> ("PolynomialSystem", List["Pruning"]):
-        d_inputs = generate_derivatives(inputs_ord)
-        R = QQ[list(system.variables.free + flatten(d_inputs))]
-        equations = [R.from_sympy(eq.rhs.subs({p: 1 for p in system.variables.parameter})) for eq in system.equations]
-        for i, v in enumerate(inputs_ord.keys()):
-            for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
-                equations.append(dv)
-            equations.append(dv)
-        inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
-        pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=inputs_to_exclude)
-        return PolynomialSystem(equations), [pruning_by_inputs, ]
 
     @property
     def introduced_vars(self):

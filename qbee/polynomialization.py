@@ -109,6 +109,19 @@ class EquationSystem:
     def substitution_equations(self):
         return self._substitution_equations
 
+    def to_poly_equations(self, inputs_ord: dict):
+        """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method"""
+        assert self.is_polynomial()
+        d_inputs = generate_derivatives(inputs_ord)
+        R = sp.QQ[list(self.variables.free + sp.flatten(d_inputs))]
+        equations = [R.from_sympy(eq.rhs.subs({p: 1 for p in self.variables.parameter})) for eq in self.equations]
+        for i, v in enumerate(inputs_ord.keys()):
+            for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
+                equations.append(dv)
+            equations.append(dv)
+        inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
+        return equations, inputs_to_exclude
+
     def subs_expression(self, old: sp.Expr, new: sp.Expr):
         """Replace 'old' expression with 'new' expression for each equation."""
         for i in range(len(self._equations)):
