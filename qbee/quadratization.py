@@ -60,6 +60,8 @@ def polynomialize_and_quadratize(system: EquationSystem,
     if inputs_orders is None:
         inputs_orders = dict()
     poly_system = polynomialize(system)
+    if pb_enable:
+        poly_system.print_substitution_equations()
     system.variables.base_var_name = new_var_name
     poly_equations, excl_inputs = poly_system.to_poly_equations(inputs_orders)
     pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=excl_inputs)
