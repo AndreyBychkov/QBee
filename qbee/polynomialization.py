@@ -128,7 +128,7 @@ class EquationSystem:
         for i, v in enumerate(inputs_ord.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
-            equations.append(dv)
+            equations.append(R.zero)
         inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
         return equations, inputs_to_exclude
 
