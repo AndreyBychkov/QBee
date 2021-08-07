@@ -21,4 +21,5 @@ if __name__ == '__main__':
     # {T: 2} means than T can have a derivative of order at most two => T''
     quadr_system = polynomialize_and_quadratize(system, {T: 2})
     print("=" * 50)
-    list(map(print, quadr_system))
+    if quadr_system:
+        print(quadr_system)

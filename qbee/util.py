@@ -223,7 +223,7 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
     result = list(polynomials)
     for monom in quadratization:
         result.append(calc_Lie_derivative(polynomials, monom2PolyElem(monom, gens)))
-    subs = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name)
+    subs, new_vars = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name)
     result = list(map(PolyElement.as_expr, result))
     for i, poly in enumerate(result):
         ppoly = sp.Poly(poly, [g.as_expr() for g in gens])
@@ -232,7 +232,7 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
             subs_monom = monom2PolyElem(monom, ppoly.gens).as_expr().xreplace(subs)
             res_lst.append(coef * subs_monom)
         result[i] = sp.Add(*res_lst)
-    return result
+    return result, [g.as_expr() for g in gens] + new_vars
 
 
 def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name):
@@ -248,7 +248,7 @@ def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[
         val = left_v * right_v
         if key != val:
             res[key] = val
-    return res
+    return res, new_vars
 
 
 def calc_Lie_derivative(polys: List[PolyElement], new_var: PolyElement) -> PolyElement:

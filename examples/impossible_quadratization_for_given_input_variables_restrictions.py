@@ -24,4 +24,4 @@ if __name__ == '__main__':
     # {T: 1} means than T can have a derivative of order at most one => T'
     quadr_system = polynomialize_and_quadratize(system, {T: 1}, pruning_functions=[timeout] + default_pruning_rules)
     if quadr_system:
-        list(map(print, quadr_system))
+        print(quadr_system)

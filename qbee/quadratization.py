@@ -1,3 +1,4 @@
+import copy
 import math
 import configparser
 import pickle
@@ -32,7 +33,7 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                selection_strategy=default_strategy,
                pruning_functions: Optional[Iterable] = None,
-               new_vars_name='w') -> Optional[List[PolyElement]]:
+               new_vars_name='w') -> Optional["QuadratizationResult"]:
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
@@ -41,7 +42,8 @@ def quadratize(polynomials: List[PolyElement],
     if pb_enable:
         print(quad_res.print(new_vars_name))
     if quad_res.system is not None:
-        return apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
+        quad_eqs, eq_vars = apply_quadratization(polynomials, quad_res.system.introduced_vars, new_vars_name)
+        return QuadratizationResult(quad_eqs, eq_vars)
     return None
 
 
@@ -49,7 +51,7 @@ def polynomialize_and_quadratize(system: EquationSystem,
                                  inputs_orders=None,
                                  selection_strategy=default_strategy,
                                  pruning_functions=None,
-                                 new_var_name="w_") -> Optional[List[PolyElement]]:
+                                 new_var_name="w_") -> Optional["QuadratizationResult"]:
     """
     :param system: System of nonlinear equations
     :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
@@ -155,7 +157,7 @@ class PolynomialSystem:
 
 # ------------------------------------------------------------------------------
 
-class QuadratizationResult:
+class AlgorithmResult:
     def __init__(self,
                  system: Optional[PolynomialSystem],
                  introduced_vars: int,
@@ -176,7 +178,22 @@ class QuadratizationResult:
         return self.print()
 
 
+class QuadratizationResult:
+    def __init__(self, equations, variables):
+        self.rhs = copy.deepcopy(equations)
+        self.lhs = derivatives(variables)
+
+    def __getitem__(self, i):
+        return sp.Eq(self.lhs[i], self.rhs[i])
+
+    def __repr__(self):
+        return '\n'.join([
+            f"{dx} = {fx}" for dx, fx in zip(self.lhs, self.rhs)
+        ])
+
+
 # ------------------------------------------------------------------------------
+
 
 Pruning = Callable[..., bool]
 
@@ -204,7 +221,7 @@ class Algorithm:
                 if not dominated(m, self.dominating_monomials):
                     self.dominating_monomials.add(m)
 
-    def quadratize(self) -> QuadratizationResult:
+    def quadratize(self) -> AlgorithmResult:
         pass
 
     def traverse_all(self, to_depth: int, pred: Callable[[PolynomialSystem], bool]):
@@ -274,11 +291,11 @@ class BranchAndBound(Algorithm):
             self.add_pruning(partial(pruning_by_vars_number, nvars=upper_bound))
 
     @timed(enabled=pb_enable)
-    def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> QuadratizationResult:
+    def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> AlgorithmResult:
         nvars, opt_system, traversed = self._bnb_step(self._system, self.preliminary_upper_bound, cond)
         self._final_iter()
         self._save_results(opt_system)
-        return QuadratizationResult(opt_system, nvars, traversed)
+        return AlgorithmResult(opt_system, nvars, traversed)
 
     @progress_bar(is_stop=False, enabled=pb_enable)
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
