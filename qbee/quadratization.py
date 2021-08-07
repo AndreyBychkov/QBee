@@ -17,7 +17,7 @@ from memory_profiler import profile
 
 config = configparser.ConfigParser({
     'logging_enable': False,
-    'progress_bar_enable': False,
+    'progress_bar_enable': True,
     'logging_file': 'log/log.feather',
     'quad_systems_file': 'log/quad_systems.pkl'
 })
