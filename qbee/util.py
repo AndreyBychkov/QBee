@@ -271,3 +271,7 @@ def generate_derivatives(inputs: Dict[PolyElement, int]) -> List[List[str]]:
         [sp.Symbol(str(var) + '\'' * n) for n in range(0, max_order + 1)]
         for var, max_order in inputs.items()
     ]
+
+
+def remove_repeating(seq: Iterable) -> List:
+    return list(dict.fromkeys(seq))

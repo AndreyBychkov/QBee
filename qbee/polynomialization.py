@@ -96,7 +96,7 @@ class EquationSystem:
         _input_vars = set(input_variables) if input_variables is not None else set()
         # _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
         # _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
-        _variables = set(map(lambda dv: symbol_from_derivative(dv), [eq.lhs for eq in equations]))
+        _variables = remove_repeating([symbol_from_derivative(eq.lhs) for eq in equations])
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
         self._equations_poly_degrees = dict()
