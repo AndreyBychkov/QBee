@@ -123,7 +123,7 @@ class EquationSystem:
         for i in range(len(self._equations)):
             self._equations[i] = sp.expand(self._equations[i])
 
-    def is_polynomial(self, mode="original") -> bool:
+    def is_polynomial(self) -> bool:
         for eq in self._equations:
             if not eq.args[1].is_polynomial(*self.variables.free, *self.variables.input):
                 return False
@@ -280,7 +280,7 @@ def _polynomialize_algebraic_iter(system: EquationSystem):
 
 def _polynomialize_differential(system: EquationSystem) -> EquationSystem:
     result_system = deepcopy(system)
-    while not result_system.is_polynomial(mode="full"):
+    while not result_system.is_polynomial():
         _polynomialize_differential_iter(result_system)
 
     return result_system
