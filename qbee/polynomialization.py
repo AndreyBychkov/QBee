@@ -165,7 +165,7 @@ class EquationSystem:
         if is_noninteger_positive_exp(substitution):
             self._add_noninteger_positive_subs_equation(new_var, substitution)
         else:
-            self.subs_expression(substitution, new_var)
+            self.replace_equation(substitution, new_var)
             self._substitution_equations.append(sp.Eq(new_var, substitution))
             self._equations.append(sp.Eq(
                 make_derivative_symbol(new_var),
