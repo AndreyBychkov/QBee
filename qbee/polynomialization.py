@@ -123,8 +123,9 @@ class EquationSystem:
         """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method"""
         assert self.is_polynomial()
         d_inputs = generate_derivatives(inputs_ord)
-        R = sp.QQ[list(self.variables.free + sp.flatten(d_inputs))]
-        equations = [R.from_sympy(eq.rhs.subs({p: 1 for p in self.variables.parameter})) for eq in self.equations]
+        coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
+        R = coef_field[list(self.variables.free + sp.flatten(d_inputs))]
+        equations = [R.from_sympy(eq.rhs) for eq in self.equations]
         for i, v in enumerate(inputs_ord.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
