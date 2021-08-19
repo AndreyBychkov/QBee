@@ -307,15 +307,13 @@ class BranchAndBound(Algorithm):
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
-        # The order of this blocks can be important
-        # Pruning checks in the beginning guarantee that they will not be violated but they must be true for all cases
-        # Pruning checks after quadratization checks could be heuristic but have no guarantee that the final system satisfies them
-        # TODO: make different types of pruning rules? Utilize `cond`?
-        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
-            return math.inf, None, 1
+        # The order of this blocks is important: pruning rules assume that 
+        # the input partial result is not a quadratization
         if part_res.is_quadratized() and cond(part_res):
             return part_res.new_vars_count(), part_res, 1
-
+        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
+            return math.inf, None, 1
+ 
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
         for next_system in self.next_gen(part_res):
