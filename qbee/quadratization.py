@@ -414,11 +414,11 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
     needed_new_vars = 0
     degree_two_monoms = len(part_res.nonsquares)
     while True:
+        if degree_two_monoms <= (needed_new_vars * (needed_new_vars + 1)) // 2:
+            break
         if needed_new_vars < len(degree_one_count):
             degree_two_monoms -= degree_one_count[needed_new_vars]
         needed_new_vars += 1
-        if degree_two_monoms <= (needed_new_vars * (needed_new_vars + 1)) // 2:
-            break
 
     lower_bound = part_res.new_vars_count() + needed_new_vars
 
@@ -478,13 +478,13 @@ def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args
 
     needed_new_vars = 0
     while True:
-        if needed_new_vars < len(degree_one_count):
-            no_C4_edges -= degree_one_count[needed_new_vars]
-        needed_new_vars += 1
         if needed_new_vars >= len(MAX_C4_FREE_EDGES):
             break
         if no_C4_edges <= MAX_C4_FREE_EDGES[needed_new_vars][min(max_loops, needed_new_vars)]:
             break
+        if needed_new_vars < len(degree_one_count):
+            no_C4_edges -= degree_one_count[needed_new_vars]
+        needed_new_vars += 1
 
     lower_bound = part_res.new_vars_count() + needed_new_vars
 
