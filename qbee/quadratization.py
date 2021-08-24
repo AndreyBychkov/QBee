@@ -48,7 +48,7 @@ def quadratize(polynomials: List[PolyElement],
     return None
 
 
-def polynomialize_and_quadratize(system: EquationSystem,
+def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
                                  inputs_orders=None,
                                  selection_strategy=default_strategy,
                                  pruning_functions=None,
@@ -56,16 +56,15 @@ def polynomialize_and_quadratize(system: EquationSystem,
     """
     :param system: System of nonlinear equations
     :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
+    :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
+    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
     :return: quadratized system
     """
     if inputs_orders is None:
         inputs_orders = dict()
-    system.variables.base_var_name = new_var_name
-    system.variables.start_new_vars_with = start_new_vars_with
-    poly_system = polynomialize(system)
+    poly_system = polynomialize(system, new_var_name=new_var_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
         poly_system.print_substitution_equations()
-    system.variables.base_var_name = new_var_name
     poly_equations, excl_inputs = poly_system.to_poly_equations(inputs_orders)
     pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=excl_inputs)
     if pruning_functions is None:
@@ -74,7 +73,7 @@ def polynomialize_and_quadratize(system: EquationSystem,
                                 selection_strategy,
                                 [pruning_by_best_nvars, pruning_by_inputs] + pruning_functions,
                                 new_var_name,
-                                start_new_vars_with + len(poly_system.equations) - len(system.equations))
+                                start_new_vars_with + len(poly_system) - len(system))
     return quad_equations
 
 

@@ -262,12 +262,15 @@ class EquationSystem:
         return '\n'.join(map(lambda e: e.__str__(), self._equations))
 
 
-def polynomialize(system: EquationSystem, mode='differential') -> EquationSystem:
+def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
+                  mode='differential', new_var_name="w_", start_new_vars_with=0) -> EquationSystem:
     """
     Transforms the system into polynomial form using variable substitution techniques.
 
     :param system: non-linear ODEs system
     :param mode: auxiliary equation form.
+    :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
+    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
 
     Mode
     -----------------
@@ -277,6 +280,12 @@ def polynomialize(system: EquationSystem, mode='differential') -> EquationSystem
          adds auxiliary equations in form y' = f(x, y)
 
     """
+    if not isinstance(system, EquationSystem):
+        variables, eqs = zip(*system)
+        ders = derivatives(variables)
+        system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, eqs)])
+    system.variables.base_var_name = new_var_name
+    system.variables.start_new_vars_with = start_new_vars_with
     if mode == 'algebraic':
         return _polynomialize_algebraic(system)
     elif mode == 'differential':
