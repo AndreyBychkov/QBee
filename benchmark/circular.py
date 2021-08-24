@@ -3,7 +3,7 @@ import sympy as sp
 from qbee import *
 from qbee.selection import *
 from qbee.quadratization import pruning_by_quadratic_upper_bound, pruning_by_best_nvars, pruning_by_squarefree_graphs
-from qbee.examples import generate_circular
+from examples import generate_circular
 
 R, x = sp.ring(["x"], sp.QQ)
 

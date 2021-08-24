@@ -1,5 +1,5 @@
 from qbee import *
-from qbee.examples import *
+from examples import *
 from copy import deepcopy
 
 if __name__ == '__main__':
