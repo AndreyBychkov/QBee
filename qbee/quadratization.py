@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import math
 import configparser
@@ -33,7 +35,7 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                selection_strategy=default_strategy,
                pruning_functions: Optional[Iterable] = None,
-               new_vars_name='w', start_new_vars_with=0) -> Optional["QuadratizationResult"]:
+               new_vars_name='w', start_new_vars_with=0) -> Optional[QuadratizationResult]:
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
@@ -52,7 +54,7 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
                                  inputs_orders=None,
                                  selection_strategy=default_strategy,
                                  pruning_functions=None,
-                                 new_var_name="w_", start_new_vars_with=0) -> Optional["QuadratizationResult"]:
+                                 new_var_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
     """
     :param system: System of nonlinear equations
     :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
