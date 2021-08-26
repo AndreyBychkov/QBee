@@ -11,7 +11,7 @@ def assert_check_poly(expected_system: EquationSystem, actual_system: EquationSy
     try:
         assert actual_system.equations == expected_system.equations
     except AssertionError as e:
-        if actual_system.is_polynomial("full"):
+        if actual_system.is_polynomial():
             raise AssertionError("Systems are not equal but actual system is polynomial.")
         else:
             raise e
@@ -51,14 +51,14 @@ def test_parameter():
         sp.Eq(dot_y, sp.exp(k * x))
     ], parameter_variables=[k])
 
-    poly_system = polynomialize(system)
+    poly_system = polynomialize(system, new_var_name="w", start_new_vars_with=0)
 
-    _, y0 = poly_system.variables.free
-    dot_y0 = derivatives(y0)[0]
+    w0 = sp.Symbol("w{0}")
+    dw0 = derivatives("w{0}")
     expected_system = EquationSystem([
-        sp.Eq(dot_x, y0),
-        sp.Eq(dot_y, y0),
-        sp.Eq(dot_y0, k * y0 ** 2)
+        sp.Eq(dot_x, w0),
+        sp.Eq(dot_y, w0),
+        sp.Eq(dw0, k * w0 ** 2)
     ], parameter_variables=[k])
 
     assert_check_poly(expected_system, poly_system)
