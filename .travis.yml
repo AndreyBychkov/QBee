@@ -16,6 +16,8 @@ jobs:
       env: PATH=/c/Python38:/c/Python38/Scripts:$PATH
 install:
   - pip3 install --upgrade pip  # all three OSes agree about 'pip3'
-  - pip3 install -r requirements.txt
+  - pip3 install -r requirements_dev.txt
   - pip3 install .
-script: python3 -m pytest tests/ || python -m pytest tests/
+script:
+  - if [ "$TRAVIS_BRANCH" = "dev" ]; then python3 -m pytest tests/ -m "not benchmark" || python -m pytest tests/ -m "not benchmark"; fi
+  - if [ "$TRAVIS_BRANCH" = "master" ]; then python3 -m pytest tests/ || python -m pytest tests/; fi
