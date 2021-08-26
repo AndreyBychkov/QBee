@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/AndreyBychkov/QBee.svg?branch=master)](https://travis-ci.com/AndreyBychkov/QBee)
+[![Build Status](https://travis-ci.com/AndreyBychkov/QBee.svg?branch=dev)](https://travis-ci.com/AndreyBychkov/QBee)
 
 # QBee
 
