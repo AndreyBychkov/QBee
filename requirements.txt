@@ -7,3 +7,4 @@ networkx
 matplotlib
 memory_profiler
 pyvis
+pyarrow
