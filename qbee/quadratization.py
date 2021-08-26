@@ -334,7 +334,7 @@ class BranchAndBound(Algorithm):
     def _final_iter(self):
         self._nodes_traversed = 0
 
-    @dump_results(enabled=True, log_file=quad_systems_file)
+    @dump_results(enabled=log_enable, log_file=quad_systems_file)
     def _save_results(self, opt_system):
         return [opt_system, ]
 
