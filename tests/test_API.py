@@ -1,6 +1,7 @@
 import pytest
 import sympy as sp
 from qbee import *
+from qbee.experimental import *
 
 
 def test_polynomialize_list_input():
@@ -50,3 +51,14 @@ def test_polynomialize_and_quadratize_on_already_polynomial_system():
         (y, x**5)
     ])
     assert res is not None
+
+
+def test_polynomialize_experimental_API():
+    x, y = variables("x, y", real=True)  # Identical to sympy.symbols
+    p, k = parameters("p, k")
+    u = inputs("u")
+    res = polynomialize([
+        (x, sp.sin(k * x + u)),
+        (y, p * sp.cos(y))
+    ])
+    assert len(res) > 2
