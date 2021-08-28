@@ -1,10 +1,17 @@
 import sympy as sp
-import qbee.experimental  # Weird thing: if I do `from experimental import *` then types won't be resolver correctly.
 import hashlib
 from copy import deepcopy
 from typing import Callable, Set, Optional, List
 from .AST_walk import find_non_polynomial
 from .util import *
+
+
+class Variable(sp.Symbol):
+    pass
+
+
+class Parameter(sp.Symbol):
+    pass
 
 
 class VariablesHolder:
@@ -285,8 +292,11 @@ def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]]
         lhs, rhs = zip(*system)
         all_symbols = list(reduce(lambda l, r: l | r, [eq.free_symbols for eq in rhs]))
         degrade_to_symbol = {s: sp.Symbol(str(s)) for s in all_symbols}
-        inputs = [s.subs(degrade_to_symbol) for s in all_symbols if isinstance(s, qbee.experimental.Input)]
-        parameters = [s.subs(degrade_to_symbol) for s in all_symbols if isinstance(s, qbee.experimental.Parameter)]
+
+        parameters = [s.subs(degrade_to_symbol) for s in all_symbols if isinstance(s, Parameter)]
+        inputs = [s.subs(degrade_to_symbol) for s in all_symbols if s not in lhs]
+        inputs = [s for s in inputs if s not in parameters]
+
         ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
         sym_rhs = [eq.subs(degrade_to_symbol) for eq in rhs]
         system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, sym_rhs)], parameters, inputs)

@@ -6,9 +6,7 @@ import configparser
 import pickle
 import numpy as np
 from sympy.polys.rings import PolyElement
-from sympy import *
 from typing import Callable, List, Optional, Set, Collection
-from typing import Dict as DictT
 from functools import partial
 from operator import add
 from .selection import *  # replace with .selection if you want pip install
