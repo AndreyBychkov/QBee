@@ -44,7 +44,7 @@ def quadratize(polynomials: List[PolyElement],
     if quad_res.system is not None:
         quad_eqs, eq_vars = apply_quadratization(polynomials, quad_res.system.introduced_vars,
                                                  new_vars_name, start_new_vars_with)
-        return QuadratizationResult(quad_eqs, eq_vars)
+        return QuadratizationResult(quad_eqs, eq_vars, quad_res)
     return None
 
 
@@ -184,9 +184,14 @@ class AlgorithmResult:
 
 
 class QuadratizationResult:
-    def __init__(self, equations, variables):
+    def __init__(self, equations, variables, algo_res: AlgorithmResult):
         self.rhs = copy.deepcopy(equations)
         self.lhs = derivatives(variables)
+        self.introduced_vars = algo_res.introduced_vars
+        self.nodes_traversed = algo_res.nodes_traversed
+
+    def to_list(self):
+        return [self[i] for i in range(len(self.rhs))]
 
     def __getitem__(self, i):
         return sp.Eq(self.lhs[i], self.rhs[i])
