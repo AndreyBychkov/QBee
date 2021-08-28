@@ -54,3 +54,13 @@ def test_polynomialize_and_quadratize_on_already_polynomial_system():
         (y, x ** 5)
     ])
     assert res is not None
+
+
+def test_already_quadratized_system():
+    x, y = functions("x, y")
+    res = polynomialize_and_quadratize([
+        (x, y ** 2),
+        (y, x ** 2)
+    ])
+    assert res.introduced_vars == 0
+

@@ -102,7 +102,7 @@ class PolynomialSystem:
         self.add_var(tuple([0] * self.dim))
         for i in range(self.dim):
             self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))
-        self.original_degree = max(map(monomial_deg, self.nonsquares))
+        self.original_degree = max(map(monomial_deg, self.nonsquares.union(self.squares)))
 
     @property
     def introduced_vars(self):
