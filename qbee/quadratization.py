@@ -34,17 +34,31 @@ def quadratize(polynomials: List[PolyElement],
                selection_strategy=default_strategy,
                pruning_functions: Optional[Iterable] = None,
                new_vars_name='w', start_new_vars_with=0) -> Optional[QuadratizationResult]:
+    """
+    Quadratize a system of ODEs with the polynomial right-hand side
+
+    :param polynomials: List of polynomials
+    :param selection_strategy: heuristics of how we rank new members for possible quadratizations
+    :param pruning_functions: predicates that remove transformations from the search space
+    :param new_vars_name: how new variables start
+    :param start_new_vars_with: start index
+    :return: quadratized system or None if there is none found
+    """
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
-    quad_res = algo.quadratize()
+    algo_res = algo.quadratize()
     if pb_enable:
-        print(quad_res.print(new_vars_name, start_new_vars_with))
-    if quad_res.system is not None:
-        quad_eqs, eq_vars = apply_quadratization(polynomials, quad_res.system.introduced_vars,
+        print("=" * 50)
+        print("Quadratization result")
+        print("=" * 50)
+        print(algo_res.print(new_vars_name, start_new_vars_with))
+        print()
+    if algo_res.system is not None:
+        quad_eqs, eq_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
                                                  new_vars_name, start_new_vars_with)
-        return QuadratizationResult(quad_eqs, eq_vars, quad_res)
+        return QuadratizationResult(quad_eqs, eq_vars, algo_res)
     return None
 
 
@@ -54,6 +68,8 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
                                  pruning_functions=None,
                                  new_var_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
     """
+
+
     :param system: System of nonlinear equations
     :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
     :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
@@ -62,6 +78,9 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
     """
     if inputs_orders is None:
         inputs_orders = dict()
+    if pb_enable:
+        # TODO: temporary solution, should incorporate printing variables with non-integer powers into subs. equations
+        print("Variables introduced in polynomialization:")
     poly_system = polynomialize(system, new_var_name=new_var_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
         poly_system.print_substitution_equations()
@@ -364,7 +383,7 @@ def pruning_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, st
     :examples
         >>> from functools import partial
         >>> pruning = partial(pruning_by_elapsed_time, start_t=time(), max_t=100) # 100 seconds
-    :return:
+
     """
     curr_t = time()
     if curr_t - start_t >= max_t:

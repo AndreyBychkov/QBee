@@ -1,3 +1,9 @@
+"""
+QBee - Package for transforming Systems of Differential Equations to quadratic form.
+"""
+
+__version__ = "0.6.0"
+
 import sympy as sp
 from .polynomialization import polynomialize, EquationSystem, Variable, Parameter
 from .quadratization import BranchAndBound, PolynomialSystem, Pruning, \
