@@ -28,7 +28,7 @@ leading to the following ODE
 
 Thus, we attained the system with quadratic right-hand side
 
-![\begin{cases} x_1' = x_1 x_2 \\ x_2' = -x_2 y \\ y' = x_2 y - 2y^2 \end{cases}](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}\begin{cases}&space;x_1'&space;=&space;x_1&space;x_2&space;\\&space;x_2'&space;=&space;-x_2&space;y&space;\\&space;y'&space;=&space;x_2&space;y&space;-&space;2y^2&space;\end{cases}})
+![\begin{cases} x_1' = x_1 x_2 \\ x_2' = -x_2 y \\ y' = x_2 y - 2y^2 \end{cases}](https://latex.codecogs.com/png.latex?\dpi{200}&space;\huge&space;{\color{DarkOrange}\begin{cases}&space;x_1'&space;=&space;x_1&space;x_2&space;\\&space;x_2'&space;=&space;-x_2&space;y&space;\\&space;y'&space;=&space;x_2&space;y&space;-&space;2y^2&space;\end{cases}})
 
 We used only one new variable, so we achieved an *optimal* quadratization.
 
