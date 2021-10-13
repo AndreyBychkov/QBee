@@ -16,19 +16,19 @@ The problem of *quadratization* is, given a system of ODEs with polynomial right
 system with quadratic right-hand side by introducing as few new variables as possible. We will explain it using toy
 example. Consider the system
 
-![\begin{cases} \x_1' = x_1 x_2 \\ \x_2' = -x_1 x_2^3 \end{cases}](https://latex.codecogs.com/gif.latex?%5Chuge%20%5Cbegin%7Bcases%7D%20x_1%27%20%3D%20x_1%20x_2%20%5C%5C%20x_2%27%20%3D%20-x_1%20x_2%5E3%20%5Cend%7Bcases%7D)
+![\begin{cases} \x_1' = x_1 x_2 \\ \x_2' = -x_1 x_2^3 \end{cases}](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}\begin{cases}&space;x_1'&space;=&space;x_1&space;x_2&space;\\&space;x_2'&space;=&space;-x_1&space;x_2^3&space;\end{cases}})
 
 An example of quadratization of this system will be a new variable
 
-![y = x_1 x_2^2](https://latex.codecogs.com/gif.latex?%5Chuge%20y%20%3D%20x_1%20x_2%5E2)
+![y = x_1 x_2^2](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}y&space;=&space;x_1&space;x_2^2})
 
 leading to the following ODE
 
-![y' = x_2 y - 2y^2](https://latex.codecogs.com/gif.latex?%5Chuge%20y%27%20%3D%20x_2%20y%20-%202y%5E2)
+![y' = x_2 y - 2y^2](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}y'&space;=&space;x_2&space;y&space;-&space;2y^2})
 
 Thus, we attained the system with quadratic right-hand side
 
-![\begin{cases} x_1' = x_1 x_2 \\ x_2' = -x_2 y \\ y' = x_2 y - 2y^2 \end{cases}](https://latex.codecogs.com/gif.latex?%5Chuge%20%5Cbegin%7Bcases%7D%20x_1%27%20%3D%20x_1%20x_2%20%5C%5C%20x_2%27%20%3D%20-x_2%20y%20%5C%5C%20y%27%20%3D%20x_2%20y%20-%202y%5E2%20%5Cend%7Bcases%7D)
+![\begin{cases} x_1' = x_1 x_2 \\ x_2' = -x_2 y \\ y' = x_2 y - 2y^2 \end{cases}](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}\begin{cases}&space;x_1'&space;=&space;x_1&space;x_2&space;\\&space;x_2'&space;=&space;-x_2&space;y&space;\\&space;y'&space;=&space;x_2&space;y&space;-&space;2y^2&space;\end{cases}})
 
 We used only one new variable, so we achieved an *optimal* quadratization.
 
