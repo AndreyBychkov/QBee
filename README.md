@@ -7,6 +7,7 @@ Python library for transforming systems of ODE equations into a systems with qua
 # Installation
 
 1. Clone repository: `https://github.com/AndreyBychkov/QBee.git`
+   * Or, if you want our bleeding edge version, clone `https://github.com/AndreyBychkov/QBee/tree/dev`
 2. Install requirements: `pip install -r requirements.txt`
 3. Install the package: `pip install .`
 
@@ -38,9 +39,11 @@ QBee implements algorithms that **take** system of ODEs with elementary function
 **return** *optimal monomial quadratization* - optimal quadratization constructed from monomial substitutions.
 
 We will demonstrate usage of QBee on the example below. Other interactive examples you can find
-in [examples section](old_examples).
+in [examples section](examples).
 
 ### 1. Importing QBee
+
+QBee relies on Sympy for a high-level API.
 
 ```python
 import sympy
@@ -49,87 +52,91 @@ from qbee import *
 sympy.init_printing()  # If you work in Jupyter notebook 
 ```
 
-### 2. Polynomial ODEs and quadratization
+### 2. System definition
 
-Our main focus is transforming systems of ODEs with polynomial right-hand side into quadratic ones. So, we will start
-from discussing how to quadratize them.
+For example, we will take the **A1** system from [Swischuk et al.'2020](https://arxiv.org/abs/1908.03620)
 
-First, we define a system of ODEs. In the list `system` defined right-hand side of input ODE in linear order. For
-example, consider the system:
+<img alt="{\color{DarkOrange} \begin{cases} c_1&#39; = -A \exp(-E_a / (R_u T)) c_1 ^{0.2} c_2^{1.3}\\ c_2&#39; = 2c_1&#39; \\ c_3&#39; = -c_1&#39; \\ c_4&#39; = -2 c_1&#39; \end{cases}}" height="250" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}&amp;space;\begin{cases}&amp;space;c_1&#39;&amp;space;=&amp;space;-A&amp;space;\exp(-E_a&amp;space;/&amp;space;(R_u&amp;space;T))&amp;space;c_1&amp;space;^{0.2}&amp;space;c_2^{1.3}\\&amp;space;c_2&#39;&amp;space;=&amp;space;2c_1&#39;&amp;space;\\&amp;space;c_3&#39;&amp;space;=&amp;space;-c_1&#39;&amp;space;\\&amp;space;c_4&#39;&amp;space;=&amp;space;-2&amp;space;c_1&#39;&amp;space;\end{cases}}" width="550"/>
 
-![\begin{cases} \dot{x} = y^3 \\ \dot{y} = x^3 \end{cases}](https://latex.codecogs.com/gif.latex?%5Chuge%20%5Cbegin%7Bcases%7D%20x%27%20%3D%20y%5E3%20%5C%5C%20y%27%20%3D%20x%5E3%20%5Cend%7Bcases%7D)
-
+The parameters in the system are `A, Ea and Ru`, and the others are either state variables or inputs.
+So, let's define them with the system in code:
 ```python
-x, y, _ = sympy.ring(['x', 'y'], sympy.QQ)
+A, Ea, Ru = parameters("A, Ea, Ru")
+c1, c2, c3, c4, T = functions("c1, c2, c3, c4, T")  
+
+eq1 = -A * sp.exp(-Ea / (Ru * T)) * c1 ** 0.2 * c2 ** 1.3
 system = [
-    y ** 3,
-    x ** 3
+    (c1, eq1),
+    (c2, 2 * eq1),
+    (c3, -eq1),
+    (c4, -2 * eq1)
 ]
 ```
 
-Then we need to run quadratization algorithm. For the most systems high-level function `quadratize` should be enough.
+### 3. Polynomialization and Quadratization
+
+When we work with ODEs with the right-hand side being a general continuous function, 
+we utilize the following pipeline: 
+```
+Input system -> Polynomial System -> Quadratic System
+```
+and the transformations are called *polynomialization* and *quadratization* accordingly. 
+
+The example system is not polynomial, so we use the most general method for achieving optimal monomial quadratization.
 
 ```python
-quad_system = quadratize(system)
-print("Quadratized system:", quad_system)
+# {T: 2} means than T can have a derivative of order at most two => T''
+quadr_system = polynomialize_and_quadratize(system, inputs_orders={T: 2})
+if quadr_system:
+    print("Quadratized system:")
+    print(quadr_system)
 ```
 
 Sample output:
 
 ```
-Elapsed time: 0.011s.
-Number of introduced variables: 3
-Nodes traversed: 15
-Introduced variables: ['x y', 'x^{2}', 'y^{2}']
-Quadratized system: [w_3*y, w_2*x, w_2**2 + w_3**2, 2*w_1*w_3, 2*w_1*w_2]
-```
+Variables introduced in polynomialization:
+w_{0} = c1**(-0.8)
+w_{1} = c2**(-0.7)
+w_{2} = 1/T
+w_{3} = exp(-Ea*w_{2}/Ru)
 
-Introduced variables are optimal monomial quadratization.
+Elapsed time: 0.139s.
+==================================================
+Quadratization result
+==================================================
+Number of introduced variables: 5
+Nodes traversed: 117
+Introduced variables:
+w_{4} = T'*w_{2}
+w_{5} = T'*w_{2}**2
+w_{6} = c2**2*w_{0}*w_{1}*w_{3}
+w_{7} = w_{2}**2
+w_{8} = c1*c2*w_{0}*w_{1}*w_{3}
 
-### 3. General ODEs and polynomialization
+Quadratized system:
+c1' = -A*c2*w_{8}
+c2' = -2*A*c2*w_{8}
+c3' = A*c2*w_{8}
+c4' = 2*A*c2*w_{8}
+w_{0}' = 4*A*w_{0}*w_{6}/5
+w_{1}' = 7*A*w_{1}*w_{8}/5
+w_{2}' = -T'*w_{7}
+w_{3}' = Ea*w_{3}*w_{5}/Ru
+T' = T'
+T'' = T''
+T''' = 0
+w_{4}' = -T'*w_{5} + T''*w_{2}
+w_{5}' = T''*w_{7} - 2*w_{4}*w_{5}
+w_{6}' = 4*A*w_{6}**2/5 - 13*A*w_{6}*w_{8}/5 + Ea*w_{5}*w_{6}/Ru
+w_{7}' = -2*w_{4}*w_{7}
+w_{8}' = -A*w_{6}*w_{8}/5 - 3*A*w_{8}**2/5 + Ea*w_{5}*w_{8}/Ru
 
-If given system of ODEs is not polynomial you can use our tools transform it into a one with polynomial right-hand side.
-
-This functionality is writen in slightly different notation by now.
-
----
-
-First, define variables and their derivatives
-```python
-x = sympy.symbols('x')
-dx = derivatives(x)
-```
-
----
-
-Then we build a ODEs system with elementary function right-hand side
-
-```python
-system = EquationSystem([
-    sympy.Eq(dx, 1 / (1 + sympy.exp(x)))
-])
-```
-
-This system is not polynomial, so we need to polynomialize it.
-
----
-
-We can convert equations right-hand side to polynomials
-
-```python
-poly_system = polynomialize(system)
-poly_system.print()
-```
-
-Output:
+Process finished with exit code 0
 
 ```
-x' = y_{1}
-y_{0}' = y_{0}*y_{1}
-y_{1}' = -y_{0}*y_{1}**3
-```
 
-**Note:** our implementation of polynomialization is **not** optimal yet.
+Introduced variables are the optimal monomial quadratization.
 
 ### 4. Work inside of package
 
