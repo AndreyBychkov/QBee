@@ -15,8 +15,22 @@ from .util import derivatives
 
 
 def functions(names, **kwargs):
+    """Dependent and input variables in differential equations. The syntax is identical to `sympy.symbols`_.
+
+    Examples
+        >>> x, y, z = functions('x, y, z')
+
+    .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
+    """
     return sp.symbols(names, cls=Variable, **kwargs)
 
 
 def parameters(names, **kwargs):
+    """Parameter variables in differential equations. The syntax is identical to `sympy.symbols`_.
+
+        Examples
+            >>> p, k = parameters('p, k')
+
+        .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
+        """
     return sp.symbols(names, cls=Parameter, **kwargs)
