@@ -16,19 +16,19 @@ The problem of *quadratization* is, given a system of ODEs with polynomial right
 system with quadratic right-hand side by introducing as few new variables as possible. We will explain it using toy
 example. Consider the system
 
-![\begin{cases} \x_1' = x_1 x_2 \\ \x_2' = -x_1 x_2^3 \end{cases}](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}\begin{cases}&space;x_1'&space;=&space;x_1&space;x_2&space;\\&space;x_2'&space;=&space;-x_1&space;x_2^3&space;\end{cases}})
+<img alt="\begin{cases} x_1&#39; = x_1 x_2 \\ x_2&#39; = -x_1 x_2^3 \end{cases}" height="135" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}&amp;space;\begin{cases}&amp;space;x_1&#39;&amp;space;=&amp;space;x_1&amp;space;x_2&amp;space;\\&amp;space;x_2&#39;&amp;space;=&amp;space;-x_1&amp;space;x_2^3&amp;space;\end{cases}}" width="200"/>
 
 An example of quadratization of this system will be a new variable
 
-![y = x_1 x_2^2](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}y&space;=&space;x_1&space;x_2^2})
+<img alt="y = x_1 x_2^2" height="60" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;amp;amp;space;\huge&amp;amp;amp;space;{\color{DarkOrange}y&amp;amp;amp;space;=&amp;amp;amp;space;x_1&amp;amp;amp;space;x_2^2}" width="150"/>
 
 leading to the following ODE
 
-![y' = x_2 y - 2y^2](https://latex.codecogs.com/gif.latex?\huge&space;{\color{DarkOrange}y'&space;=&space;x_2&space;y&space;-&space;2y^2})
+<img alt="y&#39; = x_2 y - 2y^2" height="50" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}y&#39;&amp;space;=&amp;space;x_2&amp;space;y&amp;space;-&amp;space;2y^2}" width="250"/>
 
 Thus, we attained the system with quadratic right-hand side
 
-![\begin{cases} x_1' = x_1 x_2 \\ x_2' = -x_2 y \\ y' = x_2 y - 2y^2 \end{cases}](https://latex.codecogs.com/png.latex?\dpi{200}&space;\huge&space;{\color{DarkOrange}\begin{cases}&space;x_1'&space;=&space;x_1&space;x_2&space;\\&space;x_2'&space;=&space;-x_2&space;y&space;\\&space;y'&space;=&space;x_2&space;y&space;-&space;2y^2&space;\end{cases}})
+<img alt="\begin{cases} x_1&#39; = x_1 x_2 \\ x_2&#39; = -x_2 y \\ y&#39; = x_2 y - 2y^2 \end{cases}" height="202" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}\begin{cases}&amp;space;x_1&#39;&amp;space;=&amp;space;x_1&amp;space;x_2&amp;space;\\&amp;space;x_2&#39;&amp;space;=&amp;space;-x_2&amp;space;y&amp;space;\\&amp;space;y&#39;&amp;space;=&amp;space;x_2&amp;space;y&amp;space;-&amp;space;2y^2&amp;space;\end{cases}}" width="300"/>
 
 We used only one new variable, so we achieved an *optimal* quadratization.
 
