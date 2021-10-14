@@ -21,7 +21,10 @@
   <component name="PackageRequirementsSettings">
     <option name="requirementsPath" value="" />
   </component>
+  <component name="ReSTService">
+    <option name="DOC_DIR" value="C:\Users\а\IdeaProjects\QBee" />
+  </component>
   <component name="TestRunnerService">
-    <option name="PROJECT_TEST_RUNNER" value="pytest" />
+    <option name="PROJECT_TEST_RUNNER" value="py.test" />
   </component>
 </module>
