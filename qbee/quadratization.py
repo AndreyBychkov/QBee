@@ -31,18 +31,38 @@ if log_enable:
 
 
 def quadratize(polynomials: List[PolyElement],
-               selection_strategy=default_strategy,
-               pruning_functions: Optional[Iterable] = None,
+               selection_strategy: SelectionStrategy =default_strategy,
+               pruning_functions: Optional[Iterable["Pruning"]] = None,
                new_vars_name='w', start_new_vars_with=0) -> Optional[QuadratizationResult]:
     """
-    Quadratize a system of ODEs with the polynomial right-hand side
+    Quadratize a system of ODEs with the polynomial right-hand side.
 
-    :param polynomials: List of polynomials
-    :param selection_strategy: heuristics of how we rank new members for possible quadratizations
+    :param polynomials: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
+     Left-hand side is given according to the definition of variables in sympy.ring.
+    :param selection_strategy: heuristics of how we rank new members for possible quadratizations. Ours are in qbee.selection`
     :param pruning_functions: predicates that remove transformations from the search space
-    :param new_vars_name: how new variables start
-    :param start_new_vars_with: start index
+    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
     :return: quadratized system or None if there is none found
+
+    Example:
+        >>> from sympy import ring, QQ
+        >>> R, x, y = ring("x, y", QQ)
+        >>> quad_res = quadratize([x**2 * y, x * y**3], new_vars_name='z', start_new_vars_with=1)
+        >>> print(quad_res)
+        ==================================================
+        Quadratization result
+        ==================================================
+        Number of introduced variables: 2
+        Nodes traversed: 16
+        Introduced variables:
+        z{1} = x*y**2
+        z{2} = x*y
+        x' = x*z{2}
+        y' = y*z{1}
+        z{1}' = 2*z{1}**2 + z{1}*z{2}
+        z{2}' = z{1}*z{2} + z{2}**2
+
     """
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
@@ -63,35 +83,67 @@ def quadratize(polynomials: List[PolyElement],
 
 
 def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
-                                 inputs_orders=None,
+                                 input_der_orders=None,
                                  selection_strategy=default_strategy,
                                  pruning_functions=None,
-                                 new_var_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
     """
+    Polynomialize and than quadratize a system of ODEs with the continuous right-hand side.
 
+    :param system: system of equations in the form [(X, f(X)), ...] where the left-hand side is the derivatives.
+    :param input_der_orders: mapping of input variables to maximum order of their derivatives. For example {T: 2} => T in C2
+    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
+    :return: quadratized system or None if there is none found
 
-    :param system: System of nonlinear equations
-    :param inputs_orders: mapping of input variables to their derivative maximal order. For example {T: 2} => T in C2
-    :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
-    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
-    :return: quadratized system
+    Example:
+        >>> from qbee import *
+        >>> from sympy import exp
+        >>> x, y, u = functions("x, y, u")
+        >>> p = parameters("p")
+        >>> quad_res = polynomialize_and_quadratize([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)], input_der_orders={u: 0}, new_vars_name='z', start_new_vars_with=1)
+        >>> print(quad_res)
+        Variables introduced in polynomialization:
+        z{1} = exp(-p*x)
+        z{2} = 1/(z{1} + 1)
+        z{3} = exp(y)
+        ==================================================
+        Quadratization result
+        ==================================================
+        Number of introduced variables: 4
+        Nodes traversed: 116
+        Introduced variables:
+        z{4} = y*z{2}
+        z{5} = y*z{1}*z{2}**2
+        z{6} = z{1}*z{2}**2
+        z{7} = x*z{3}
+        x' = z{4}
+        y' = u + z{7}
+        z{1}' = -p*z{1}*z{4}
+        z{2}' = p*z{4}*z{6}
+        z{3}' = u*z{3} + z{3}*z{7}
+        u' = 0
+        z{4}' = p*z{4}*z{5} + u*z{2} + z{2}*z{7}
+        z{5}' = -p*z{4}*z{5} + 2*p*z{5}**2 + u*z{6} + z{6}*z{7}
+        z{6}' = -p*z{4}*z{6} + 2*p*z{5}*z{6}
+        z{7}' = u*z{7} + z{3}*z{4} + z{7}**2
     """
-    if inputs_orders is None:
-        inputs_orders = dict()
+    if input_der_orders is None:
+        input_der_orders = dict()
     if pb_enable:
         # TODO: temporary solution, should incorporate printing variables with non-integer powers into subs. equations
         print("Variables introduced in polynomialization:")
-    poly_system = polynomialize(system, new_var_name=new_var_name, start_new_vars_with=start_new_vars_with)
+    poly_system = polynomialize(system, new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
         poly_system.print_substitution_equations()
-    poly_equations, excl_inputs = poly_system.to_poly_equations(inputs_orders)
+    poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
     pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=excl_inputs)
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     quad_equations = quadratize(poly_equations,
                                 selection_strategy,
                                 [pruning_by_best_nvars, pruning_by_inputs] + pruning_functions,
-                                new_var_name,
+                                new_vars_name,
                                 start_new_vars_with + len(poly_system) - len(system))
     return quad_equations
 

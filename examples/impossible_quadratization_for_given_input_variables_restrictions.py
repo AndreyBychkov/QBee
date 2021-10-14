@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     timeout = partial(pruning_by_elapsed_time, start_t=time(), max_t=10)
     # {T: 1} means than T can have a derivative of order at most one => T'
-    quadr_system = polynomialize_and_quadratize(system, inputs_orders={T: 1},
+    quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 1},
                                                 pruning_functions=[timeout] + default_pruning_rules)
     if quadr_system:
         print(quadr_system)
