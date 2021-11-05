@@ -31,12 +31,14 @@ if log_enable:
 
 
 def quadratize(polynomials: List[PolyElement],
-               selection_strategy: SelectionStrategy =default_strategy,
-               pruning_functions: Optional[Iterable["Pruning"]] = None,
-               new_vars_name='w', start_new_vars_with=0) -> Optional[QuadratizationResult]:
+               conditions: Collection["SystemCondition"] = (),
+               selection_strategy: SelectionStrategy = default_strategy,
+               pruning_functions: Collection["Pruning"] | None = None, new_vars_name='w',
+               start_new_vars_with=0) -> QuadratizationResult | None:
     """
     Quadratize a system of ODEs with the polynomial right-hand side.
 
+    :param conditions:
     :param polynomials: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
      Left-hand side is given according to the definition of variables in sympy.ring.
     :param selection_strategy: heuristics of how we rank new members for possible quadratizations. Ours are in qbee.selection`
@@ -48,7 +50,7 @@ def quadratize(polynomials: List[PolyElement],
     Example:
         >>> from sympy import ring, QQ
         >>> R, x, y = ring("x, y", QQ)
-        >>> quad_res = quadratize([x**2 * y, x * y**3], new_vars_name='z', start_new_vars_with=1)
+        >>> quad_res = quadratize([x**2 * y, x * y**3],new_vars_name='z',start_new_vars_with=1)
         >>> print(quad_res)
         ==================================================
         Quadratization result
@@ -67,7 +69,7 @@ def quadratize(polynomials: List[PolyElement],
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
-    algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
+    algo = BranchAndBound(system, conditions, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
     algo_res = algo.quadratize()
     if pb_enable:
         print("=" * 50)
@@ -84,8 +86,9 @@ def quadratize(polynomials: List[PolyElement],
 
 def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
                                  input_der_orders=None,
-                                 selection_strategy=default_strategy,
-                                 pruning_functions=None,
+                                 conditions: Collection["SystemCondition"] = (),
+                                 selection_strategy: SelectionStrategy = default_strategy,
+                                 pruning_functions: Collection["Pruning"] | None = None,
                                  new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
     """
     Polynomialize and than quadratize a system of ODEs with the continuous right-hand side.
@@ -137,14 +140,15 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
     if pb_enable:
         poly_system.print_substitution_equations()
     poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
-    pruning_by_inputs = partial(pruning_by_excluding_variables, excl_vars=excl_inputs)
+    without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     quad_equations = quadratize(poly_equations,
-                                selection_strategy,
-                                [pruning_by_best_nvars, pruning_by_inputs] + pruning_functions,
-                                new_vars_name,
-                                start_new_vars_with + len(poly_system) - len(system))
+                                conditions=[without_excl_inputs, *conditions],
+                                selection_strategy=selection_strategy,
+                                pruning_functions=[pruning_by_best_nvars, *pruning_functions],
+                                new_vars_name=new_vars_name,
+                                start_new_vars_with=start_new_vars_with + len(poly_system) - len(system))
     return quad_equations
 
 
@@ -277,16 +281,18 @@ class QuadratizationResult:
 
 
 Pruning = Callable[..., bool]
+SystemCondition = Callable[[PolynomialSystem], bool]
 
 
 class Algorithm:
-    def __init__(self,
-                 poly_system: PolynomialSystem,
+    def __init__(self, poly_system: PolynomialSystem,
+                 system_conditions: Collection[SystemCondition] | None = None,
                  strategy: SelectionStrategy = default_strategy,
-                 pruning_funcs: Collection[Pruning] = None):
+                 pruning_funcs: Collection[Pruning] | None = None):
         self._system = poly_system
         self._strategy = strategy
         self._pruning_funs = list(pruning_funcs) if pruning_funcs is not None else [lambda a, b, *_: False]
+        self._sys_cond = list(system_conditions) if system_conditions else [lambda v: True]
         self._nodes_traversed = 0
         self.preliminary_upper_bound = math.inf
 
@@ -372,27 +378,27 @@ class BranchAndBound(Algorithm):
             self.add_pruning(partial(pruning_by_vars_number, nvars=upper_bound))
 
     @timed(enabled=pb_enable)
-    def quadratize(self, cond: Callable[[PolynomialSystem], bool] = lambda _: True) -> AlgorithmResult:
-        nvars, opt_system, traversed = self._bnb_step(self._system, self.preliminary_upper_bound, cond)
+    def quadratize(self) -> AlgorithmResult:
+        nvars, opt_system, traversed = self._bnb_step(self._system, self.preliminary_upper_bound)
         self._final_iter()
         self._save_results(opt_system)
         return AlgorithmResult(opt_system, nvars, traversed)
 
     @progress_bar(is_stop=False, enabled=pb_enable)
-    def _bnb_step(self, part_res: PolynomialSystem, best_nvars, cond) \
+    def _bnb_step(self, part_res: PolynomialSystem, best_nvars) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
         # The order of this blocks is important: pruning rules assume that 
         # the input partial result is not a quadratization
-        if part_res.is_quadratized() and cond(part_res):
+        if part_res.is_quadratized() and all(cond(part_res) for cond in self._sys_cond):
             return part_res.new_vars_count(), part_res, 1
         if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
             return math.inf, None, 1
- 
+
         traversed_total = 1
         min_nvars, best_system = best_nvars, None
         for next_system in self.next_gen(part_res):
-            nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars, cond)
+            nvars, opt_system, traversed = self._bnb_step(next_system, min_nvars)
             traversed_total += traversed
             if nvars < min_nvars:
                 min_nvars = nvars
@@ -461,13 +467,6 @@ def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     """Branch-and-Bound default pruning """
     best_nvars, *_ = args
     if part_res.new_vars_count() >= best_nvars - 1:
-        return True
-    return False
-
-
-def pruning_by_excluding_variables(a: Algorithm, part_res: PolynomialSystem, *args, excl_vars: List[Tuple]):
-    excl_indices = [np.argmax(v) for v in excl_vars]
-    if any([any([v[i] != 0 for i in excl_indices]) for v in part_res.introduced_vars]):
         return True
     return False
 
@@ -583,6 +582,13 @@ default_pruning_rules = [
 
 
 # ------------------------------------------------------------------------------------------------
+
+def without_variables(part_res: PolynomialSystem, excl_vars: List[Tuple]):
+    excl_indices = [np.argmax(v) for v in excl_vars]
+    if any([any([v[i] != 0 for i in excl_indices]) for v in part_res.introduced_vars]):
+        return False
+    return True
+
 
 def with_higher_degree_than_original(system: PolynomialSystem) -> bool:
     return any(map(lambda m: monomial_deg(m) > system.original_degree, system.vars))
