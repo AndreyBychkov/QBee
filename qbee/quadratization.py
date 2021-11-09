@@ -434,6 +434,15 @@ def pruning_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, node
     return False
 
 
+def pruning_by_nodes_without_quadratization_found(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
+    best_nvars = args[0]
+    if best_nvars < math.inf:
+        return False
+    elif algo._nodes_traversed >= nodes_processed:
+        return True
+    return False
+
+
 def pruning_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, start_t, max_t):
     """
     Stops a search if 'max_t' was exceeded.
