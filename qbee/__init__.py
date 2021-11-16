@@ -11,7 +11,10 @@ from .quadratization import BranchAndBound, PolynomialSystem, Pruning, \
     pruning_by_best_nvars, pruning_by_elapsed_time, pruning_by_nodes_without_quadratization_found, default_pruning_rules, \
     without_variables, quadratize, polynomialize_and_quadratize
 from .selection import *
-from .util import derivatives
+from .printer import print_common
+
+
+# from .util import derivatives
 
 
 def functions(names, **kwargs):
