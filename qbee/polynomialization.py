@@ -1,9 +1,11 @@
 import sympy as sp
+from sympy.core.function import AppliedUndef
 import hashlib
 from copy import deepcopy
 from typing import Callable, Set, Optional, List
 from .AST_walk import find_non_polynomial
 from .util import *
+from .printer import str_common
 
 
 class Variable(sp.Symbol):
@@ -130,7 +132,9 @@ class EquationSystem:
     def to_poly_equations(self, inputs_ord: dict):
         """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method"""
         assert self.is_polynomial()
-        d_inputs = generate_derivatives(inputs_ord)
+        inputs_ord_sym = {sp.Symbol(str_common(k)): v for k, v in inputs_ord.items()}
+        d_inputs = generate_derivatives(inputs_ord_sym)
+        # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
         R = coef_field[list(self.variables.free + sp.flatten(d_inputs))]
         equations = [R.from_sympy(eq.rhs) for eq in self.equations]
@@ -290,16 +294,24 @@ def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]]
     """
     if not isinstance(system, EquationSystem):
         lhs, rhs = zip(*system)
-        all_symbols = list(reduce(lambda l, r: l | r, [eq.free_symbols for eq in rhs]))
-        degrade_to_symbol = {s: sp.Symbol(str(s)) for s in all_symbols}
+        params = set(reduce(lambda l, r: l | r, [eq.atoms(Parameter) for eq in rhs]))
+        funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
+        lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
+        inputs = set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
 
-        parameters = [s.subs(degrade_to_symbol) for s in all_symbols if isinstance(s, Parameter)]
-        inputs = [s.subs(degrade_to_symbol) for s in all_symbols if s not in lhs]
-        inputs = [s for s in inputs if s not in parameters]
+        degrade_to_symbol = {s: sp.Symbol(str_common(s)) for s in funcs | inputs | params | set(lhs)}
+
+        params_sym = [p.subs(degrade_to_symbol) for p in params]
+        funcs_sym = [f.subs(degrade_to_symbol) for f in funcs]
+        inputs_sym = [i.subs(degrade_to_symbol) for i in inputs]
 
         ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
-        sym_rhs = [eq.subs(degrade_to_symbol) for eq in rhs]
-        system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, sym_rhs)], parameters, inputs)
+        rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
+
+        der_inputs = set(reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs]))
+        degrade_to_symbol.update({i: sp.Symbol(str_common(i)) for i in der_inputs})
+        rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
+        system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
     system.variables.base_var_name = new_var_name
     system.variables.start_new_vars_with = start_new_vars_with
     if mode == 'algebraic':

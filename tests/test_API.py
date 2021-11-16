@@ -1,6 +1,7 @@
 import pytest
 import sympy as sp
 from qbee import *
+from qbee.util import derivatives
 
 
 def test_polynomialize_list_input():
