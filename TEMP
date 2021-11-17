@@ -1,0 +1,4 @@
+dx1/dt = a * x1*x3 + b * x1 * x2;
+dx2/dt = c * x1*x3 + d * x1 * x2;
+dx3/dt = 4*x3^2 + 4*x3*x2;
+y = x1

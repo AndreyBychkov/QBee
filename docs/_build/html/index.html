@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to QBee’s documentation! &mdash; QBee 0.6 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> QBee
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Welcome to QBee’s documentation!</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">QBee</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>Welcome to QBee’s documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="welcome-to-qbee-s-documentation">
+<h1>Welcome to QBee’s documentation!<a class="headerlink" href="#welcome-to-qbee-s-documentation" title="Permalink to this headline"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<span class="target" id="module-qbee"></span><p>QBee - Package for transforming Systems of Differential Equations to quadratic form.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.polynomialize">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">polynomialize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">qbee.polynomialization.EquationSystem</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">sympy.core.symbol.Symbol</span><span class="p"><span class="pre">,</span> </span><span class="pre">sympy.core.expr.Expr</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'differential'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_var_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'w_'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_new_vars_with</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">qbee.polynomialization.EquationSystem</span></span></span><a class="headerlink" href="#qbee.polynomialize" title="Permalink to this definition"></a></dt>
+<dd><p>Transforms the system into polynomial form using variable substitution techniques.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> – non-linear ODEs system</p></li>
+<li><p><strong>mode</strong> – auxiliary equation form.</p></li>
+<li><p><strong>new_var_name</strong> – base name for new variables. Example: new_var_name=’w’ =&gt; w0, w1, w2, …</p></li>
+<li><p><strong>start_new_vars_with</strong> – Initial index for new variables. Example: start_new_vars_with=3 =&gt; w3, w4, …</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt><strong>algebraic</strong></dt><dd><p>adds auxiliary equations in form y = f(x, y)</p>
+</dd>
+<dt><strong>differential</strong></dt><dd><p>adds auxiliary equations in form y’ = f(x, y)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.polynomialize_and_quadratize">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">polynomialize_and_quadratize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">system:</span> <span class="pre">Union[qbee.polynomialization.EquationSystem,</span> <span class="pre">List[Tuple[sympy.core.symbol.Symbol,</span> <span class="pre">sympy.core.expr.Expr]]],</span> <span class="pre">input_der_orders=None,</span> <span class="pre">selection_strategy=&lt;function</span> <span class="pre">default_strategy&gt;,</span> <span class="pre">pruning_functions=None,</span> <span class="pre">new_vars_name='w_',</span> <span class="pre">start_new_vars_with=0</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">qbee.quadratization.QuadratizationResult</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#qbee.polynomialize_and_quadratize" title="Permalink to this definition"></a></dt>
+<dd><p>Polynomialize and than quadratize a system of ODEs with the continuous right-hand side.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> – system of equations in the form [(X, f(X)), …] where the left-hand side is the derivatives.</p></li>
+<li><p><strong>input_der_orders</strong> – mapping of input variables to maximum order of their derivatives. For example {T: 2} =&gt; T in C2</p></li>
+<li><p><strong>new_vars_name</strong> – base name for new variables. Example: new_var_name=’z’ =&gt; z0, z1, z2, …</p></li>
+<li><p><strong>start_new_vars_with</strong> – initial index for new variables. Example: start_new_vars_with=3 =&gt; w3, w4, …</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>quadratized system or None if there is none found</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">qbee</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">exp</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">u</span> <span class="o">=</span> <span class="n">functions</span><span class="p">(</span><span class="s2">&quot;x, y, u&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">p</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">quad_res</span> <span class="o">=</span> <span class="n">polynomialize_and_quadratize</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">p</span> <span class="o">*</span> <span class="n">x</span><span class="p">))),</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="p">)],</span> <span class="n">input_der_orders</span><span class="o">=</span><span class="p">{</span><span class="n">u</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span> <span class="n">new_vars_name</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="n">start_new_vars_with</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">quad_res</span><span class="p">)</span>
+<span class="go">Variables introduced in polynomialization:</span>
+<span class="go">z{1} = exp(-p*x)</span>
+<span class="go">z{2} = 1/(z{1} + 1)</span>
+<span class="go">z{3} = exp(y)</span>
+<span class="go">==================================================</span>
+<span class="go">Quadratization result</span>
+<span class="go">==================================================</span>
+<span class="go">Number of introduced variables: 4</span>
+<span class="go">Nodes traversed: 116</span>
+<span class="go">Introduced variables:</span>
+<span class="go">z{4} = y*z{2}</span>
+<span class="go">z{5} = y*z{1}*z{2}**2</span>
+<span class="go">z{6} = z{1}*z{2}**2</span>
+<span class="go">z{7} = x*z{3}</span>
+<span class="go">x&#39; = z{4}</span>
+<span class="go">y&#39; = u + z{7}</span>
+<span class="go">z{1}&#39; = -p*z{1}*z{4}</span>
+<span class="go">z{2}&#39; = p*z{4}*z{6}</span>
+<span class="go">z{3}&#39; = u*z{3} + z{3}*z{7}</span>
+<span class="go">u&#39; = 0</span>
+<span class="go">z{4}&#39; = p*z{4}*z{5} + u*z{2} + z{2}*z{7}</span>
+<span class="go">z{5}&#39; = -p*z{4}*z{5} + 2*p*z{5}**2 + u*z{6} + z{6}*z{7}</span>
+<span class="go">z{6}&#39; = -p*z{4}*z{6} + 2*p*z{5}*z{6}</span>
+<span class="go">z{7}&#39; = u*z{7} + z{3}*z{4} + z{7}**2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.pruning_by_best_nvars">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">pruning_by_best_nvars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.Algorithm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_res</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.PolynomialSystem</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qbee.pruning_by_best_nvars" title="Permalink to this definition"></a></dt>
+<dd><p>Branch-and-Bound default pruning</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.pruning_by_elapsed_time">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">pruning_by_elapsed_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">algo</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.Algorithm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.PolynomialSystem</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_t</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qbee.pruning_by_elapsed_time" title="Permalink to this definition"></a></dt>
+<dd><p>Stops a search if ‘max_t’ was exceeded.</p>
+<dl>
+<dt>:examples</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pruning</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">pruning_by_elapsed_time</span><span class="p">,</span> <span class="n">start_t</span><span class="o">=</span><span class="n">time</span><span class="p">(),</span> <span class="n">max_t</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span> <span class="c1"># 100 seconds</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.pruning_by_nodes_processed">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">pruning_by_nodes_processed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">algo</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.Algorithm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.PolynomialSystem</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes_processed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qbee.pruning_by_nodes_processed" title="Permalink to this definition"></a></dt>
+<dd><p>Stops a search if it’s computer ‘nodes_processed’ nodes.</p>
+<dl>
+<dt>:examples</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pruning</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">pruning_by_nodes_processed</span><span class="p">,</span> <span class="n">nodes_processed</span><span class="o">=</span><span class="mi">100000</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.pruning_by_vars_number">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">pruning_by_vars_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.Algorithm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">qbee.quadratization.PolynomialSystem</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nvars</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qbee.pruning_by_vars_number" title="Permalink to this definition"></a></dt>
+<dd><p>Search for quadratization with at most ‘nvars’ components</p>
+<dl>
+<dt>:Examples</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pruning</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">pruning_by_vars_number</span><span class="p">,</span> <span class="n">nvars</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="qbee.quadratize">
+<span class="sig-prename descclassname"><span class="pre">qbee.</span></span><span class="sig-name descname"><span class="pre">quadratize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">polynomials:</span> <span class="pre">List[sympy.polys.rings.PolyElement],</span> <span class="pre">selection_strategy:</span> <span class="pre">Callable[[PolynomialSystem],</span> <span class="pre">int]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">default_strategy&gt;,</span> <span class="pre">pruning_functions:</span> <span class="pre">Optional[Iterable[Pruning]]</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">new_vars_name='w',</span> <span class="pre">start_new_vars_with=0</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">qbee.quadratization.QuadratizationResult</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#qbee.quadratize" title="Permalink to this definition"></a></dt>
+<dd><p>Quadratize a system of ODEs with the polynomial right-hand side.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>polynomials</strong> – List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
+Left-hand side is given according to the definition of variables in sympy.ring.</p></li>
+<li><p><strong>selection_strategy</strong> – heuristics of how we rank new members for possible quadratizations. Ours are in qbee.selection`</p></li>
+<li><p><strong>pruning_functions</strong> – predicates that remove transformations from the search space</p></li>
+<li><p><strong>new_vars_name</strong> – base name for new variables. Example: new_var_name=’z’ =&gt; z0, z1, z2, …</p></li>
+<li><p><strong>start_new_vars_with</strong> – Initial index for new variables. Example: start_new_vars_with=3 =&gt; w3, w4, …</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>quadratized system or None if there is none found</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">ring</span><span class="p">,</span> <span class="n">QQ</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">R</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">ring</span><span class="p">(</span><span class="s2">&quot;x, y&quot;</span><span class="p">,</span> <span class="n">QQ</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">quad_res</span> <span class="o">=</span> <span class="n">quadratize</span><span class="p">([</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="o">**</span><span class="mi">3</span><span class="p">],</span> <span class="n">new_vars_name</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="n">start_new_vars_with</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">quad_res</span><span class="p">)</span>
+<span class="go">==================================================</span>
+<span class="go">Quadratization result</span>
+<span class="go">==================================================</span>
+<span class="go">Number of introduced variables: 2</span>
+<span class="go">Nodes traversed: 16</span>
+<span class="go">Introduced variables:</span>
+<span class="go">z{1} = x*y**2</span>
+<span class="go">z{2} = x*y</span>
+<span class="go">x&#39; = x*z{2}</span>
+<span class="go">y&#39; = y*z{1}</span>
+<span class="go">z{1}&#39; = 2*z{1}**2 + z{1}*z{2}</span>
+<span class="go">z{2}&#39; = z{1}*z{2} + z{2}**2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Andrey Bychkov, Gleb Pogudin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
