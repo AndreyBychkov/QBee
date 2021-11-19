@@ -293,25 +293,7 @@ def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]]
 
     """
     if not isinstance(system, EquationSystem):
-        lhs, rhs = zip(*system)
-        params = set(reduce(lambda l, r: l | r, [eq.atoms(Parameter) for eq in rhs]))
-        funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
-        lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
-        inputs = set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
-
-        degrade_to_symbol = {s: sp.Symbol(str_common(s)) for s in funcs | inputs | params | set(lhs)}
-
-        params_sym = [p.subs(degrade_to_symbol) for p in params]
-        funcs_sym = [f.subs(degrade_to_symbol) for f in funcs]
-        inputs_sym = [i.subs(degrade_to_symbol) for i in inputs]
-
-        ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
-        rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
-
-        der_inputs = set(reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs]))
-        degrade_to_symbol.update({i: sp.Symbol(str_common(i)) for i in der_inputs})
-        rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
-        system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
+        system = eq_list_to_eq_system(system)
     system.variables.base_var_name = new_var_name
     system.variables.start_new_vars_with = start_new_vars_with
     if mode == 'algebraic':
@@ -320,6 +302,28 @@ def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]]
         return _polynomialize_differential(system)
     else:
         raise ValueError("mode must be 'algebraic' or 'differential")
+
+
+def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSystem:
+    lhs, rhs = zip(*system)
+    params = set(reduce(lambda l, r: l | r, [eq.atoms(Parameter) for eq in rhs]))
+    funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
+    lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
+    inputs = set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
+
+    degrade_to_symbol = {s: sp.Symbol(str_common(s)) for s in funcs | inputs | params | set(lhs)}
+
+    params_sym = [p.subs(degrade_to_symbol) for p in params]
+    funcs_sym = [f.subs(degrade_to_symbol) for f in funcs]
+    inputs_sym = [i.subs(degrade_to_symbol) for i in inputs]
+
+    ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
+    rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
+
+    der_inputs = set(reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs]))
+    degrade_to_symbol.update({i: sp.Symbol(str_common(i)) for i in der_inputs})
+    rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
+    return EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
 
 
 def _polynomialize_algebraic(system: EquationSystem) -> EquationSystem:
