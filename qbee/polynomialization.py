@@ -138,7 +138,7 @@ class EquationSystem:
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
         R = coef_field[list(self.variables.free + sp.flatten(d_inputs))]
         equations = [R.from_sympy(eq.rhs) for eq in self.equations]
-        for i, v in enumerate(inputs_ord_sym.keys()):
+        for i, v in enumerate(inputs_ord.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(R.zero)
