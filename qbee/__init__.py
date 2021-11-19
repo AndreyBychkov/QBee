@@ -18,6 +18,8 @@ from .printer import print_common
 
 # from .util import derivatives
 
+INDEPENDENT_VARIABLE = sp.Symbol("_t")
+
 
 def functions(names, **kwargs):
     """Dependent and input variables in differential equations. The syntax is identical to `sympy.symbols`_.
@@ -27,7 +29,7 @@ def functions(names, **kwargs):
 
     .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
     """
-    t = sp.Symbol("_t")
+    t = INDEPENDENT_VARIABLE
     funcs = sp.symbols(names, cls=sp.Function, **kwargs)
     if isinstance(funcs, Iterable):
         return [f(t) for f in funcs]
