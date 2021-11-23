@@ -34,7 +34,7 @@ class VariablesHolder:
         self._free_variables = list(variables)
         self._parameter_variables = parameter_variables
         self._input_variables = input_variables
-        self._original_variables = list(variables)
+        self.state_variables = list(variables)
         self._generated_variables = list()
         self._base_name = new_var_base_name
         self._start_id = start_new_vars_with
@@ -50,10 +50,6 @@ class VariablesHolder:
     @property
     def input(self):
         return self._input_variables
-
-    @property
-    def original(self):
-        return self._original_variables
 
     @property
     def base_var_name(self):
@@ -84,6 +80,7 @@ class VariablesHolder:
         new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
         self._free_variables.append(new_variable)
+        self.state_variables.append(new_variable)
         self._generated_variables.append(new_variable)
         return new_variable
 
@@ -136,7 +133,7 @@ class EquationSystem:
         d_inputs = generate_derivatives(inputs_ord_sym)
         # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
-        R = coef_field[list(self.variables.free + sp.flatten(d_inputs))]
+        R = coef_field[list(self.variables.state_variables + sp.flatten(d_inputs))]
         equations = [R.from_sympy(eq.rhs) for eq in self.equations]
         for i, v in enumerate(inputs_ord_sym.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
@@ -310,12 +307,14 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
     funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
     lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
     inputs = set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
+    spatial = funcs.difference(inputs)
 
     degrade_to_symbol = {s: sp.Symbol(str_common(s)) for s in funcs | inputs | params | set(lhs)}
 
     params_sym = [p.subs(degrade_to_symbol) for p in params]
     funcs_sym = [f.subs(degrade_to_symbol) for f in funcs]
     inputs_sym = [i.subs(degrade_to_symbol) for i in inputs]
+    spacial_sym = [s.subs(degrade_to_symbol) for s in spatial]
 
     ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
     rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
@@ -323,7 +322,9 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
     der_inputs = set(reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs]))
     degrade_to_symbol.update({i: sp.Symbol(str_common(i)) for i in der_inputs})
     rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
-    return EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
+    system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
+    system.variables._free_variables = list(set(system.variables.free + spacial_sym))
+    return system
 
 
 def _polynomialize_algebraic(system: EquationSystem) -> EquationSystem:
