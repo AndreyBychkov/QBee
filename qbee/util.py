@@ -44,18 +44,21 @@ __log_records = list()
 
 @parametrized
 def progress_bar(func, is_stop, enabled=True):
+    postfix_str = "Current best order = {}"
     def wrapper(*args, **kwargs):
         global __log_pb_evaluated
         global __log_pb
         if not __log_pb_evaluated:
             __log_pb_evaluated = True
-            __log_pb = tqdm(desc="Nodes processed", unit=" nodes")
+            __log_pb = tqdm(desc="Nodes processed", unit=f" nodes")
+            __log_pb.set_postfix_str(postfix_str.format(args[2]))
         if is_stop:
             __log_pb.close()
             __log_pb = None
             __log_pb_evaluated = False
         else:
             __log_pb.update(1)
+            __log_pb.set_postfix_str(postfix_str.format(args[2]))
             __log_pb.refresh()
         return func(*args, **kwargs)
 
