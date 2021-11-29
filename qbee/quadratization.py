@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import math
 import configparser
+import signal
 import pickle
 import numpy as np
 from sympy.polys.rings import PolyElement
@@ -429,6 +430,15 @@ class Algorithm:
 
 # ------------------------------------------------------------------------------
 
+ALGORITHM_INTERRUPTED = False
+
+def signal_handler(sig_num, frame):
+    global ALGORITHM_INTERRUPTED
+    print("The algorithm has been interrupted. Returning the current best.")
+    ALGORITHM_INTERRUPTED = True
+
+signal.signal(signal.SIGINT, signal_handler)
+
 class BranchAndBound(Algorithm):
 
     def domination_upper_bound(self):
@@ -459,7 +469,7 @@ class BranchAndBound(Algorithm):
         # the input partial result is not a quadratization
         if part_res.is_quadratized() and all(cond(part_res) for cond in self._sys_cond):
             return part_res.new_vars_count(), part_res, 1
-        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)):
+        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)) or ALGORITHM_INTERRUPTED:
             return math.inf, None, 1
 
         traversed_total = 1
