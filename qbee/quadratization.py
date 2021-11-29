@@ -89,14 +89,14 @@ def quadratize(polynomials: List[PolyElement],
 
 
 def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
-                                     input_der_orders=None,
-                                     conditions: Collection["SystemCondition"] = (),
+                                     input_der_orders=None, conditions: Collection["SystemCondition"] = (),
                                      selection_strategy: SelectionStrategy = default_strategy,
-                                     pruning_functions: Collection["Pruning"] | None = None,
-                                     new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                     pruning_functions: Collection["Pruning"] | None = None, new_vars_name="w_",
+                                     start_new_vars_with=0, optimize_parameters=None) -> Optional[QuadratizationResult]:
     """
     Polynomialize and than quadratize a system of ODEs with the continuous right-hand side.
 
+    :param optimize_parameters:
     :param system: system of equations in the form [(X, f(X)), ...] where the left-hand side is the derivatives.
     :param input_der_orders: mapping of input variables to maximum order of their derivatives. For example {T: 2} => T in C2
     :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
@@ -108,7 +108,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
         >>> from sympy import exp
         >>> x, y, u = functions("x, y, u")
         >>> p = parameters("p")
-        >>> quad_res = polynomialize_and_quadratize_ode([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)], input_der_orders={u: 0}, new_vars_name='z', start_new_vars_with=1)
+        >>> quad_res = polynomialize_and_quadratize_ode([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)],input_der_orders={u: 0},new_vars_name='z',start_new_vars_with=1)
         >>> print(quad_res)
         Variables introduced in polynomialization:
         z{1} = exp(-p*x)
@@ -137,13 +137,15 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
     """
     if input_der_orders is None:
         input_der_orders = dict()
+    if optimize_parameters is None:
+        optimize_parameters = set()
     if pb_enable:
         # TODO: temporary solution, should incorporate printing variables with non-integer powers into subs. equations
         print("Variables introduced in polynomialization:")
     poly_system = polynomialize(system, new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
         poly_system.print_substitution_equations()
-    poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
+    poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders, optimize_parameters)
     without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
@@ -161,7 +163,8 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
                                  conditions: Collection["SystemCondition"] = (),
                                  selection_strategy: SelectionStrategy = default_strategy,
                                  pruning_functions: Collection["Pruning"] | None = None,
-                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                 new_vars_name="w_", start_new_vars_with=0,
+                                 optimize_parameters=None) -> Optional[QuadratizationResult]:
     queue = Queue()
     queue.put(start_system)
     if input_der_orders is None:
@@ -180,7 +183,7 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
             print()
 
         quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions, selection_strategy,
-                                                    pruning_functions, new_vars_name, start_new_vars_with)
+                                                    pruning_functions, new_vars_name, start_new_vars_with, optimize_parameters)
         if quad_res:
             return quad_res
         for i in inputs_pde:

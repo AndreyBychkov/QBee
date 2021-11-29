@@ -126,20 +126,24 @@ class EquationSystem:
     def substitution_equations(self):
         return self._substitution_equations
 
-    def to_poly_equations(self, inputs_ord: dict):
-        """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method"""
+    def to_poly_equations(self, inputs_ord: dict, optimize_parameters: set):
+        """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method
+        :param optimize_parameters:
+        """
         assert self.is_polynomial()
         inputs_ord_sym = {sp.Symbol(str_common(k)): v for k, v in inputs_ord.items()}
+        opt_par_sym = {sp.Symbol(str_common(v)) for v in optimize_parameters}
         d_inputs = generate_derivatives(inputs_ord_sym)
         # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
-        R = coef_field[list(self.variables.state_variables + sp.flatten(d_inputs))]
+        input_ring_vars = list(dict.fromkeys(sp.flatten(d_inputs) + list(opt_par_sym)))
+        R = coef_field[self.variables.state_variables + input_ring_vars]
         equations = [R.from_sympy(eq.rhs) for eq in self.equations]
         for i, v in enumerate(inputs_ord_sym.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(R.zero)
-        inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
+        inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs if v[0] not in opt_par_sym]
         return equations, inputs_to_exclude
 
     def subs_expression(self, old: sp.Expr, new: sp.Expr):
