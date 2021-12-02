@@ -13,7 +13,7 @@ if __name__ == '__main__':
         (c4, -2 * eq1)
     ]
 
-    # {T: 2} means than T can have a derivative of order at most three => T'''
-    quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 3})
+    # {T: 2} means than T can have a derivative of order at most two => T''
+    quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 2})
     if quadr_system:
         print(quadr_system)
