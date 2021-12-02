@@ -36,6 +36,7 @@ if log_enable:
 
 def quadratize(polynomials: List[PolyElement],
                conditions: Collection["SystemCondition"] = (),
+               calc_upper_bound=True,
                selection_strategy: SelectionStrategy = default_strategy,
                pruning_functions: Collection["Pruning"] | None = None, new_vars_name='w',
                start_new_vars_with=0) -> QuadratizationResult | None:
@@ -74,6 +75,8 @@ def quadratize(polynomials: List[PolyElement],
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
     algo = BranchAndBound(system, conditions, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
+    if calc_upper_bound:
+        algo.domination_upper_bound()
     algo_res = algo.quadratize()
     if pb_enable:
         print("=" * 50)
@@ -91,6 +94,7 @@ def quadratize(polynomials: List[PolyElement],
 def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
                                      input_der_orders=None,
                                      conditions: Collection["SystemCondition"] = (),
+                                     calc_upper_bound=True,
                                      selection_strategy: SelectionStrategy = default_strategy,
                                      pruning_functions: Collection["Pruning"] | None = None,
                                      new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
@@ -149,6 +153,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
         pruning_functions = default_pruning_rules
     quad_equations = quadratize(poly_equations,
                                 conditions=[without_excl_inputs, *conditions],
+                                calc_upper_bound=calc_upper_bound,
                                 selection_strategy=selection_strategy,
                                 pruning_functions=[pruning_by_best_nvars, *pruning_functions],
                                 new_vars_name=new_vars_name,
@@ -159,6 +164,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
                                  input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (),
+                                 calc_upper_bound=True,
                                  selection_strategy: SelectionStrategy = default_strategy,
                                  pruning_functions: Collection["Pruning"] | None = None,
                                  new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
@@ -179,8 +185,9 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
                 print(f"{str_common(eq[0])} = {str_common(eq[1])}")
             print()
 
-        quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions, selection_strategy,
-                                                    pruning_functions, new_vars_name, start_new_vars_with)
+        quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions, calc_upper_bound,
+                                                    selection_strategy, pruning_functions, new_vars_name,
+                                                    start_new_vars_with)
         if quad_res:
             return quad_res
         for i in inputs_pde:
@@ -432,27 +439,27 @@ class Algorithm:
 
 ALGORITHM_INTERRUPTED = False
 
+
 def signal_handler(sig_num, frame):
     global ALGORITHM_INTERRUPTED
     print("The algorithm has been interrupted. Returning the current best.")
     ALGORITHM_INTERRUPTED = True
 
+
 signal.signal(signal.SIGINT, signal_handler)
+
 
 class BranchAndBound(Algorithm):
 
     def domination_upper_bound(self):
         system = self._system.copy()
-        algo = BranchAndBound(system, aeqd_strategy,
-                              [pruning_by_best_nvars,
-                               pruning_by_quadratic_upper_bound,
-                               pruning_by_squarefree_graphs,
-                               partial(pruning_by_domination, dominators=self.dominating_monomials)])
+        algo = BranchAndBound(system, self._sys_cond, self._strategy,
+                              [partial(pruning_by_domination, dominators=self.dominating_monomials),
+                               *self._pruning_funs])
         res = algo.quadratize()
         upper_bound = res.introduced_vars
-        self.preliminary_upper_bound = upper_bound
         if upper_bound != math.inf:
-            self.add_pruning(partial(pruning_by_vars_number, nvars=upper_bound))
+            self.preliminary_upper_bound = upper_bound + 1
 
     @timed(enabled=pb_enable)
     def quadratize(self) -> AlgorithmResult:
