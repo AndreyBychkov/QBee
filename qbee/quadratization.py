@@ -33,7 +33,7 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                selection_strategy: SelectionStrategy =default_strategy,
                pruning_functions: Optional[Iterable["Pruning"]] = None,
-               new_vars_name='w', start_new_vars_with=0) -> Optional[QuadratizationResult]:
+               new_vars_name='w', start_new_vars_with=0, offset=0) -> Optional[QuadratizationResult]:
     """
     Quadratize a system of ODEs with the polynomial right-hand side.
 
@@ -66,7 +66,7 @@ def quadratize(polynomials: List[PolyElement],
     """
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
-    system = PolynomialSystem(polynomials)
+    system = PolynomialSystem(polynomials, offset=offset)
     algo = BranchAndBound(system, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
     algo_res = algo.quadratize()
     if pb_enable:
@@ -86,7 +86,7 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
                                  input_der_orders=None,
                                  selection_strategy=default_strategy,
                                  pruning_functions=None,
-                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                 new_vars_name="w_", start_new_vars_with=0, offset=0) -> Optional[QuadratizationResult]:
     """
     Polynomialize and than quadratize a system of ODEs with the continuous right-hand side.
 
@@ -144,14 +144,15 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
                                 selection_strategy,
                                 [pruning_by_best_nvars, pruning_by_inputs] + pruning_functions,
                                 new_vars_name,
-                                start_new_vars_with + len(poly_system) - len(system))
+                                start_new_vars_with + len(poly_system) - len(system),
+                                offset)
     return quad_equations
 
 
 # ------------------------------------------------------------------------------
 
 class PolynomialSystem:
-    def __init__(self, polynomials: List[PolyElement]):
+    def __init__(self, polynomials: List[PolyElement], offset=0):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
@@ -159,6 +160,7 @@ class PolynomialSystem:
         gens = polynomials[0].ring.gens
         self.dim = len(gens)
         self.gen_symbols = list(map(lambda g: sp.Symbol(str(g)), gens))
+        self.offset = offset
 
         # put not monomials but differences in the exponents between rhs and lhs
         self.rhs = dict()
@@ -177,11 +179,11 @@ class PolynomialSystem:
 
     @property
     def introduced_vars(self):
-        return tuple(filter(lambda v: monomial_deg(v) >= 2, self.vars))
+        return tuple(filter(lambda v: not (v.count(0) == len(v) or (v.count(0) == len(v) - 1 and v.count(1) == 1)), self.vars))
 
     def add_var(self, v):
         for i in range(self.dim):
-            if v[i] > 0:
+            if v[i] != 0:
                 for m in self.rhs[i]:
                     self.nonsquares.add(tuple([v[j] + m[j] for j in range(self.dim)]))
 
@@ -197,13 +199,13 @@ class PolynomialSystem:
         return not self.nonsquares
 
     def get_smallest_nonsquare(self):
-        return min([(np.prod([d + 1 for d in m]), m) for m in self.nonsquares])[1]
+        return min([(np.prod([d + 1 + self.offset for d in m]), m) for m in self.nonsquares])[1]
 
     def next_generation(self, strategy=default_strategy):
         if len(self.nonsquares) == 0:
             return list()
         new_gen = []
-        for d in get_decompositions(self.get_smallest_nonsquare()):
+        for d in get_decompositions(self.get_smallest_nonsquare(), self.offset):
             c = pickle.loads(pickle.dumps(self, -1))  # inline self.copy for speedup
             for v in d:
                 c.add_var(v)
@@ -256,7 +258,7 @@ class AlgorithmResult:
 
 class QuadratizationResult:
     def __init__(self, equations, variables, algo_res: AlgorithmResult):
-        self.rhs = copy.deepcopy(equations)
+        self.rhs = [e.copy() for e in equations]
         self.lhs = derivatives(variables)
         self.introduced_vars = algo_res.introduced_vars
         self.nodes_traversed = algo_res.nodes_traversed
@@ -479,7 +481,7 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
     for ns in part_res.nonsquares:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
-            if not any([x < 0 for x in diff]):
+            if not any([x < -part_res.offset for x in diff]):
                 if diff in degree_one_monomials:
                     degree_one_monomials[diff] += 1
                 else:
@@ -544,7 +546,7 @@ def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args
     for ns in no_C4_monoms:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
-            if not any([x < 0 for x in diff]):
+            if not any([x < -part_res.offset for x in diff]):
                 if diff in degree_one_monomials:
                     degree_one_monomials[diff] += 1
                 else:

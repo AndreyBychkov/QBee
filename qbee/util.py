@@ -115,13 +115,13 @@ def memoize_first(func, max_size):
     return wrapper
 
 
-def get_decompositions(monomial):
+def get_decompositions(monomial, offset):
     if len(monomial) == 0:
         return {(tuple(), tuple())}
     result = set()
-    prev_result = get_decompositions(tuple(monomial[:-1]))
+    prev_result = get_decompositions(tuple(monomial[:-1]), offset)
     for r in prev_result:
-        for i in range(monomial[-1] + 1):
+        for i in range(-offset, monomial[-1] + 1 + offset):
             a, b = tuple(list(r[0]) + [i]), tuple(list(r[1]) + [monomial[-1] - i])
             result.add((min(a, b), max(a, b)))
     return result
@@ -186,8 +186,8 @@ def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
     return sp.Symbol(str(derivative).replace("\'", '', 1))
 
 
-def monomial_to_poly(monom: sp.Monomial) -> sp.Poly:
-    return sp.Poly(sp.prod([gen ** e for gen, e in zip(monom.gens, monom.exponents)]), monom.gens)
+def monomial_to_poly(monom: sp.Monomial):
+    return sp.prod([gen ** e for gen, e in zip(monom.gens, monom.exponents)])
 
 
 def tuple_to_monom(m: tuple, gens) -> sp.Expr:
@@ -218,21 +218,61 @@ def top_priority():
         win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
 
 
+def Lie_derivative_on_dicts(monom, vector_field):
+    result = dict()
+    for i in range(len(monom)):
+        if monom[i] != 0:
+            for m, c in vector_field[i].items():
+                new_monom = [k + l for k, l in zip(monom, m)]
+                new_monom[i] -= 1
+                new_c = c * monom[i]
+                new_monom = tuple(new_monom)
+                result[new_monom] = result.get(new_monom, 0) + new_c
+    return result
+
 def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var_name='z_', start_new_vars_with=0):
-    gens = polynomials[0].ring.gens
-    result = list(polynomials)
+    n = len(polynomials)
+    system_dicts = [p.to_dict() for p in polynomials]
+    vector_field = {i: p for i, p in enumerate(system_dicts)}
     for monom in quadratization:
-        result.append(calc_Lie_derivative(polynomials, monom2PolyElem(monom, gens)))
-    subs, new_vars = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name, start_new_vars_with)
-    result = list(map(PolyElement.as_expr, result))
-    for i, poly in enumerate(result):
-        ppoly = sp.Poly(poly, [g.as_expr() for g in gens])
-        res_lst = list()
-        for monom, coef in ppoly.terms():
-            subs_monom = monom2PolyElem(monom, ppoly.gens).as_expr().xreplace(subs)
-            res_lst.append(coef * subs_monom)
-        result[i] = sp.Add(*res_lst)
-    return result, [g.as_expr() for g in gens] + new_vars
+        system_dicts.append(Lie_derivative_on_dicts(monom, vector_field))
+
+    squares = dict()
+    generalized_vars = [tuple([1 if i == j else 0 for i in range(n)]) for j in range(n)] + list(quadratization)
+    squares[tuple([0] * n)] = tuple([0] * len(generalized_vars))
+    for i, v in enumerate(generalized_vars):
+        squares[v] = tuple([1 if j == i else 0 for j in range(len(generalized_vars))])
+
+    for i, v in enumerate(generalized_vars):
+        for j, u in enumerate(generalized_vars):
+            prod = tuple([a + b for a, b in zip(u, v)])
+            if prod not in squares:
+                new_monom = [0] * len(generalized_vars)
+                new_monom[i] += 1
+                new_monom[j] += 1
+                squares[prod] = tuple(new_monom)
+
+
+    result_as_dicts = [{squares[m]: c for m, c in p.items()} for p in system_dicts]
+    new_varnames = [str(g) for g in polynomials[0].ring.gens] + [new_var_name + str(start_new_vars_with + i) for i in range(len(quadratization))]
+    new_ring = sp.ring(new_varnames, polynomials[0].ring.domain)[0]
+    result = [new_ring(d) for d in result_as_dicts]
+    return result, [g.as_expr() for g in new_ring.gens]
+
+   # gens = polynomials[0].ring.gens
+   # result = list(polynomials)
+   # for monom in quadratization:
+   #     result.append(calc_Lie_derivative(polynomials, monom2PolyElem(monom, gens)))
+   # subs, new_vars = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name, start_new_vars_with)
+   # result = list(map(PolyElement.as_expr, result))
+   # for i, poly in enumerate(result):
+   #     ppoly = sp.Poly(poly, [g.as_expr() for g in gens])
+   #     res_lst = list()
+   #     for monom, coef in ppoly.terms():
+   #         subs_monom = monom2PolyElem(monom, ppoly.gens).as_expr().xreplace(subs)
+   #         res_lst.append(coef * subs_monom)
+   #     result[i] = sp.Add(*res_lst)
+   # return result, [g.as_expr() for g in gens] + new_vars
 
 
 def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name, start_new_vars_with):
