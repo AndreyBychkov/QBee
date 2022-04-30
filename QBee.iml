@@ -14,7 +14,7 @@
       <excludeFolder url="file://$MODULE_DIR$/log" />
       <excludeFolder url="file://$MODULE_DIR$/docs/_build" />
     </content>
-    <orderEntry type="jdk" jdkName="3.8 @ Ubuntu 20.04" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="3.8 @ Ubuntu20.04LTS" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Python 3.7 (QBee) interpreter library" level="application" />
   </component>
