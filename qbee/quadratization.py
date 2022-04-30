@@ -149,13 +149,14 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
         poly_system.print_substitution_equations()
     poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
     without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
+    pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     quad_equations = quadratize(poly_equations,
                                 conditions=[without_excl_inputs, *conditions],
                                 calc_upper_bound=calc_upper_bound,
                                 selection_strategy=selection_strategy,
-                                pruning_functions=[pruning_by_best_nvars, *pruning_functions],
+                                pruning_functions=[pruning_by_best_nvars, pruning_by_decl_inputs, *pruning_functions],
                                 new_vars_name=new_vars_name,
                                 start_new_vars_with=start_new_vars_with + len(poly_system) - len(system))
     return quad_equations
@@ -460,6 +461,8 @@ class BranchAndBound(Algorithm):
         upper_bound = res.introduced_vars
         if upper_bound != math.inf:
             self.preliminary_upper_bound = upper_bound + 1
+        else:
+            print("No upper bound was found")
 
     @timed(enabled=pb_enable)
     def quadratize(self) -> AlgorithmResult:
@@ -592,6 +595,10 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
     if lower_bound >= best_nvars:
         return True
     return False
+
+
+def pruning_by_declining_variables(a: Algorithm, part_res: PolynomialSystem, *args, excl_vars: List[Tuple]):
+    return not without_variables(part_res, excl_vars)
 
 
 # the (i, j)-th element is the maximal number of edges in a graph
