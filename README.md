@@ -86,7 +86,7 @@ The example system is not polynomial, so we use the most general method for achi
 
 ```python
 # {T: 2} means than T can have a derivative of order at most two => T''
-quadr_system = polynomialize_and_quadratize(system, inputs_orders={T: 2})
+quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 2})
 if quadr_system:
     print("Quadratized system:")
     print(quadr_system)
