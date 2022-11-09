@@ -10,6 +10,7 @@ from sympy.polys.rings import PolyElement
 from sympy.core.function import AppliedUndef
 from queue import Queue
 from typing import Callable, List, Optional, Set, Collection
+from ordered_set import OrderedSet
 from functools import partial
 from operator import add
 from .selection import *  # replace with .selection if you want pip install
@@ -249,7 +250,9 @@ class PolynomialSystem:
                 mlist[i] -= 1
                 self.rhs[i].add(tuple(mlist))
 
-        self.vars, self.squares, self.nonsquares = set(), set(), set()
+        # PERFORMANCE DEGRADATION: Ordered set is used for correct indexing in output,
+        # but the performance degradation is 5-10%
+        self.vars, self.squares, self.nonsquares = OrderedSet(), set(), set()
         self.add_var(tuple([0] * self.dim))
         for i in range(self.dim):
             self.add_var(tuple([1 if i == j else 0 for j in range(self.dim)]))

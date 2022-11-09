@@ -8,3 +8,4 @@ matplotlib
 memory_profiler
 pyvis
 pyarrow
+ordered-set
