@@ -6,6 +6,10 @@ Python library for transforming systems of ODE equations into a systems with qua
 
 # Installation
 
+## PyPI
+`pip install qbee`
+
+## Manual
 1. Clone repository: `https://github.com/AndreyBychkov/QBee.git`
    * Or, if you want our bleeding edge version, clone `https://github.com/AndreyBychkov/QBee/tree/dev`
 2. Change directory: `cd QBee`
