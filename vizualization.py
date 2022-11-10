@@ -165,4 +165,4 @@ def visualize_pyvis(log_file: str,
 
 
 if __name__ == '__main__':
-    visualize_pyvis('../log/log.feather', '../log/quad_systems.pkl')
+    visualize_pyvis('log/log.feather', 'log/quad_systems.pkl')

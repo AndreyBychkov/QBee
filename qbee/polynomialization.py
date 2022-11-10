@@ -1,13 +1,11 @@
 import sympy as sp
+from sympy.core.function import AppliedUndef
 import hashlib
 from copy import deepcopy
 from typing import Callable, Set, Optional, List
 from .AST_walk import find_non_polynomial
 from .util import *
-
-
-class Variable(sp.Symbol):
-    pass
+from .printer import str_common
 
 
 class Parameter(sp.Symbol):
@@ -32,7 +30,7 @@ class VariablesHolder:
         self._free_variables = list(variables)
         self._parameter_variables = parameter_variables
         self._input_variables = input_variables
-        self._original_variables = list(variables)
+        self.state_variables = list(variables)
         self._generated_variables = list()
         self._base_name = new_var_base_name
         self._start_id = start_new_vars_with
@@ -50,8 +48,8 @@ class VariablesHolder:
         return self._input_variables
 
     @property
-    def original(self):
-        return self._original_variables
+    def generated(self):
+        return self._generated_variables
 
     @property
     def base_var_name(self):
@@ -82,6 +80,7 @@ class VariablesHolder:
         new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
         self._free_variables.append(new_variable)
+        self.state_variables.append(new_variable)
         self._generated_variables.append(new_variable)
         return new_variable
 
@@ -130,11 +129,13 @@ class EquationSystem:
     def to_poly_equations(self, inputs_ord: dict):
         """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method"""
         assert self.is_polynomial()
-        d_inputs = generate_derivatives(inputs_ord)
+        inputs_ord_sym = {sp.Symbol(str_common(k)): v for k, v in inputs_ord.items()}
+        d_inputs = generate_derivatives(inputs_ord_sym)
+        # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
-        R = coef_field[list(self.variables.free + sp.flatten(d_inputs))]
+        R = coef_field[list(self.variables.state_variables + sp.flatten(d_inputs))]
         equations = [R.from_sympy(eq.rhs) for eq in self.equations]
-        for i, v in enumerate(inputs_ord.keys()):
+        for i, v in enumerate(inputs_ord_sym.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(R.zero)
@@ -256,9 +257,8 @@ class EquationSystem:
         for eq in self.equations:
             print(rf"{eq.args[0]} = {sp.collect(eq.args[1], self.variables.free)}")
 
-    def print_substitution_equations(self):
-        for eq in self._substitution_equations:
-            print(f"{eq.lhs} = {eq.rhs}")
+    def substitution_equations_str(self):
+        return '\n'.join([f"{eq.lhs} = {eq.rhs}" for eq in self._substitution_equations])
 
     def __len__(self):
         return len(self._equations)
@@ -289,17 +289,7 @@ def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]]
 
     """
     if not isinstance(system, EquationSystem):
-        lhs, rhs = zip(*system)
-        all_symbols = list(reduce(lambda l, r: l | r, [eq.free_symbols for eq in rhs]))
-        degrade_to_symbol = {s: sp.Symbol(str(s)) for s in all_symbols}
-
-        parameters = [s.subs(degrade_to_symbol) for s in all_symbols if isinstance(s, Parameter)]
-        inputs = [s.subs(degrade_to_symbol) for s in all_symbols if s not in lhs]
-        inputs = [s for s in inputs if s not in parameters]
-
-        ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
-        sym_rhs = [eq.subs(degrade_to_symbol) for eq in rhs]
-        system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, sym_rhs)], parameters, inputs)
+        system = eq_list_to_eq_system(system)
     system.variables.base_var_name = new_var_name
     system.variables.start_new_vars_with = start_new_vars_with
     if mode == 'algebraic':
@@ -308,6 +298,32 @@ def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]]
         return _polynomialize_differential(system)
     else:
         raise ValueError("mode must be 'algebraic' or 'differential")
+
+
+def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSystem:
+    lhs, rhs = zip(*system)
+    params = set(reduce(lambda l, r: l | r, [eq.atoms(Parameter) for eq in rhs]))
+    funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
+    lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
+    inputs = set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
+    spatial = funcs.difference(inputs)
+
+    degrade_to_symbol = {s: sp.Symbol(str_common(s)) for s in funcs | inputs | params | set(lhs)}
+
+    params_sym = [p.subs(degrade_to_symbol) for p in params]
+    funcs_sym = [f.subs(degrade_to_symbol) for f in funcs]
+    inputs_sym = [i.subs(degrade_to_symbol) for i in inputs]
+    spacial_sym = [s.subs(degrade_to_symbol) for s in spatial]
+
+    ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
+    rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
+
+    der_inputs = set(reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs]))
+    degrade_to_symbol.update({i: sp.Symbol(str_common(i)) for i in der_inputs})
+    rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
+    system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
+    system.variables._free_variables = list(set(system.variables.free + spacial_sym))
+    return system
 
 
 def _polynomialize_algebraic(system: EquationSystem) -> EquationSystem:

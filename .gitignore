@@ -1,0 +1,6 @@
+.idea
+QBee.iml
+tests/.benchmarks
+.venv
+.log
+poetry.lock

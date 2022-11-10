@@ -17,4 +17,4 @@ order = systems.keys()
 @pytest.mark.parametrize('pruning', pruning_funcs)
 @pytest.mark.parametrize('ord', order)
 def test_circular(benchmark, ord, strat, pruning):
-    benchmark(quadratize, systems[ord], strat, pruning)
+    benchmark(quadratize, systems[ord], (), True, strat, pruning)

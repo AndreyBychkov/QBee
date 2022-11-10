@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "qbee"
+version = "0.7.0"
+description = "Quadratization of differential equations in python"
+authors = ["Andrey Bychkov, Gleb Pogudin"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+matplotlib = "^3.6.2"
+sympy = "^1.5.0"
+pandas = "^1"
+numpy = "^1"
+tqdm = "^4"
+memory_profiler = "*"
+pyarrow = "^10"
+ordered-set = "*"
+
+
+[tool.poetry.group.dev.dependencies]
+networkx = "*"
+matplotlib = "*"
+pyvis = "*"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
