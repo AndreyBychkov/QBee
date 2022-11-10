@@ -298,10 +298,10 @@ class PolynomialSystem:
         return len(self.vars) - self.dim - 1
 
     def to_str(self, new_var_name='z_', start_id=0):
-        return [
+        return '\n'.join([
             new_var_name + ("{%d}" % i) + " = " + monom2str(m, self.gen_symbols)
             for i, m in enumerate(self.introduced_vars, start_id)
-        ]
+        ])
 
     def __str__(self):
         return f"{self._introduced_variables_str()}"
@@ -322,16 +322,16 @@ class AlgorithmResult:
                  introduced_vars: int,
                  nodes_traversed: int):
         self.system = system
-        self.introduced_vars = introduced_vars
+        self.num_introduced_vars = introduced_vars
         self.nodes_traversed = nodes_traversed
 
     def print(self, new_var_name="z_", start_new_vars_with=0):
         if self.system is None:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
-        return f"Number of introduced variables: {self.introduced_vars}\n" + \
+        return f"Number of introduced variables: {self.num_introduced_vars}\n" + \
                f"Nodes traversed: {self.nodes_traversed}\n" + \
-               "Introduced variables:\n" + '\n'.join(self.system.to_str(new_var_name, start_new_vars_with))
+               "Introduced variables:\n" + self.system.to_str(new_var_name, start_new_vars_with)
 
     def __repr__(self):
         return self.print()
@@ -339,10 +339,10 @@ class AlgorithmResult:
 
 class QuadratizationResult:
     def __init__(self, equations, variables, algo_res: AlgorithmResult):
+        self.nodes_traversed = algo_res.nodes_traversed
         self.rhs = copy.deepcopy(equations)
         self.lhs = derivatives(variables)
-        self.introduced_vars = algo_res.introduced_vars
-        self.nodes_traversed = algo_res.nodes_traversed
+        self.quadratization = algo_res.system
 
     def to_list(self):
         return [self[i] for i in range(len(self.rhs))]
@@ -412,7 +412,7 @@ class Algorithm:
     def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
         optimal_first = self.quadratize()
         print(optimal_first)
-        return self.get_quadratizations(optimal_first.introduced_vars)
+        return self.get_quadratizations(optimal_first.num_introduced_vars)
 
     @dump_results(log_enable, quad_systems_file)
     def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
@@ -461,7 +461,7 @@ class BranchAndBound(Algorithm):
                               [partial(pruning_by_domination, dominators=self.dominating_monomials),
                                *self._pruning_funs])
         res = algo.quadratize()
-        upper_bound = res.introduced_vars
+        upper_bound = res.num_introduced_vars
         if upper_bound != math.inf:
             self.preliminary_upper_bound = upper_bound + 1
         else:
