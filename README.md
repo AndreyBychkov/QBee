@@ -8,8 +8,11 @@ Python library for transforming systems of ODE equations into a systems with qua
 
 1. Clone repository: `https://github.com/AndreyBychkov/QBee.git`
    * Or, if you want our bleeding edge version, clone `https://github.com/AndreyBychkov/QBee/tree/dev`
-2. Install requirements: `pip install -r requirements.txt`
-3. Install the package: `pip install .`
+2. Change directory: `cd QBee`
+3. Install package: `pip install .`
+
+If you use `poetry` you can alternately install if with
+`poetry install`
 
 # What is quadratization?
 
