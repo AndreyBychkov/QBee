@@ -48,6 +48,10 @@ class VariablesHolder:
         return self._input_variables
 
     @property
+    def generated(self):
+        return self._generated_variables
+
+    @property
     def base_var_name(self):
         return self._base_name
 
@@ -253,9 +257,8 @@ class EquationSystem:
         for eq in self.equations:
             print(rf"{eq.args[0]} = {sp.collect(eq.args[1], self.variables.free)}")
 
-    def print_substitution_equations(self):
-        for eq in self._substitution_equations:
-            print(f"{eq.lhs} = {eq.rhs}")
+    def substitution_equations_str(self):
+        return '\n'.join([f"{eq.lhs} = {eq.rhs}" for eq in self._substitution_equations])
 
     def __len__(self):
         return len(self._equations)
