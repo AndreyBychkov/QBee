@@ -8,10 +8,6 @@ from .util import *
 from .printer import str_common
 
 
-class Variable(sp.Symbol):
-    pass
-
-
 class Parameter(sp.Symbol):
     pass
 
