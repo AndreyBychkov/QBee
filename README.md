@@ -2,7 +2,9 @@
 [![Documentation Status](https://readthedocs.org/projects/qbee/badge/?version=latest)](https://qbee.readthedocs.io/en/latest/?badge=latest)
 # QBee
 
-Python library for transforming systems of ODE equations into a systems with quadratic right-rand side.
+### [Online playground](https://huggingface.co/spaces/Armaliltril/qbee)
+
+QBee is a Python library for transforming systems of differential equations into a systems with quadratic right-rand side.
 
 # Installation
 

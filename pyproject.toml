@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qbee"
-version = "0.7.0"
+version = "0.7.1"
 description = "Quadratization of differential equations in python"
 authors = ["Andrey Bychkov, Gleb Pogudin"]
 license = "MIT"
