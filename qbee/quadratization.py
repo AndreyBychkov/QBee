@@ -262,11 +262,11 @@ class PolynomialSystem:
 
     @property
     def introduced_vars(self):
-        return tuple(filter(lambda v: monomial_deg(v) >= 2, self.vars))
+        return tuple(filter(lambda v: sum(map(abs, v)) >= 2 or sum(v) < 0, self.vars))
 
     def add_var(self, v):
         for i in range(self.dim):
-            if v[i] > 0:
+            if v[i] != 0:
                 for m in self.rhs[i]:
                     self.nonsquares.add(tuple([v[j] + m[j] for j in range(self.dim)]))
 
@@ -282,7 +282,7 @@ class PolynomialSystem:
         return not self.nonsquares
 
     def get_smallest_nonsquare(self):
-        return min([(np.prod([d + 1 for d in m]), m) for m in self.nonsquares])[1]
+        return min([(np.prod([abs(d) + 1 for d in m]), m) for m in self.nonsquares])[1]
 
     def next_generation(self, strategy=default_strategy):
         if len(self.nonsquares) == 0:
@@ -342,7 +342,7 @@ class AlgorithmResult:
 class QuadratizationResult:
     def __init__(self, equations, variables, quad_res: AlgorithmResult, poly_res: EquationSystem | None = None):
         self.nodes_traversed = quad_res.nodes_traversed
-        self.rhs = copy.deepcopy(equations)
+        self.rhs = [copy.copy(e) for e in equations]
         self.lhs = derivatives(variables)
         self.quadratization = quad_res.system
         self.polynomialization = poly_res
@@ -425,7 +425,6 @@ class Algorithm:
     @dump_results(log_enable, quad_systems_file)
     def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
         optimal_first = self.quadratize()
-        print(optimal_first)
         return self.get_quadratizations(optimal_first.num_introduced_vars)
 
     @dump_results(log_enable, quad_systems_file)
@@ -591,11 +590,11 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
     for ns in part_res.nonsquares:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
-            if not any([x < 0 for x in diff]):
-                if diff in degree_one_monomials:
-                    degree_one_monomials[diff] += 1
-                else:
-                    degree_one_monomials[diff] = 1
+            #if not any([x < 0 for x in diff]):
+            if diff in degree_one_monomials:
+                degree_one_monomials[diff] += 1
+            else:
+                degree_one_monomials[diff] = 1
     degree_one_count = sorted(degree_one_monomials.values(), reverse=True)
 
     needed_new_vars = 0
@@ -660,11 +659,11 @@ def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args
     for ns in no_C4_monoms:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
-            if not any([x < 0 for x in diff]):
-                if diff in degree_one_monomials:
-                    degree_one_monomials[diff] += 1
-                else:
-                    degree_one_monomials[diff] = 1
+            #if not any([x < 0 for x in diff]):
+            if diff in degree_one_monomials:
+                degree_one_monomials[diff] += 1
+            else:
+                degree_one_monomials[diff] = 1
     degree_one_count = sorted(degree_one_monomials.values(), reverse=True)
 
     needed_new_vars = 0
