@@ -250,45 +250,21 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
     for i, v in enumerate(generalized_vars):
         for j, u in enumerate(generalized_vars):
             prod = tuple([a + b for a, b in zip(u, v)])
+            new_monom = [0] * len(generalized_vars)
+            new_monom[i] += 1
+            new_monom[j] += 1
+            new_monom = tuple(new_monom)
             if prod not in squares:
-                new_monom = [0] * len(generalized_vars)
-                new_monom[i] += 1
-                new_monom[j] += 1
-                squares[prod] = tuple(new_monom)
-
-    print(squares)
+                squares[prod] = new_monom
+            else:
+                # prioritizing new variables over the old ones
+                squares[prod] = min(squares[prod], new_monom)
 
     result_as_dicts = [{squares[m]: c for m, c in p.items()} for p in system_dicts]
     new_varnames = [str(g) for g in polynomials[0].ring.gens] + [new_var_name + str(start_new_vars_with + i) for i in range(len(quadratization))]
     new_ring = sp.ring(new_varnames, polynomials[0].ring.domain)[0]
     result = [new_ring(d) for d in result_as_dicts]
     return result, [g.as_expr() for g in new_ring.gens]
-
-def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name, start_new_vars_with):
-    orig_vars = list(map(lambda m: m.as_expr(), orig_vars))
-    orig_var_dup = list(zip(orig_vars, orig_vars))
-
-    new_vars = sp.symbols([new_vars_name + "{%d}" % i for i in range(start_new_vars_with, len(quadratization) + start_new_vars_with)])
-    quad_var_list = list(zip(map(lambda m: m.as_expr(), quadratization), new_vars))
-
-    res = dict(orig_var_dup + quad_var_list)
-    for (left_k, left_v), (right_k, right_v) in product(orig_var_dup + quad_var_list, repeat=2):
-        key = left_k * right_k
-        val = left_v * right_v
-        if key != val:
-            res[key] = val
-    return res, new_vars
-
-
-def calc_Lie_derivative(polys: List[PolyElement], new_var: PolyElement) -> PolyElement:
-    res = polys[0].ring.zero
-    new_var_tup = new_var.monoms()[0]
-    gens = polys[0].ring.gens
-    for i in range(len(new_var_tup)):
-        if new_var_tup[i] > 0:
-            poly = new_var.diff(gens[i]) * polys[i]
-            res += poly
-    return res
 
 
 def monom2PolyElem(monom: tuple, gens):
