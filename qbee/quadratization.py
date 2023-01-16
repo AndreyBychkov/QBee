@@ -245,10 +245,13 @@ class PolynomialSystem:
 
         # put not monomials but differences in the exponents between rhs and lhs
         self.rhs = dict()
+        self.laurent = False
         for i, p in enumerate(polynomials):
             self.rhs[i] = set()
             for m in p.to_dict().keys():
                 mlist = list(m)
+                if any([x < 0 for x in mlist]):
+                    self.laurent = True
                 mlist[i] -= 1
                 self.rhs[i].add(tuple(mlist))
 
@@ -590,11 +593,11 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
     for ns in part_res.nonsquares:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
-            #if not any([x < 0 for x in diff]):
-            if diff in degree_one_monomials:
-                degree_one_monomials[diff] += 1
-            else:
-                degree_one_monomials[diff] = 1
+            if part_res.laurent or all([x >= 0 for x in diff]):
+                if diff in degree_one_monomials:
+                    degree_one_monomials[diff] += 1
+                else:
+                    degree_one_monomials[diff] = 1
     degree_one_count = sorted(degree_one_monomials.values(), reverse=True)
 
     needed_new_vars = 0
@@ -659,11 +662,11 @@ def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args
     for ns in no_C4_monoms:
         for v in part_res.vars:
             diff = tuple([ns[i] - v[i] for i in range(part_res.dim)])
-            #if not any([x < 0 for x in diff]):
-            if diff in degree_one_monomials:
-                degree_one_monomials[diff] += 1
-            else:
-                degree_one_monomials[diff] = 1
+            if part_res.laurent or all([x >= 0 for x in diff]):
+                if diff in degree_one_monomials:
+                    degree_one_monomials[diff] += 1
+                else:
+                    degree_one_monomials[diff] = 1
     degree_one_count = sorted(degree_one_monomials.values(), reverse=True)
 
     needed_new_vars = 0
