@@ -5,6 +5,7 @@ import warnings
 import sympy as sp
 from sympy.core.function import AppliedUndef
 from typing import Iterator
+from ordered_set import OrderedSet
 from .util import *
 from .printer import str_qbee
 
@@ -314,7 +315,7 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
     degrade_to_symbol.update({i: sp.Symbol(str_qbee(i)) for i in der_inputs})
     rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
     system = EquationSystem({dx: fx for dx, fx in zip(lhs_sym, rhs_sym)}, params_sym, inputs_sym)
-    system.variables._state_variables = list(set(system.variables.state + spacial_sym))
+    system.variables._state_variables = list(OrderedSet(system.variables.state + spacial_sym))
     return system
 
 
