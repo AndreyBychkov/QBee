@@ -71,6 +71,7 @@ def test_scalar_pde():
     u = multivariable_functions("u", [x])
     p = parameters("p")
     system = [
+        (x, x),
         (u, p * u.diff(x) ** 3 + c),
     ]
 
