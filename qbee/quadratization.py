@@ -93,14 +93,13 @@ def quadratize(polynomials: List[PolyElement],
 
 
 def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
-                                     input_der_orders=None,
-                                     conditions: Collection["SystemCondition"] = (),
-                                     calc_upper_bound=True,
+                                     input_der_orders=None, conditions: Collection["SystemCondition"] = (),
+                                     polynomialization_upper_bound=10, calc_upper_bound=True,
                                      selection_strategy: SelectionStrategy = default_strategy,
-                                     pruning_functions: Collection["Pruning"] | None = None,
-                                     new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                     pruning_functions: Collection["Pruning"] | None = None, new_vars_name="w_",
+                                     start_new_vars_with=0) -> Optional[QuadratizationResult]:
     """
-    Polynomialize and than quadratize a system of ODEs with the continuous right-hand side.
+    Polynomialize and then quadratize a system of ODEs with the continuous right-hand side.
 
     :param system: system of equations in the form [(X, f(X)), ...] where the left-hand side is the derivatives.
     :param input_der_orders: mapping of input variables to maximum order of their derivatives. For example {T: 2} => T in C2
@@ -113,7 +112,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
         >>> from sympy import exp
         >>> x, y, u = functions("x, y, u")
         >>> p = parameters("p")
-        >>> quad_res = polynomialize_and_quadratize_ode([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)], input_der_orders={u: 0}, new_vars_name='z', start_new_vars_with=1)
+        >>> quad_res = polynomialize_and_quadratize_ode([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)],input_der_orders={u: 0},new_vars_name='z',start_new_vars_with=1)
         >>> print(quad_res)
         Variables introduced in polynomialization:
         z{1} = exp(-p*x)
@@ -145,7 +144,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
     if pb_enable:
         # TODO: temporary solution, should incorporate printing variables with non-integer powers into subs. equations
         print("Variables introduced in polynomialization:")
-    poly_system = polynomialize(system, new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
+    poly_system = polynomialize(system, polynomialization_upper_bound, new_vars_name, start_new_vars_with)
     if pb_enable:
         poly_system.print_substitutions()
     poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
@@ -168,7 +167,8 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
                                  input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (),
-                                 calc_upper_bound=True,
+                                 polynomialization_upper_bound=10,
+                                 calc_quadr_upper_bound=True,
                                  selection_strategy: SelectionStrategy = default_strategy,
                                  pruning_functions: Collection["Pruning"] | None = None,
                                  new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
@@ -189,9 +189,10 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
                 print(f"{str_qbee(eq[0])} = {str_qbee(eq[1])}")
             print()
 
-        quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions, calc_upper_bound,
-                                                    selection_strategy, pruning_functions, new_vars_name,
-                                                    start_new_vars_with)
+        quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions,
+                                                    polynomialization_upper_bound, calc_quadr_upper_bound,
+                                                    selection_strategy, pruning_functions,
+                                                    new_vars_name, start_new_vars_with)
         if quad_res:
             return quad_res
         for i in inputs_pde:
@@ -354,7 +355,7 @@ class QuadratizationResult:
         if self.polynomialization:
             base_name = self.polynomialization.variables.base_var_name
             quad_start_index = self.polynomialization.variables.start_new_vars_with + \
-                                     len(self.polynomialization.variables.generated)
+                               len(self.polynomialization.variables.generated)
             return self.polynomialization.substitution_equations_str() + \
                    '\n' + \
                    self.quadratization.to_str(base_name, quad_start_index)
@@ -492,7 +493,7 @@ class BranchAndBound(Algorithm):
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
-        # The order of this blocks is important: pruning rules assume that 
+        # The order of these blocks is important: pruning rules assume that
         # the input partial result is not a quadratization
         if part_res.is_quadratized() and all(cond(part_res) for cond in self._sys_cond):
             return part_res.new_vars_count(), part_res, 1

@@ -7,6 +7,7 @@ if __name__ == '__main__':
     u = multivariable_functions("u", [x])
     p = parameters("p")
     system = [
+        (x, x),
         (u, u.diff(x) ** 2),
     ]
 
