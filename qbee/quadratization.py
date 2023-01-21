@@ -16,7 +16,7 @@ from operator import add
 from .selection import *  # replace with .selection if you want pip install
 from .util import *  # replace with .util if you want pip install
 from .polynomialization import EquationSystem, polynomialize
-from .printer import print_common, str_common
+from .printer import print_qbee, str_qbee
 
 from memory_profiler import profile
 
@@ -147,7 +147,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
         print("Variables introduced in polynomialization:")
     poly_system = polynomialize(system, new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
-        print(poly_system.substitution_equations_str())
+        poly_system.print_substitutions()
     poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
     without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
     pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
@@ -186,7 +186,7 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
             print("Current spatial time derivatives equations:")
             print("...")
             for eq in system[len(start_system):]:
-                print(f"{str_common(eq[0])} = {str_common(eq[1])}")
+                print(f"{str_qbee(eq[0])} = {str_qbee(eq[1])}")
             print()
 
         quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions, calc_upper_bound,

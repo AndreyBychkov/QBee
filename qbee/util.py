@@ -5,9 +5,9 @@ import numpy as np
 from sympy.polys.rings import PolyElement
 from time import time
 from tqdm.autonotebook import tqdm
-from typing import Iterable, Union, Tuple, List, Dict
+from typing import Iterable, Union, Tuple, List, Dict, Optional
 from itertools import product, chain, combinations
-from functools import reduce
+from functools import reduce, wraps
 from copy import deepcopy
 
 
@@ -23,6 +23,7 @@ def parametrized(dec):
 
 @parametrized
 def timed(func, enabled=True):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time()
         res = func(*args, **kwargs)
@@ -45,20 +46,22 @@ __log_records = list()
 @parametrized
 def progress_bar(func, is_stop, enabled=True):
     postfix_str = "Current best order = {}"
+
+    @wraps(func)
     def wrapper(*args, **kwargs):
         global __log_pb_evaluated
         global __log_pb
         if not __log_pb_evaluated:
             __log_pb_evaluated = True
-            __log_pb = tqdm(desc="Nodes processed", unit=f" nodes")
-            __log_pb.set_postfix_str(postfix_str.format(args[2]))
+            __log_pb = tqdm(desc="Nodes processed", unit=f" nodes", leave=True)
+            __log_pb.set_postfix_str(postfix_str.format(args[-1]))
         if is_stop:
             __log_pb.close()
             __log_pb = None
             __log_pb_evaluated = False
         else:
             __log_pb.update(1)
-            __log_pb.set_postfix_str(postfix_str.format(args[2]))
+            __log_pb.set_postfix_str(postfix_str.format(args[-1]))
             __log_pb.refresh()
         return func(*args, **kwargs)
 
@@ -70,6 +73,7 @@ def progress_bar(func, is_stop, enabled=True):
 
 @parametrized
 def logged(method, enabled, log_file, is_stop=False):
+    @wraps(method)
     def wrapper(self, *args, **kwargs):
         global __log_records
         res = method(self, *args, **kwargs)
@@ -91,6 +95,7 @@ def logged(method, enabled, log_file, is_stop=False):
 
 @parametrized
 def dump_results(method, enabled, log_file):
+    @wraps(method)
     def wrapper(self, *args, **kwargs):
         res = method(self, *args, **kwargs)
         pickle.dump(res, open(log_file, "wb"))
@@ -106,6 +111,7 @@ def dump_results(method, enabled, log_file):
 def memoize_first(func, max_size):
     memo = {}
 
+    @wraps(func)
     def wrapper(*args):
         if args in memo:
             return memo[args]
@@ -221,12 +227,14 @@ def top_priority():
         win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
 
 
-def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var_name='z_', start_new_vars_with=0):
+def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var_name='z_',
+                         start_new_vars_with=0):
     gens = polynomials[0].ring.gens
     result = list(polynomials)
     for monom in quadratization:
         result.append(calc_Lie_derivative(polynomials, monom2PolyElem(monom, gens)))
-    subs, new_vars = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name, start_new_vars_with)
+    subs, new_vars = generalized_variables_dict(gens, [monom2PolyElem(m, gens) for m in quadratization], new_var_name,
+                                                start_new_vars_with)
     result = list(map(PolyElement.as_expr, result))
     for i, poly in enumerate(result):
         ppoly = sp.Poly(poly, [g.as_expr() for g in gens])
@@ -238,11 +246,13 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
     return result, [g.as_expr() for g in gens] + new_vars
 
 
-def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name, start_new_vars_with):
+def generalized_variables_dict(orig_vars: List[sp.Symbol], quadratization: List[PolyElement], new_vars_name,
+                               start_new_vars_with):
     orig_vars = list(map(lambda m: m.as_expr(), orig_vars))
     orig_var_dup = list(zip(orig_vars, orig_vars))
 
-    new_vars = sp.symbols([new_vars_name + "{%d}" % i for i in range(start_new_vars_with, len(quadratization) + start_new_vars_with)])
+    new_vars = sp.symbols(
+        [new_vars_name + "{%d}" % i for i in range(start_new_vars_with, len(quadratization) + start_new_vars_with)])
     quad_var_list = list(zip(map(lambda m: m.as_expr(), quadratization), new_vars))
 
     res = dict(orig_var_dup + quad_var_list)
@@ -278,3 +288,10 @@ def generate_derivatives(inputs: Dict[PolyElement, int]) -> List[List[str]]:
 
 def remove_repeating(seq: Iterable) -> List:
     return list(dict.fromkeys(seq))
+
+
+def key_from_value(d: dict, value) -> Optional:
+    for k, v in d.items():
+        if v == value:
+            return k
+    return None

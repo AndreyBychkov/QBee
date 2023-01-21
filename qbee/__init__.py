@@ -13,7 +13,7 @@ from .quadratization import BranchAndBound, PolynomialSystem, Pruning, \
     default_pruning_rules, \
     without_variables, quadratize, polynomialize_and_quadratize
 from .selection import *
-from .printer import print_common
+from .printer import print_qbee
 
 
 # from .util import derivatives
