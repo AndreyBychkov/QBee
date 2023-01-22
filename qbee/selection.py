@@ -9,7 +9,7 @@ def empty_score(system) -> int:
 
 
 def default_strategy(system) -> int:
-    total_nonsquare = sum([monomial_deg(m) for m in system.nonsquares])
+    total_nonsquare = sum([sum(map(abs, m)) for m in system.nonsquares])
     return total_nonsquare + system.dim * len(system.vars)
 
 
