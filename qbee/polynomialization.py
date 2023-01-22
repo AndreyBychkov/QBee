@@ -208,20 +208,28 @@ class EquationSystem:
 
         try:
             with sp.evaluate(False):
-                replaced_non_pow = expr.subs({v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
+                replaced_non_pow_lazy = expr.subs(
+                    {v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
+            replaced_pow_lazy = replaced_non_pow_lazy \
+                .replace(sp.Pow, self._replace_irrational_pow) \
+                .replace(sp.Pow, self._replace_negative_integer_pow)
         except Exception as e:
             warnings.warn("Substituting new variables failed to produce the expected calculations,"
                           " so the calculation was done in an alternative mode. "
                           "If you see this message, please let us know in the Issues: "
                           "https://github.com/AndreyBychkov/QBee/issues", RuntimeWarning)
-            replaced_non_pow = expr.subs({v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
+            replaced_pow_lazy = None
+
+        lazy_res = replaced_pow_lazy if replaced_pow_lazy and self._is_expr_polynomial(replaced_pow_lazy) else None
+        if lazy_res:
+            return lazy_res
+
+        # eager evaluation
+        replaced_non_pow = expr.subs({v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
         replaced_pow = replaced_non_pow \
             .replace(sp.Pow, self._replace_irrational_pow) \
             .replace(sp.Pow, self._replace_negative_integer_pow)
-
-        if replaced_pow.is_polynomial(*self.variables.state, *self.variables.input):
-            return replaced_pow
-        return None
+        return replaced_pow if self._is_expr_polynomial(replaced_pow) else None
 
     def _replace_negative_integer_pow(self, base, exp):
         new_var = key_from_value(self._substitution_equations, (1 / base).subs(self._substitution_equations))
@@ -234,6 +242,9 @@ class EquationSystem:
         if exp.is_Float and new_var:
             return new_var
         return base ** exp
+
+    def _is_expr_polynomial(self, expr: sp.Expr):
+        return expr.is_polynomial(*self.variables.state, *self.variables.input)
 
     def print(self, str_func=str_qbee, use_poly_equations=True):
         """
