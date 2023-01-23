@@ -73,7 +73,6 @@ def generation_semidiscretized(system):
         extended_vars = set(d)
         for v in d:
             classes = set([system.ind_to_class[j] for j in system.ind_to_class.keys() if v[j] != 0])
-            assert len(classes) <= 2
             if len(classes) == 1:
                 c = list(classes)[0]
                 for cl, var_to_ind in system.equivalence_classes.items():
@@ -93,9 +92,13 @@ def generation_semidiscretized(system):
                                     system.equivalence_classes[p[1]], system.equivalence_classes[u2], v, system.no_class
                                 )
                                 extended_vars.add(tuple([a + b for a, b in zip(m1, m2)]))
-            else:
+            elif len(classes) == 0:
                 extended_vars.add(v)
-        result.add(tuple(sorted(list(extended_vars))))
+            else:
+                extended_vars = set()
+                break
+        if len(extended_vars) > 0:
+             result.add(tuple(sorted(list(extended_vars))))
     return result
 
 
