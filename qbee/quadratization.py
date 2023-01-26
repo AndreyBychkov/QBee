@@ -38,7 +38,7 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                conditions: Collection["SystemCondition"] = (),
                calc_upper_bound=True,
-               generation_strategy: GenerationStrategy = default_generation,
+               generation_strategy=default_generation,
                scoring: Scoring = default_scoring,
                pruning_functions: Collection["Pruning"] | None = None, new_vars_name='w',
                start_new_vars_with=0) -> QuadratizationResult | None:
@@ -97,7 +97,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
                                      input_der_orders=None,
                                      conditions: Collection["SystemCondition"] = (),
                                      calc_upper_bound=True,
-                                     generation_strategy: GenerationStrategy = default_generation,
+                                     generation_strategy=default_generation,
                                      scoring: Scoring = default_scoring,
                                      pruning_functions: Collection["Pruning"] | None = None,
                                      new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
@@ -158,7 +158,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
     quad_result = quadratize(poly_equations,
                              conditions=[without_excl_inputs, *conditions],
                              calc_upper_bound=calc_upper_bound,
-                             generation_strategy=generation_strategy,
+                             generation_strategy=partial(generation_strategy, excl_vars=excl_inputs),
                              scoring=scoring,
                              pruning_functions=[pruning_by_best_nvars, pruning_by_decl_inputs, *pruning_functions],
                              new_vars_name=new_vars_name,
@@ -172,7 +172,7 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]],
                                  input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (),
                                  calc_upper_bound=True,
-                                 generation_strategy: GenerationStrategy = default_generation,
+                                 generation_strategy=default_generation,
                                  scoring: Scoring = default_scoring,
                                  pruning_functions: Collection["Pruning"] | None = None,
                                  new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
@@ -387,7 +387,7 @@ SystemCondition = Callable[[PolynomialSystem], bool]
 class Algorithm:
     def __init__(self, poly_system: PolynomialSystem,
                  system_conditions: Collection[SystemCondition] | None = None,
-                 generation: GenerationStrategy = default_generation,
+                 generation=default_generation,
                  scoring: Scoring = default_scoring,
                  pruning_funcs: Collection[Pruning] | None = None):
         self._system = poly_system

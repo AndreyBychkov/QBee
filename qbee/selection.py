@@ -3,15 +3,33 @@ from typing import Tuple, Callable, Iterable, Any
 
 from .util import *
 
-GenerationStrategy = Callable[['PolynomialSystem'], Iterable[Any]]
 Scoring = Callable[['PolynomialSystem'], int]
+
+# Function for proposing some new variables (to be used in both generators
+
+def raw_generation(system, excl_vars):
+    excl_indices = [np.argmax(v) for v in excl_vars]
+    all_decomp = get_decompositions(system.get_smallest_nonsquare())
+    if len(excl_indices) == 0:
+        return all_decomp
+    result = []
+    for d in all_decomp:
+        to_add = True
+        for m in d:
+            if sum(m) != 1 or sum(map(abs, m)) != 1:
+                if len([i for i in excl_indices if m[i] != 0]) > 0:
+                    to_add = False
+                    break
+        if to_add:
+            result.append(d)
+    return result
 
 # Standard generation strategy with different scoring functions
 
-def default_generation(system):
+def default_generation(system, excl_vars):
     if len(system.nonsquares) == 0:
         return list()
-    return get_decompositions(system.get_smallest_nonsquare())
+    return raw_generation(system, excl_vars)
 
 #####
 
@@ -28,7 +46,7 @@ def _map_indices(v_to_ind_from, v_to_ind_to, arr, no_class):
     return result
 
 
-def generation_semidiscretized(system):
+def generation_semidiscretized(system, excl_vars):
     # recognizing the semidiscretized structure if not cashed already
     if not hasattr(system, "equivalence_classes"):
         system.equivalence_classes = dict()
@@ -67,7 +85,7 @@ def generation_semidiscretized(system):
         print(system.graph)
     
     # producing sets of new variables
-    decomposition = get_decompositions(system.get_smallest_nonsquare())
+    decomposition = raw_generation(system, excl_vars)
     result = set()
     for d in decomposition:
         extended_vars = set(d)
