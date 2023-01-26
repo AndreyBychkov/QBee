@@ -1,11 +1,17 @@
+from __future__ import annotations
+
+import copy
+import math
+import signal
+import warnings
 import sympy as sp
+from functools import cached_property
 from sympy.core.function import AppliedUndef
-import hashlib
-from copy import deepcopy
-from typing import Callable, Set, Optional, List
-from .AST_walk import find_non_polynomial
+from sympy.polys.rings import PolyRing
+from typing import Iterator
+from ordered_set import OrderedSet
 from .util import *
-from .printer import str_common
+from .printer import str_qbee
 
 
 class Parameter(sp.Symbol):
@@ -18,8 +24,8 @@ class VariablesHolder:
     """
 
     def __init__(self, variables: Iterable[sp.Symbol],
-                 parameter_variables: Optional[Set[sp.Symbol]] = None,
-                 input_variables: Optional[Set[sp.Symbol]] = None,
+                 parameter_variables: set[sp.Symbol] | None = None,
+                 input_variables: set[sp.Symbol] | None = None,
                  new_var_base_name="w_",
                  start_new_vars_with=0):
         if parameter_variables is None:
@@ -27,17 +33,17 @@ class VariablesHolder:
         if input_variables is None:
             input_variables = set()
 
-        self._free_variables = list(variables)
         self._parameter_variables = parameter_variables
         self._input_variables = input_variables
-        self.state_variables = list(variables)
+        self._state_variables = list(variables)
         self._generated_variables = list()
         self._base_name = new_var_base_name
         self._start_id = start_new_vars_with
 
     @property
-    def free(self):
-        return self._free_variables
+    def state(self):
+        # State variables are in a list to preserve ordering introduced in equation systems
+        return self._state_variables
 
     @property
     def parameter(self):
@@ -67,237 +73,241 @@ class VariablesHolder:
     def start_new_vars_with(self, value):
         self._start_id = value
 
-    def create_variable(self) -> sp.Symbol:
+    def create(self) -> sp.Symbol:
         """
         Creates a new variable and stores it within itself.
 
-        Example:
-            .. math:: y_1 = holder.create\_variable()
+        :Example:
+
+        >>> self.create()
+        w1
+        >>> self.create()
+        w2
+        >>> self.create()
+        w3
 
         :return: Created variable
+
         """
         new_index = len(self._generated_variables) + self._start_id
         new_variable = sp.Symbol(self._base_name + "{%d}" % new_index)
 
-        self._free_variables.append(new_variable)
-        self.state_variables.append(new_variable)
+        self._state_variables.append(new_variable)
         self._generated_variables.append(new_variable)
         return new_variable
 
-    def create_variable_with_derivative(self) -> Tuple[sp.Symbol, sp.Symbol]:
-        """
-        Creates new a variable with its derivative and stores them within itself.
-
-        Example:
-            .. math:: y_1, \dot{y}_1 = holder.create\_variable\_with\_derivative()
-
-        :returns: Created variable with derivative
-        """
-        new_variable = self.create_variable()
-        new_variable_der = make_derivative_symbol(new_variable)
-        return new_variable, new_variable_der
-
 
 class EquationSystem:
-    def __init__(self, equations: List[sp.Eq],
+    def __init__(self, equations: dict[sp.Symbol, sp.Expr],
                  parameter_variables: Iterable[sp.Symbol] = None,
-                 input_variables: Iterable[sp.Symbol] = None):
+                 input_variables: Iterable[sp.Symbol] = None,
+                 keep_laurent=False):
+        self.keep_laurent = keep_laurent
+
         self._equations = equations.copy()
-        self._original_equation_indexes = list(range(len(equations)))
-        self._substitution_equations = list()
+        self._substitution_equations: dict[sp.Symbol, sp.Expr] = dict()
+        self._poly_equations: dict[sp.Symbol, sp.Expr | None] = {k: None for k in equations.keys()}
 
-        self.expand_equations()
-
-        _symbols = reduce(set.union, map(lambda e: e.free_symbols, equations))
         _parameter_vars = set(parameter_variables) if parameter_variables is not None else set()
         _input_vars = set(input_variables) if input_variables is not None else set()
-        # _variables = _symbols.difference(_parameter_vars).difference(_input_vars)
-        # _variables = set(filter(lambda v: r'\dot' not in str(v), _variables))
-        _variables = remove_repeating([symbol_from_derivative(eq.lhs) for eq in equations])
+        _variables = list(equations.keys())
         self.variables = VariablesHolder(_variables, _parameter_vars, _input_vars)
 
-        self._equations_poly_degrees = dict()
+        self.expand()
+        self._fill_poly_system()
+
+    def __copy__(self):
+        system = EquationSystem(self._equations)
+        system._equations = {k: v for k, v in self._equations.items()}
+        system._substitution_equations = {k: v for k, v in self._substitution_equations.items()}
+        system._poly_equations = {k: v for k, v in self._poly_equations.items()}
+        system.variables = pickle.loads(pickle.dumps(self.variables, -1))  # fast deepcopy
+        return system
 
     @property
-    def equations(self) -> List[sp.Eq]:
-        return self._equations
+    def equations(self) -> list[sp.Eq]:
+        return [sp.Eq(make_derivative_symbol(dx), f) for dx, f in self._equations.items()]
 
     @property
     def substitution_equations(self):
-        return self._substitution_equations
+        return [sp.Eq(x, f) for x, f in self._substitution_equations.items()]
+
+    @property
+    def polynomial_equations(self):
+        return [sp.Eq(make_derivative_symbol(x), f) for x, f in self._poly_equations.items()]
 
     def to_poly_equations(self, inputs_ord: dict):
-        """System should be already polynomial. Otherwise, throws Exception. You can check it by `is_polynomial` method"""
-        assert self.is_polynomial()
-        inputs_ord_sym = {sp.Symbol(str_common(k)): v for k, v in inputs_ord.items()}
+        """System should be already polynomial unless `keep_laurent` is True."""
+        self._fill_poly_system()
+        inputs_ord_sym = {sp.Symbol(str_qbee(k)): v for k, v in inputs_ord.items()}
         d_inputs = generate_derivatives(inputs_ord_sym)
         # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
-        R = coef_field[list(self.variables.state_variables + sp.flatten(d_inputs))]
-        equations = [R.from_sympy(eq.rhs) for eq in self.equations]
+        # noinspection PyTypeChecker
+        R, *_ = sp.ring(list(self.variables.state + sp.flatten(d_inputs)), coef_field)
+
+        if self.keep_laurent:
+            equations = make_laurent_poly([eq.rhs for eq in self.polynomial_equations],
+                                          self.variables.state + sp.flatten(d_inputs), R)
+        else:
+            equations = [R(eq.rhs) for eq in self.polynomial_equations]
+
         for i, v in enumerate(inputs_ord_sym.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(R.zero)
-        inputs_to_exclude = [tuple(R.from_sympy(v[-1])) for v in d_inputs]
+        inputs_to_exclude = [tuple(R(v[-1])) for v in d_inputs]
         return equations, inputs_to_exclude
 
-    def subs_expression(self, old: sp.Expr, new: sp.Expr):
-        """Replace 'old' expression with 'new' expression for each equation."""
-        for i in range(len(self._equations)):
-            self._equations[i] = self._equations[i].subs(old, new)
+    @cached_property
+    def laurent_substitutions(self):
+        """
+        Returns substitutions which are negative powers of some variables.
 
-    def replace_equation(self, old: sp.Expr, new: sp.Expr):
-        for i in range(len(self._equations)):
-            self._equations[i] = self._equations[i].replace(old, new)
+        WARNING: We tread EquationSystem as mostly immutable from outer side.
+        Therefore, this property is cached and could lead to incorrect results if you change
+        `self._substitution_equations` or `self.variables`
+        """
+        return {k: v for k, v in self._substitution_equations.items() if 1 / v in self.variables.state}
 
-    def expand_equations(self):
+    def expand(self):
         """Apply SymPy 'expand' function to each of equation."""
-        for i in range(len(self._equations)):
-            self._equations[i] = sp.expand(self._equations[i])
+        for x, fx in self._equations.items():
+            self._equations[x] = fx.expand()
 
     def is_polynomial(self) -> bool:
-        for eq in self._equations:
-            if not eq.args[1].is_polynomial(*self.variables.free, *self.variables.input):
-                return False
-        return True
+        return all(self._poly_equations.values())
 
-    def auxiliary_equation_type_choose(self, auxiliary_eq_type: str) -> Callable:
-        if auxiliary_eq_type == 'differential':
-            return self.differential_auxiliary_equation_add
-        elif auxiliary_eq_type == 'algebraic':
-            return self.algebraic_auxiliary_equation_add
-        else:
-            raise ValueError("auxiliary_eq_type must be 'algebraic' or 'differential'")
-
-    def differential_auxiliary_equation_add(self, new_var: sp.Symbol, substitution: sp.Expr) -> None:
+    def add_new_var(self, new_var: sp.Symbol, substitution: sp.Expr) -> None:
         """
-        Add differential auxiliary equation, generated by substitution.
+        Add a `new_var = substitution` to the system.
 
-        Substitution equation:
-            .. math:: y = f(x)
-        Generated equation:
-            .. math:: \dot y = \dot f(x)
-
-        :param new_var: left part, y
-        :param substitution: right part, f(x)
+        Effects:
+        * can add more than one variable recursively
+        * can change whether the system is polynomial or not
         """
-        if is_noninteger_positive_exp(substitution):
-            self._add_noninteger_positive_subs_equation(new_var, substitution)
-        else:
-            self.replace_equation(substitution, new_var)
-            self._substitution_equations.append(sp.Eq(new_var, substitution))
-            self._equations.append(sp.Eq(
-                make_derivative_symbol(new_var),
-                self._calculate_Lie_derivative(substitution)).expand())
+        if not self.keep_laurent and substitution.is_Pow \
+                and (substitution.exp < 0 and substitution.exp != -1) \
+                and (1 / substitution.base) not in self._substitution_equations.values():
+            self.add_new_var(new_var, 1 / substitution.base)
+            new_var = self.variables.create()
+        self._substitution_equations[new_var] = substitution
+        self._equations[new_var] = self._calculate_Lie_derivative(substitution)
 
-    def _add_noninteger_positive_subs_equation(self, new_var, substitution):
-        int_part = int(substitution.exp)
-        rem_part = substitution.exp - int_part
-        coef = rem_part - 1
-        var = substitution.args[0]
-
-        print(f"{new_var} = {var ** (rem_part - 1)}")
-        var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0].rhs
-        self._equations.append(sp.Eq(
-            make_derivative_symbol(new_var), coef * new_var ** 2 * var_diff_eq / substitution * var ** int_part)
-        )
-        # x^2.3 -> z x^3
-        self.replace_equation(substitution, new_var * var ** (int_part + 1))
-
-    def algebraic_auxiliary_equation_add(self, new_variable: sp.Symbol, substitution: sp.Expr) -> None:
-        """
-        Add algebraic auxiliary equation, generated by substitution.
-
-        substitution and added equation:
-            .. math:: y = f(x)
-
-        :param new_variable: left part, y
-        :param substitution: right part, f(x)
-        """
-        self.subs_expression(substitution, new_variable)
-        self._substitution_equations.append(sp.Eq(new_variable, substitution))
-        self._equations.append(sp.Eq(new_variable, substitution).expand())
+        self._fill_poly_system()
 
     def _calculate_Lie_derivative(self, expr: sp.Expr) -> sp.Expr:
         """Calculates Lie derivative using chain rule."""
         result = sp.Integer(0)
         for var in expr.free_symbols.difference(self.variables.parameter).difference(self.variables.input):
-            var_diff_eq = list(filter(lambda eq: eq.args[0] == make_derivative_symbol(var), self._equations))[0]
-            var_diff = var_diff_eq.args[1]
-            result += expr.diff(var) * var_diff
+            var_diff = self._equations[var]
+            if isinstance(expr, sp.Pow) and isinstance(expr.exp, sp.Float):
+                result += sp.Mul(expr.exp * var_diff, expr, sp.Pow(var, -1), evaluate=False)
+            elif isinstance(expr, sp.Pow) and expr.exp == sp.Integer(-1):
+                result += sp.Mul(var_diff, expr.diff(var), evaluate=False)
+            else:
+                result += expr.diff(var) * var_diff
         for input_var in expr.free_symbols.intersection(self.variables.input):
             input_var_dot = make_derivative_symbol(input_var)
             self.variables.input.add(input_var_dot)
             result += expr.diff(input_var) * input_var_dot
-        return self._apply_substitutions(self._apply_substitutions(result).expand())
+        return result
 
-    def _apply_substitutions(self, expr: sp.Expr) -> sp.Expr:
-        for left, right in map(lambda eq: eq.args, self._substitution_equations):
-            expr = expr.subs(right, left)
-        return expr
+    def _fill_poly_system(self):
+        """Fills `self._poly_equations` with equations that can be rewritten as polynomial"""
+        for x, fx in self._equations.items():
+            if x not in self._poly_equations.keys():
+                self._poly_equations[x] = None
+            if not self._poly_equations[x]:
+                self._poly_equations[x] = self._try_convert_to_polynomial(fx)
 
-    def print(self, mode: str = 'simple'):
-        if mode == "simple":
-            self._print_simple()
-        elif mode == 'latex':
-            self._print_latex()
-        elif mode == 'sympy':
-            print(str(self))
-        else:
-            raise AttributeError(f"mode {mode} is not valid. Use correct mode.")
+    def _try_convert_to_polynomial(self, expr: sp.Expr) -> sp.Expr | None:
+        # It could be worthy to check every possible permutation, with `subs` especially.
+        # subs_permutations = permutations(self._substitution_equations)
 
-    def _print_latex(self):
-        print(r'\begin{array}{ll}')
-        for eq in self._equations:
-            print('\t' + rf"{eq.args[0]} = {sp.latex(sp.collect(eq.args[1], self.variables.free))}" + r'\\')
-        print(r'\end{array}')
+        # The order of `replaced_non_pow` and `replaced_pow` is critical
+        # since we substitute functions without new variables:
+        # sin(1/x) != sin(w)
 
-    def _print_simple(self):
-        for eq in self.equations:
-            print(rf"{eq.args[0]} = {sp.collect(eq.args[1], self.variables.free)}")
+        try:
+            with sp.evaluate(False):
+                replaced_non_pow_lazy = expr.subs(
+                    {v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
+            replaced_pow_lazy = replaced_non_pow_lazy \
+                .replace(sp.Pow, self._replace_irrational_pow) \
+                .replace(sp.Pow, self._replace_negative_integer_pow)
+        except Exception as e:
+            warnings.warn("Substituting new variables failed to produce the expected calculations,"
+                          " so the calculation was done in an alternative mode. "
+                          "If you see this message, please let us know in the Issues: "
+                          "https://github.com/AndreyBychkov/QBee/issues", RuntimeWarning)
+            replaced_pow_lazy = None
+
+        lazy_res = replaced_pow_lazy if replaced_pow_lazy and self._is_expr_polynomial(replaced_pow_lazy) else None
+        if lazy_res:
+            return lazy_res
+
+        # eager evaluation
+        replaced_non_pow = expr.subs({v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
+        replaced_pow = replaced_non_pow \
+            .replace(sp.Pow, self._replace_irrational_pow) \
+            .replace(sp.Pow, self._replace_negative_integer_pow)
+        return replaced_pow if self._is_expr_polynomial(replaced_pow) else None
+
+    def _replace_negative_integer_pow(self, base, exp):
+        new_var = key_from_value(self._substitution_equations, (1 / base).subs(self._substitution_equations))
+        if exp.is_Integer and new_var:
+            return new_var ** (-exp)
+        return base ** exp
+
+    def _replace_irrational_pow(self, base, exp):
+        new_var = key_from_value(self._substitution_equations, base ** exp)
+        if exp.is_Float and new_var:
+            return new_var
+        return base ** exp
+
+    def _is_expr_polynomial(self, expr: sp.Expr):
+        if self.keep_laurent:
+            found = find_nonpolynomial_terms(expr, set(self.variables.state) | self.variables.input, keep_laurent=True)
+            return len(found) == 0
+        return expr.is_polynomial(*self.variables.state, *self.variables.input)
+
+    def print(self, str_func=str_qbee, use_poly_equations=True):
+        """
+        Prints equations
+
+        :param str_func: function that stringify Sympy objects.
+         Refer to https://docs.sympy.org/latest/tutorials/intro-tutorial/printing.html
+        :param use_poly_equations: if True prints polynomial equations. Otherwise, prints equations without substitutions
+        """
+
+        equations = self.polynomial_equations if use_poly_equations else self.equations
+        print("\n".join(map(str_func, equations)))
 
     def substitution_equations_str(self):
-        return '\n'.join([f"{eq.lhs} = {eq.rhs}" for eq in self._substitution_equations])
+        return '\n'.join(map(str_qbee, self.substitution_equations))
+
+    def print_substitutions(self, str_func=str_qbee):
+        print('\n'.join(map(str_func, self.substitution_equations)))
+
+    def __str__(self):
+        equations = self.polynomial_equations if self.is_polynomial() else self.equations
+        return '\n'.join(map(str_qbee, equations))
 
     def __len__(self):
         return len(self._equations)
 
-    def __repr__(self):
-        return '\n'.join(map(lambda e: e.__repr__(), self._equations))
 
-    def __str__(self):
-        return '\n'.join(map(lambda e: e.__str__(), self._equations))
+ALGORITHM_INTERRUPTED = False
 
 
-def polynomialize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
-                  mode='differential', new_var_name="w_", start_new_vars_with=0) -> EquationSystem:
-    """
-    Transforms the system into polynomial form using variable substitution techniques.
+def signal_handler(sig_num, frame):
+    global ALGORITHM_INTERRUPTED
+    print("The algorithm has been interrupted. Returning the current best.")
+    ALGORITHM_INTERRUPTED = True
 
-    :param system: non-linear ODEs system
-    :param mode: auxiliary equation form.
-    :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
-    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
 
-    Mode
-    -----------------
-    **algebraic**
-        adds auxiliary equations in form y = f(x, y)
-    **differential**
-         adds auxiliary equations in form y' = f(x, y)
-
-    """
-    if not isinstance(system, EquationSystem):
-        system = eq_list_to_eq_system(system)
-    system.variables.base_var_name = new_var_name
-    system.variables.start_new_vars_with = start_new_vars_with
-    if mode == 'algebraic':
-        return _polynomialize_algebraic(system)
-    elif mode == 'differential':
-        return _polynomialize_differential(system)
-    else:
-        raise ValueError("mode must be 'algebraic' or 'differential")
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSystem:
@@ -308,57 +318,156 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
     inputs = set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
     spatial = funcs.difference(inputs)
 
-    degrade_to_symbol = {s: sp.Symbol(str_common(s)) for s in funcs | inputs | params | set(lhs)}
+    degrade_to_symbol = {s: sp.Symbol(str_qbee(s)) for s in funcs | inputs | params | set(lhs)}
 
     params_sym = [p.subs(degrade_to_symbol) for p in params]
     funcs_sym = [f.subs(degrade_to_symbol) for f in funcs]
     inputs_sym = [i.subs(degrade_to_symbol) for i in inputs]
     spacial_sym = [s.subs(degrade_to_symbol) for s in spatial]
 
-    ders = derivatives([s.subs(degrade_to_symbol) for s in lhs])
+    lhs_sym = [s.subs(degrade_to_symbol) for s in lhs]
     rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
 
     der_inputs = set(reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs]))
-    degrade_to_symbol.update({i: sp.Symbol(str_common(i)) for i in der_inputs})
+    degrade_to_symbol.update({i: sp.Symbol(str_qbee(i)) for i in der_inputs})
     rhs_sym = [eq.subs(degrade_to_symbol) for eq in rhs]
-    system = EquationSystem([sp.Eq(dx, fx) for dx, fx in zip(ders, rhs_sym)], params_sym, inputs_sym)
-    system.variables._free_variables = list(set(system.variables.free + spacial_sym))
+    system = EquationSystem({dx: fx for dx, fx in zip(lhs_sym, rhs_sym)}, params_sym, inputs_sym)
+    system.variables._state_variables = list(OrderedSet(system.variables.state + spacial_sym))
     return system
 
 
-def _polynomialize_algebraic(system: EquationSystem) -> EquationSystem:
-    result_system = deepcopy(system)
-    while not result_system.is_polynomial():
-        _polynomialize_algebraic_iter(result_system)
+def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bound=10, keep_laurent=False,
+                  new_var_name="w_", start_new_vars_with=0) -> EquationSystem:
+    """
+    Transforms the system into polynomial form using variable substitution techniques.
 
-    return result_system
+    :param system: non-linear ODEs system
+    :param upper_bound: a maximum number of new variables that algorithm can introduce.
+     If infinite, the algorithm may never stop.
+    :param keep_laurent: if True do not introduce integer negative powers as new variables.
+    :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
+    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
 
-
-def _polynomialize_algebraic_iter(system: EquationSystem):
-    for eq in system.equations:
-        non_poly_elem = find_non_polynomial(eq.args[1], {})
-        if non_poly_elem:
-            new_variable = system.variables.create_variable()
-            system.algebraic_auxiliary_equation_add(new_variable, non_poly_elem)
-            break
-
-
-def _polynomialize_differential(system: EquationSystem) -> EquationSystem:
-    result_system = deepcopy(system)
-    while not result_system.is_polynomial():
-        _polynomialize_differential_iter(result_system)
-
-    return result_system
+    """
+    if not isinstance(system, EquationSystem):
+        system = eq_list_to_eq_system(system)
+    system.variables.base_var_name = new_var_name
+    system.variables.start_new_vars_with = start_new_vars_with
+    nvars, opt_system, traversed = poly_algo_step(system, upper_bound, math.inf)
+    if keep_laurent:
+        return make_laurent(system, opt_system)
+    return opt_system
 
 
-def _polynomialize_differential_iter(system: EquationSystem):
-    for eq in system.equations:
-        non_poly_elem = find_non_polynomial(eq.args[1], set(system.variables.free) | system.variables.input)
-        if non_poly_elem:
-            new_variable = system.variables.create_variable()
-            system.differential_auxiliary_equation_add(new_variable, non_poly_elem)
-            break
+def make_laurent(orig_system: EquationSystem, poly_system: EquationSystem) -> EquationSystem:
+    non_laurent_subs = set(poly_system._substitution_equations.values()) \
+        .difference(set(poly_system.laurent_substitutions.values()))
+    laurent_system = copy.copy(orig_system)
+    laurent_system.keep_laurent = True
+    for subs in non_laurent_subs:
+        laurent_system.add_new_var(laurent_system.variables.create(), subs)
+    return laurent_system
 
 
-def is_noninteger_positive_exp(expr: sp.Expr):
-    return expr.is_Pow and expr.exp > 0 and (not expr.exp.is_integer)
+@progress_bar(is_stop=False)
+def poly_algo_step(part_res: EquationSystem, upper_bound, best_nvars) -> (int, EquationSystem | None, int):
+    """
+    Recursive step of Branch and Bound algorithm. Tries to add new variables to `part_res`
+    and chooses a system with the smallest number of new variables among polynomial ones.
+
+    :param part_res: current system;
+    :param upper_bound: maximum number of new variables, use it to prevent infinite recursion;
+    :param best_nvars: current best number of new variables;
+
+    :returns: current best number of variables, current system, and how many nodes traversed the current step;
+    """
+    if part_res.is_polynomial():
+        return len(part_res.variables.generated), part_res, 1
+    if len(part_res.variables.generated) >= best_nvars - 1 or \
+            len(part_res.variables.generated) >= upper_bound or ALGORITHM_INTERRUPTED:
+        return math.inf, None, 1
+
+    traversed_total = 1
+    min_nvars, best_system = best_nvars, None
+    for next_system in next_gen(part_res):
+        nvars, opt_system, traversed = poly_algo_step(next_system, upper_bound, min_nvars)
+        traversed_total += traversed
+        if nvars < min_nvars:
+            min_nvars = nvars
+            best_system = opt_system
+    return min_nvars, best_system, traversed_total
+
+
+@progress_bar(is_stop=True)
+def final_iter():
+    pass
+
+
+def next_gen(system: EquationSystem) -> Iterator[EquationSystem]:
+    return (apply_substitution(system, subs) for subs in available_substitutions(system))
+
+
+def apply_substitution(system: EquationSystem, subs: sp.Expr) -> EquationSystem:
+    # new_system: EquationSystem = pickle.loads(pickle.dumps(system, -1))  # fast deepcopy
+    new_system = copy.copy(system)
+    new_var = new_system.variables.create()
+    new_system.add_new_var(new_var, subs)
+    return new_system
+
+
+def available_substitutions(system: EquationSystem) -> set[sp.Expr]:
+    non_poly_equations = [eq for eq, peq in zip(system.equations, system.polynomial_equations) if not peq.rhs]
+    subs = [find_nonpolynomial_terms(eq.rhs, set(system.variables.state) | system.variables.input)
+            for eq in non_poly_equations]
+    non_empty_subs = filter(lambda s: s, subs)
+    unused_subs = set(filter(lambda s: s not in system._substitution_equations.values(), sp.flatten(non_empty_subs)))
+    return unused_subs
+
+
+def find_nonpolynomial_terms(expr: sp.Expr, variables, keep_laurent=False) -> set:
+    found = expr.find(lambda subexpr: is_nonpolynomial_function(subexpr, variables))
+    if keep_laurent:
+        return set(filter(lambda e: not (e.is_Pow and e.exp.is_Integer and e.exp < 0
+                                         and isinstance(e.base, sp.Symbol)), found))
+    return found
+
+
+def is_nonpolynomial_function(expr: sp.Expr, variables) -> bool:
+    negative_cond = [expr.is_polynomial(*variables), expr.is_Add, expr.is_Mul]
+    return not any(negative_cond)
+
+
+def make_laurent_poly(system: list, variables, R: PolyRing) -> list:
+    laurent_variables = {1 / var: sp.Symbol(f"__w{i}") for i, var in enumerate(variables)}
+
+    def replace_negative(base, exp):
+        if exp.is_Integer and exp < 0:
+            return laurent_variables[1 / base] ** (-exp)
+        return base ** exp
+
+    poly_system = [poly.replace(sp.Pow, replace_negative) for poly in system]
+    R2, *_ = sp.ring([*variables, *laurent_variables.values()], R.domain)
+    poly_system = [R2(poly) for poly in poly_system]
+    for var, orig_var in zip(laurent_variables.values(), variables):
+        frm = R2(var).LM.index(1)
+        to = R2(orig_var).LM.index(1)
+        poly_system = [replace_poly_element(poly, frm, to, -1) for poly in poly_system]
+    return [poly.set_ring(R) for poly in poly_system]
+
+
+def replace_poly_element(poly: PolyElement, frm, to, coef) -> PolyElement:
+    ring = poly.parent()
+    res = ring(0)
+    for term in poly.terms():
+        new_monom = replace_term(term[0], frm, to, coef)
+        res += term[1] * monom2PolyElem(new_monom, ring.gens)
+    return res
+
+
+def replace_term(term: tuple, frm, to, coef):
+    return replace_tup_at_index(replace_tup_at_index(term, frm, 0),
+                                to, term[frm] * coef + term[to])
+
+
+def replace_tup_at_index(tup, ix, val):
+    return tup[:ix] + (val,) + tup[ix + 1:]

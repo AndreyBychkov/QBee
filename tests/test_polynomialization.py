@@ -1,11 +1,8 @@
 import pytest
 import sympy as sp
 
-from qbee import EquationSystem, polynomialize
-from qbee.util import derivatives
-
-x, y, z = sp.symbols('x, y, z')
-dot_x, dot_y, dot_z = derivatives('x, y, z')
+from qbee import *
+from qbee.polynomialization import eq_list_to_eq_system
 
 
 def assert_check_poly(expected_system: EquationSystem, actual_system: EquationSystem):
@@ -19,47 +16,70 @@ def assert_check_poly(expected_system: EquationSystem, actual_system: EquationSy
 
 
 def test_already_polynomial():
-    system = EquationSystem([
-        sp.Eq(dot_x, x + x ** 2 + 3)
+    x = functions("x")
+    p = parameters("p")
+    system = eq_list_to_eq_system([
+        (x, p * x ** 2 + x ** 3 + 1)
     ])
 
-    assert polynomialize(system).equations == system.equations
+    res = polynomialize(system)
+    assert system.is_polynomial()
+    assert system.polynomial_equations == res.polynomial_equations
+    assert system.equations == res.equations
 
 
-def test_sigmoid_diff():
-    system = EquationSystem([
-        sp.Eq(dot_x, 1 / (1 + sp.exp(x)))
+def test_sigmoid():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, 1 / (1 + sp.exp(x)))
     ])
 
-    poly_system = polynomialize(system)
+    res = polynomialize(system)
+    assert len(res) == 3
 
-    _, y0, y1 = poly_system.variables.free
-    dot_y0, dot_y1 = derivatives([y0, y1])
-    expected_system = EquationSystem([
-        sp.Eq(dot_x, y1),
-        sp.Eq(dot_y0, y0 * y1),
-        sp.Eq(dot_y1, -y0 * y1 ** 3)
+
+def test_sigmoid_inv_arg():
+    x = functions("x")
+    system = [
+        (x, 1 / (1 + sp.exp(1 / x)))
+    ]
+
+    res = polynomialize(system)
+    assert len(res) == 4
+
+
+def test_nested_functions():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, sp.sin(sp.exp(x)))
     ])
 
-    assert_check_poly(expected_system, poly_system)
+    res = polynomialize(system)
+    assert len(res) == 4
 
 
 def test_parameter():
-    k = sp.Symbol('k')
+    x, y = functions("x, y")
+    p = parameters("p")
+    system = [
+        (x, sp.exp(p * y)),
+        (y, sp.exp(p * x))
+    ]
+    res = polynomialize(system, upper_bound=4)
+    assert all([eq.rhs.is_Mul and sp.Symbol("p") in eq.rhs.args
+                for eq in res.polynomial_equations[2:]])
 
-    system = EquationSystem([
-        sp.Eq(dot_x, sp.exp(k * x)),
-        sp.Eq(dot_y, sp.exp(k * x))
-    ], parameter_variables=[k])
 
-    poly_system = polynomialize(system, new_var_name="w", start_new_vars_with=0)
+def test_combustion():
+    c1, c2, c3, c4, T = functions("c1, c2, c3, c4, T")
+    A, Ea, Ru = parameters("A, Ea, Ru")
+    eq1 = -A * sp.exp(-Ea / (Ru * T)) * c1 ** 0.2 * c2 ** 1.3
+    system = [
+        (c1, eq1),
+        (c2, 2 * eq1),
+        (c3, -eq1),
+        (c4, -2 * eq1)
+    ]
 
-    w0 = sp.Symbol("w{0}")
-    dw0 = derivatives("w{0}")
-    expected_system = EquationSystem([
-        sp.Eq(dot_x, w0),
-        sp.Eq(dot_y, w0),
-        sp.Eq(dw0, k * w0 ** 2)
-    ], parameter_variables=[k])
-
-    assert_check_poly(expected_system, poly_system)
+    res = polynomialize(system, upper_bound=8)
+    assert len(res) == 10

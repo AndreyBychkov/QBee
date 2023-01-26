@@ -19,11 +19,10 @@ def test_polynomialize_list_input():
 def test_polynomialize_EquationSystem_input():
     x, y, u = sp.symbols("x, y, u")
     p, k = sp.symbols("p, k")
-    dx, dy = derivatives([x, y])
-    system = EquationSystem([
-        sp.Eq(dx, sp.sin(k * x + u)),
-        sp.Eq(dy, p * sp.cos(y))
-    ], [p, k], [u])
+    system = EquationSystem({
+        x: sp.sin(k * x + u),
+        y: p * sp.cos(y)
+    }, [p, k], [u])
     res = polynomialize(system)
     assert len(res) > 2
 
@@ -41,11 +40,10 @@ def test_polynomialize_and_quadratize_list_input():
 def test_polynomialize_and_quadratize_EquationSystem_input():
     x, y, u = sp.symbols("x, y, u")
     p, k = sp.symbols("p, k")
-    dx, dy = derivatives([x, y])
-    system = EquationSystem([
-        sp.Eq(dx, sp.sin(k * x + u) * y),
-        sp.Eq(dy, p * sp.cos(y))
-    ], [p, k], [u])
+    system = EquationSystem({
+        x: sp.sin(k * x + u) * y,
+        y: p * sp.cos(y)
+    }, [p, k], [u])
     res = polynomialize_and_quadratize_ode(system, {u: 1})
     assert res is not None
 
@@ -73,6 +71,7 @@ def test_scalar_pde():
     u = multivariable_functions("u", [x])
     p = parameters("p")
     system = [
+        (x, x),
         (u, p * u.diff(x) ** 3 + c),
     ]
 

@@ -1,7 +1,7 @@
 import sympy as sp
 
 
-class CommonPrinter(sp.printing.StrPrinter):
+class QBeePrinter(sp.printing.StrPrinter):
     def _print_Derivative(self, expr):
         function, *vars = expr.args
         return "{}_{}".format(
@@ -11,9 +11,15 @@ class CommonPrinter(sp.printing.StrPrinter):
     def _print_Function(self, expr: sp.Function):
         return expr.func.__name__
 
+    def _print_Relational(self, expr):
+        if isinstance(expr, sp.Eq):
+            return f"{expr.lhs} = {expr.rhs}"
+        return super()._print_Relational(expr)
 
-def print_common(expr):
-    print(str_common(expr))
 
-def str_common(expr):
-    return CommonPrinter().doprint(expr)
+def print_qbee(expr):
+    print(str_qbee(expr))
+
+
+def str_qbee(expr):
+    return QBeePrinter().doprint(expr)
