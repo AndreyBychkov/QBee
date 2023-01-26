@@ -3,11 +3,12 @@ from functools import partial
 from qbee import *
 
 
-def dym_equations():
+def test_dym_equations():
     x = functions("x")
     u = multivariable_functions("u", [x])
     rhs = u ** 3 * u.diff(x, 3)
     system = [
+        (x, x),
         (u, rhs),
         (u.diff(x), rhs.diff(x)),
         (u.diff(x, 2), rhs.diff(x, 2))
