@@ -38,7 +38,8 @@ if log_enable:
 def quadratize(polynomials: List[PolyElement],
                conditions: Collection["SystemCondition"] = (),
                calc_upper_bound=True,
-               selection_strategy: SelectionStrategy = default_strategy,
+               generation_strategy=default_generation,
+               scoring: Scoring = default_scoring,
                pruning_functions: Collection["Pruning"] | None = None, new_vars_name='w',
                start_new_vars_with=0) -> QuadratizationResult | None:
     """
@@ -47,7 +48,7 @@ def quadratize(polynomials: List[PolyElement],
     :param conditions:
     :param polynomials: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
      Left-hand side is given according to the definition of variables in sympy.ring.
-    :param selection_strategy: heuristics of how we rank new members for possible quadratizations. Ours are in qbee.selection`
+    :param selection_strategy: UPDATE
     :param pruning_functions: predicates that remove transformations from the search space
     :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
     :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
@@ -75,7 +76,7 @@ def quadratize(polynomials: List[PolyElement],
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
     system = PolynomialSystem(polynomials)
-    algo = BranchAndBound(system, conditions, selection_strategy, (pruning_by_best_nvars,) + tuple(pruning_functions))
+    algo = BranchAndBound(system, conditions, generation_strategy, scoring, (pruning_by_best_nvars,) + tuple(pruning_functions))
     if calc_upper_bound:
         algo.domination_upper_bound()
     algo_res = algo.quadratize()
@@ -95,9 +96,11 @@ def quadratize(polynomials: List[PolyElement],
 def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
                                      input_der_orders=None, conditions: Collection["SystemCondition"] = (),
                                      polynomialization_upper_bound=10, keep_laurent=False, calc_upper_bound=True,
-                                     selection_strategy: SelectionStrategy = default_strategy,
-                                     pruning_functions: Collection["Pruning"] | None = None, new_vars_name="w_",
-                                     start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                     generation_strategy=default_generation,
+                                     scoring: Scoring = default_scoring,
+                                     pruning_functions: Collection["Pruning"] | None = None,
+                                     new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+
     """
     Polynomialize and then quadratize a system of ODEs with the continuous right-hand side.
 
@@ -157,7 +160,8 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
     quad_result = quadratize(poly_equations,
                              conditions=[without_excl_inputs, *conditions],
                              calc_upper_bound=calc_upper_bound,
-                             selection_strategy=selection_strategy,
+                             generation_strategy=partial(generation_strategy, excl_vars=excl_inputs),
+                             scoring=scoring,
                              pruning_functions=[pruning_by_best_nvars, pruning_by_decl_inputs, *pruning_functions],
                              new_vars_name=new_vars_name,
                              start_new_vars_with=start_new_vars_with + len(poly_system) - len(system))
@@ -169,9 +173,10 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (), polynomialization_upper_bound=10,
                                  keep_laurent=False, calc_quadr_upper_bound=True,
-                                 selection_strategy: SelectionStrategy = default_strategy,
-                                 pruning_functions: Collection["Pruning"] | None = None, new_vars_name="w_",
-                                 start_new_vars_with=0) -> Optional[QuadratizationResult]:
+                                 generation_strategy=default_generation,
+                                 scoring: Scoring = default_scoring,
+                                 pruning_functions: Collection["Pruning"] | None = None,
+                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
     queue = Queue()
     queue.put(start_system)
     if input_der_orders is None:
@@ -192,7 +197,7 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], 
         quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions,
                                                     polynomialization_upper_bound, keep_laurent=keep_laurent,
                                                     calc_upper_bound=calc_quadr_upper_bound,
-                                                    selection_strategy=selection_strategy,
+                                                    generation_strategy=generation_strategy, scoring=scoring,
                                                     pruning_functions=pruning_functions, new_vars_name=new_vars_name,
                                                     start_new_vars_with=start_new_vars_with)
         if quad_res:
@@ -290,17 +295,17 @@ class PolynomialSystem:
     def get_smallest_nonsquare(self):
         return min([(np.prod([abs(d) + 1 for d in m]), m) for m in self.nonsquares])[1]
 
-    def next_generation(self, strategy=default_strategy):
+    def next_generation(self, generation=default_generation, scoring=default_scoring):
         if len(self.nonsquares) == 0:
             return list()
         new_gen = []
-        for d in get_decompositions(self.get_smallest_nonsquare()):
+        for d in generation(self):
             c = pickle.loads(pickle.dumps(self, -1))  # inline self.copy for speedup
             for v in d:
                 c.add_var(v)
             new_gen.append(c)
 
-        return sorted(new_gen, key=strategy)
+        return sorted(new_gen, key=scoring)
 
     def new_vars_count(self):
         return len(self.vars) - self.dim - 1
@@ -394,10 +399,12 @@ SystemCondition = Callable[[PolynomialSystem], bool]
 class Algorithm:
     def __init__(self, poly_system: PolynomialSystem,
                  system_conditions: Collection[SystemCondition] | None = None,
-                 strategy: SelectionStrategy = default_strategy,
+                 generation=default_generation,
+                 scoring: Scoring = default_scoring,
                  pruning_funcs: Collection[Pruning] | None = None):
         self._system = poly_system
-        self._strategy = strategy
+        self._generation = generation
+        self._scoring = scoring
         self._pruning_funs = list(pruning_funcs) if pruning_funcs is not None else [lambda a, b, *_: False]
         self._sys_cond = list(system_conditions) if system_conditions else [lambda v: True]
         self._nodes_traversed = 0
@@ -449,16 +456,20 @@ class Algorithm:
         self._pruning_funs.append(termination_criteria)
 
     @property
-    def selection_strategy(self):
-        return self._strategy
+    def generation_strategy(self):
+        return self._generation
 
-    @selection_strategy.setter
-    def selection_strategy(self, value):
-        self._strategy = value
+    @property
+    def scoring(self):
+        return self._scoring
+
+    @generation_strategy.setter
+    def generation_strategy(self, value):
+        self._generation = value
 
     @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
-        return part_res.next_generation(self.selection_strategy)
+        return part_res.next_generation(self.generation_strategy. self.scoring)
 
     @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)
@@ -484,7 +495,7 @@ class BranchAndBound(Algorithm):
 
     def domination_upper_bound(self):
         system = self._system.copy()
-        algo = BranchAndBound(system, self._sys_cond, self._strategy,
+        algo = BranchAndBound(system, self._sys_cond, self._generation, self._scoring,
                               [partial(pruning_by_domination, dominators=self.dominating_monomials),
                                *self._pruning_funs])
         res = algo.quadratize()
@@ -524,7 +535,7 @@ class BranchAndBound(Algorithm):
 
     @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
-        return part_res.next_generation(self.selection_strategy)
+        return part_res.next_generation(self.generation_strategy, self.scoring)
 
     @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)
