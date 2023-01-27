@@ -26,7 +26,7 @@ def raw_generation(system, excl_vars):
 
 # Standard generation strategy with different scoring functions
 
-def default_generation(system, excl_vars):
+def default_generation(system, excl_vars=[]):
     if len(system.nonsquares) == 0:
         return list()
     return raw_generation(system, excl_vars)
@@ -46,7 +46,7 @@ def _map_indices(v_to_ind_from, v_to_ind_to, arr, no_class):
     return result
 
 
-def generation_semidiscretized(system, excl_vars):
+def generation_semidiscretized(system, excl_vars=[]):
     # recognizing the semidiscretized structure if not cashed already
     if not hasattr(system, "equivalence_classes"):
         system.equivalence_classes = dict()
