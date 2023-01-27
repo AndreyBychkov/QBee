@@ -295,7 +295,7 @@ class PolynomialSystem:
     def get_smallest_nonsquare(self):
         return min([(np.prod([abs(d) + 1 for d in m]), m) for m in self.nonsquares])[1]
 
-    def next_generation(self, generation=default_generation, scoring=default_scoring):
+    def next_generation(self, generation, scoring):
         if len(self.nonsquares) == 0:
             return list()
         new_gen = []
