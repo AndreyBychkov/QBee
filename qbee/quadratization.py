@@ -95,7 +95,7 @@ def quadratize(polynomials: List[PolyElement],
 
 def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
                                      input_der_orders=None, conditions: Collection["SystemCondition"] = (),
-                                     polynomialization_upper_bound=10, keep_laurent=False, calc_upper_bound=True,
+                                     polynomialization_upper_bound=10, keep_laurent=True, calc_upper_bound=True,
                                      generation_strategy=default_generation,
                                      scoring: Scoring = default_scoring,
                                      pruning_functions: Collection["Pruning"] | None = None,
@@ -172,7 +172,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 
 def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (), polynomialization_upper_bound=10,
-                                 keep_laurent=False, calc_quadr_upper_bound=True,
+                                 keep_laurent=True, calc_quadr_upper_bound=True,
                                  generation_strategy=default_generation,
                                  scoring: Scoring = default_scoring,
                                  pruning_functions: Collection["Pruning"] | None = None,
@@ -531,6 +531,7 @@ class BranchAndBound(Algorithm):
             if nvars < min_nvars:
                 min_nvars = nvars
                 best_system = opt_system
+                print(f"Current best {best_system}")
         return min_nvars, best_system, traversed_total
 
     @logged(log_enable, log_file)

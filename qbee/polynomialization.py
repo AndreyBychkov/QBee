@@ -336,7 +336,7 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
     return system
 
 
-def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bound=10, keep_laurent=False,
+def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bound=10, keep_laurent=True,
                   new_var_name="w_", start_new_vars_with=0) -> EquationSystem:
     """
     Transforms the system into polynomial form using variable substitution techniques.
@@ -424,7 +424,7 @@ def available_substitutions(system: EquationSystem) -> set[sp.Expr]:
     return unused_subs
 
 
-def find_nonpolynomial_terms(expr: sp.Expr, variables, keep_laurent=False) -> set:
+def find_nonpolynomial_terms(expr: sp.Expr, variables, keep_laurent=True) -> set:
     found = expr.find(lambda subexpr: is_nonpolynomial_function(subexpr, variables))
     if keep_laurent:
         return set(filter(lambda e: not (e.is_Pow and e.exp.is_Integer and e.exp < 0
