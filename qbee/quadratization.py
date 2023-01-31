@@ -172,7 +172,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 
 def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (), polynomialization_upper_bound=10,
-                                 keep_laurent=False, calc_quadr_upper_bound=True,
+                                 keep_laurent=True, calc_quadr_upper_bound=True,
                                  generation_strategy=default_generation,
                                  scoring: Scoring = default_scoring,
                                  pruning_functions: Collection["Pruning"] | None = None,

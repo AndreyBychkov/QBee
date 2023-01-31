@@ -34,7 +34,7 @@ def test_sigmoid():
         (x, 1 / (1 + sp.exp(x)))
     ])
 
-    res = polynomialize(system)
+    res = polynomialize(system, keep_laurent=False)
     assert len(res) == 3
 
 
@@ -44,7 +44,7 @@ def test_sigmoid_inv_arg():
         (x, 1 / (1 + sp.exp(1 / x)))
     ]
 
-    res = polynomialize(system)
+    res = polynomialize(system, keep_laurent=False)
     assert len(res) == 4
 
 
@@ -54,7 +54,7 @@ def test_nested_functions():
         (x, sp.sin(sp.exp(x)))
     ])
 
-    res = polynomialize(system)
+    res = polynomialize(system, keep_laurent=False)
     assert len(res) == 4
 
 
@@ -65,7 +65,7 @@ def test_parameter():
         (x, sp.exp(p * y)),
         (y, sp.exp(p * x))
     ]
-    res = polynomialize(system, upper_bound=4)
+    res = polynomialize(system, upper_bound=4, keep_laurent=False)
     assert all([eq.rhs.is_Mul and sp.Symbol("p") in eq.rhs.args
                 for eq in res.polynomial_equations[2:]])
 
@@ -81,5 +81,5 @@ def test_combustion():
         (c4, -2 * eq1)
     ]
 
-    res = polynomialize(system, upper_bound=8)
+    res = polynomialize(system, upper_bound=8, keep_laurent=False)
     assert len(res) == 10

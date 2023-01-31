@@ -148,7 +148,7 @@ class EquationSystem:
 
         if self.keep_laurent:
             equations = make_laurent_poly([eq.rhs for eq in self.polynomial_equations],
-                                          self.variables.state + sp.flatten(d_inputs), R)
+                                          self.variables.state, R)
         else:
             equations = [R(eq.rhs) for eq in self.polynomial_equations]
 
@@ -336,7 +336,7 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
     return system
 
 
-def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bound=10, keep_laurent=False,
+def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bound=10, keep_laurent=True,
                   new_var_name="w_", start_new_vars_with=0) -> EquationSystem:
     """
     Transforms the system into polynomial form using variable substitution techniques.
@@ -417,7 +417,7 @@ def apply_substitution(system: EquationSystem, subs: sp.Expr) -> EquationSystem:
 
 def available_substitutions(system: EquationSystem) -> set[sp.Expr]:
     non_poly_equations = [eq for eq, peq in zip(system.equations, system.polynomial_equations) if not peq.rhs]
-    subs = [find_nonpolynomial_terms(eq.rhs, set(system.variables.state) | system.variables.input)
+    subs = [find_nonpolynomial_terms(eq.rhs, set(system.variables.state) | system.variables.input, keep_laurent=False)
             for eq in non_poly_equations]
     non_empty_subs = filter(lambda s: s, subs)
     unused_subs = set(filter(lambda s: s not in system._substitution_equations.values(), sp.flatten(non_empty_subs)))
