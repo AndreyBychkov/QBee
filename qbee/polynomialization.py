@@ -203,7 +203,7 @@ class EquationSystem:
         for var in expr.free_symbols.difference(self.variables.parameter).difference(self.variables.input):
             var_diff = self._equations[var]
             if isinstance(expr, sp.Pow) and isinstance(expr.exp, sp.Float):
-                result += sp.Mul(expr.exp * var_diff, expr, sp.Pow(var, -1), evaluate=False)
+                result += sp.Mul(var_diff, expr.diff(var) * expr.base, sp.Pow(expr.base, -1), evaluate=False)
             elif isinstance(expr, sp.Pow) and expr.exp == sp.Integer(-1):
                 result += sp.Mul(var_diff, expr.diff(var), evaluate=False)
             else:
