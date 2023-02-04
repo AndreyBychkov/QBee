@@ -63,7 +63,7 @@ def test_already_quadratized_system():
         (x, y ** 2),
         (y, x ** 2)
     ])
-    assert len(res.quadratization.introduced_vars) == 0
+    assert res.new_vars_count == 0
 
 
 def test_scalar_pde():

@@ -9,7 +9,7 @@ def test_sigmoid_inv_arg():
         (x, 1 / (1 + sp.exp(1 / x)))
     ]
 
-    res = polynomialize_and_quadratize(system, keep_laurent=True)
+    res = polynomialize_and_quadratize(system)
     assert res.new_vars_count == 5
 
 
@@ -41,7 +41,7 @@ def test_solarwind():
         (v3, v3t)
     ]
 
-    quadr_system = polynomialize_and_quadratize(system, keep_laurent=True)
+    quadr_system = polynomialize_and_quadratize(system)
     if quadr_system:
         print(quadr_system)
     assert quadr_system.new_vars_count == 11
