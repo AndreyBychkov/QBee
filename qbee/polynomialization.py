@@ -262,9 +262,10 @@ class EquationSystem:
         return base ** exp
 
     def _replace_irrational_pow(self, base, exp):
-        new_var = key_from_value(self._substitution_equations, base ** exp)
-        if exp.is_Float and new_var:
-            return new_var
+        if exp.is_Float:
+            new_vars = [k for k, v in self._substitution_equations.items()
+                        if v.is_Pow and v.base == base and math.isclose(v.exp, exp)]
+            return new_vars[0] if len(new_vars) != 0 else base ** exp
         return base ** exp
 
     def _is_expr_polynomial(self, expr: sp.Expr):
