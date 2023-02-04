@@ -21,7 +21,7 @@ from .printer import print_qbee
 INDEPENDENT_VARIABLE = sp.Symbol("_t")
 
 
-def functions(names, **kwargs):
+def functions(names, *, laurent=True, **kwargs):
     """Dependent and input variables in differential equations. The syntax is identical to `sympy.symbols`_.
 
     Examples
@@ -30,14 +30,14 @@ def functions(names, **kwargs):
     .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
     """
     t = INDEPENDENT_VARIABLE
-    funcs = sp.symbols(names, cls=sp.Function, **kwargs)
+    funcs = sp.symbols(names, cls=sp.Function, is_laurent=laurent, **kwargs)
     if isinstance(funcs, Iterable):
         return [f(t) for f in funcs]
     return funcs(t)
 
 
-def multivariable_functions(names, args, **kwargs):
-    funcs = sp.symbols(names, cls=sp.Function, **kwargs)
+def multivariable_functions(names, args, *, laurent=True, **kwargs):
+    funcs = sp.symbols(names, cls=sp.Function, is_laurent=laurent, **kwargs)
     if isinstance(funcs, Iterable):
         return [f(*args) for f in funcs]
     return funcs(*args)
