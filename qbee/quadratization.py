@@ -382,7 +382,7 @@ class QuadratizationResult:
     @property
     def new_vars_count(self):
         return self.quadratization.new_vars_count() +\
-               (self.polynomialization.variables.generated if self.polynomialization else 0)
+               (len(self.polynomialization.variables.generated) if self.polynomialization else 0)
 
     def __len__(self):
         return len(self.lhs)
