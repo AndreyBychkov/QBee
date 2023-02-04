@@ -172,6 +172,7 @@ class EquationSystem:
             self._equations[x] = fx.expand()
 
     def is_polynomial(self) -> bool:
+        self._fill_poly_system()  # possible performance issue
         return all(self._poly_equations.values())
 
     def add_new_var(self, substitution: sp.Expr, new_var: sp.Symbol | None = None) -> None:
