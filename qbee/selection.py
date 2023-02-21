@@ -5,9 +5,11 @@ from .util import *
 
 Scoring = Callable[['PolynomialSystem'], int]
 
-# Function for proposing some new variables (to be used in both generators
 
-def raw_generation(system, excl_vars):
+def raw_generation(system, excl_vars=None):
+    """Function for proposing some new variables (to be used in both generators"""
+    if excl_vars is None:
+        excl_vars = list()
     excl_indices = [np.argmax(v) for v in excl_vars]
     all_decomp = get_decompositions(system.get_smallest_nonsquare())
     if len(excl_indices) == 0:
@@ -24,21 +26,22 @@ def raw_generation(system, excl_vars):
             result.append(d)
     return result
 
-# Standard generation strategy with different scoring functions
 
-def default_generation(system, excl_vars):
+def default_generation(system, excl_vars=None):
+    """Standard generation strategy with different scoring functions"""
+    if excl_vars is None:
+        excl_vars = list()
     if len(system.nonsquares) == 0:
         return list()
     return raw_generation(system, excl_vars)
 
-#####
 
-"""
-Given two mappings from the variables to indices and a list of numbers
-creates a new list in which the values at the indices corresponding to 
-variables in `v_to_ind_from` are placed at positions as prescribed by `v_to_ind_to`
-"""
 def _map_indices(v_to_ind_from, v_to_ind_to, arr, no_class):
+    """
+    Given two mappings from the variables to indices and a list of numbers
+    creates a new list in which the values at the indices corresponding to
+    variables in `v_to_ind_from` are placed at positions as prescribed by `v_to_ind_to`
+    """
     result = [arr[i] if i in no_class else 0 for i in range(len(arr))]
     v_to_val = {v: arr[ind] for v, ind in v_to_ind_from.items()}
     for v, ind in v_to_ind_to.items():
@@ -46,7 +49,9 @@ def _map_indices(v_to_ind_from, v_to_ind_to, arr, no_class):
     return result
 
 
-def generation_semidiscretized(system, excl_vars):
+def generation_semidiscretized(system, excl_vars=None):
+    if excl_vars is None:
+        excl_vars = list()
     # recognizing the semidiscretized structure if not cashed already
     if not hasattr(system, "equivalence_classes"):
         system.equivalence_classes = dict()
@@ -83,7 +88,7 @@ def generation_semidiscretized(system, excl_vars):
         print(system.ind_to_class)
         print(system.ind_to_var)
         print(system.graph)
-    
+
     # producing sets of new variables
     decomposition = raw_generation(system, excl_vars)
     result = set()
@@ -116,7 +121,7 @@ def generation_semidiscretized(system, excl_vars):
                 extended_vars = set()
                 break
         if len(extended_vars) > 0:
-             result.add(tuple(sorted(list(extended_vars))))
+            result.add(tuple(sorted(list(extended_vars))))
     return result
 
 
@@ -124,6 +129,7 @@ def generation_semidiscretized(system, excl_vars):
 
 def empty_score(system) -> int:
     return 1
+
 
 def default_scoring(system) -> int:
     total_nonsquare = sum([sum(map(abs, m)) for m in system.nonsquares])
@@ -141,11 +147,11 @@ def smd_scoring(system) -> int:
     return sum(map(lambda s: _compute_smd(s, mlist), mlist))
 
 
-def _compute_scoring(sub: Tuple[int], eq_degs):
+def _compute_aeqd(sub: Tuple[int], eq_degs):
     mon_degs = map(lambda deg: deg + monomial_deg(sub) - 1, eq_degs)
     quad_discrepancies = filter(lambda x: x > 0, map(lambda d: d - 2, mon_degs))
     return sum(quad_discrepancies)
 
 
-def _compute_scoring(sub, mlist: list):
+def _compute_smd(sub, mlist: list):
     return (monomial_deg(sub) - 1) * len(list(filter(lambda m: monomial_divides(sub, m), mlist)))

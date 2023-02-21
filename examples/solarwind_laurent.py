@@ -15,6 +15,6 @@ if __name__ == '__main__':
         (v3, v3t)
     ]
 
-    quadr_system = polynomialize_and_quadratize(system, keep_laurent=True)
+    quadr_system = polynomialize_and_quadratize(system)
     if quadr_system:
         print(quadr_system)

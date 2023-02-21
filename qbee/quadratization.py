@@ -95,7 +95,7 @@ def quadratize(polynomials: List[PolyElement],
 
 def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
                                      input_der_orders=None, conditions: Collection["SystemCondition"] = (),
-                                     polynomialization_upper_bound=10, keep_laurent=False, calc_upper_bound=True,
+                                     polynomialization_upper_bound=10, calc_upper_bound=True,
                                      generation_strategy=default_generation,
                                      scoring: Scoring = default_scoring,
                                      pruning_functions: Collection["Pruning"] | None = None,
@@ -106,7 +106,6 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 
     :param system: system of equations in the form [(X, f(X)), ...] where the left-hand side is the derivatives.
     :param input_der_orders: mapping of input variables to maximum order of their derivatives. For example {T: 2} => T in C2
-    :param keep_laurent: if True do not introduce integer negative powers as new variables.
     :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
     :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
     :return: quadratized system or None if there is none found
@@ -148,7 +147,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
     if pb_enable:
         # TODO: temporary solution, should incorporate printing variables with non-integer powers into subs. equations
         print("Variables introduced in polynomialization:")
-    poly_system = polynomialize(system, polynomialization_upper_bound, keep_laurent,
+    poly_system = polynomialize(system, polynomialization_upper_bound,
                                 new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
         poly_system.print_substitutions()
@@ -172,7 +171,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
 
 def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], input_der_orders: Optional[Dict] = None,
                                  conditions: Collection["SystemCondition"] = (), polynomialization_upper_bound=10,
-                                 keep_laurent=True, calc_quadr_upper_bound=True,
+                                calc_quadr_upper_bound=True,
                                  generation_strategy=default_generation,
                                  scoring: Scoring = default_scoring,
                                  pruning_functions: Collection["Pruning"] | None = None,
@@ -195,7 +194,7 @@ def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], 
             print()
 
         quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions,
-                                                    polynomialization_upper_bound, keep_laurent=keep_laurent,
+                                                    polynomialization_upper_bound,
                                                     calc_upper_bound=calc_quadr_upper_bound,
                                                     generation_strategy=generation_strategy, scoring=scoring,
                                                     pruning_functions=pruning_functions, new_vars_name=new_vars_name,
@@ -383,7 +382,7 @@ class QuadratizationResult:
     @property
     def new_vars_count(self):
         return self.quadratization.new_vars_count() +\
-               (self.polynomialization.variables.generated if self.polynomialization else 0)
+               (len(self.polynomialization.variables.generated) if self.polynomialization else 0)
 
     def __len__(self):
         return len(self.lhs)

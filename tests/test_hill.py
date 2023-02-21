@@ -3,7 +3,7 @@ from qbee import *
 from examples import generate_hill
 
 
-strategies = [default_strategy, aeqd_strategy, smd_strategy]
+strategies = [default_scoring, aeqd_scoring, smd_scoring]
 pruning_funcs = [
     [pruning_by_quadratic_upper_bound],
     [pruning_by_squarefree_graphs],
