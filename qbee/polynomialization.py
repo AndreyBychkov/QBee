@@ -133,7 +133,7 @@ class EquationSystem:
 
     @property
     def polynomial_equations(self):
-        return [sp.Eq(make_derivative_symbol(x), f) for x, f in self._poly_equations.items()]
+        return [sp.Eq(make_derivative_symbol(x), f if f is not None else 0) for x, f in self._poly_equations.items()]
 
     def to_poly_equations(self, inputs_ord: dict):
         self._fill_poly_system()
