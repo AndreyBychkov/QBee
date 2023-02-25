@@ -137,7 +137,8 @@ class EquationSystem:
 
     def to_poly_equations(self, inputs_ord: dict):
         self._fill_poly_system()
-        inputs_ord_sym = {sp.Symbol(str_qbee(k)): v for k, v in inputs_ord.items()}
+        inputs_ord_sym = {var: 0 for var in self.variables.input}
+        inputs_ord_sym.update({sp.Symbol(str_qbee(k)): v for k, v in inputs_ord.items()})
         d_inputs = generate_derivatives(inputs_ord_sym)
         # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
