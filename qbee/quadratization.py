@@ -301,7 +301,7 @@ class PolynomialSystem:
 
     def to_str(self, new_var_name='z_', start_id=0):
         return '\n'.join([
-            new_var_name + ("{%d}" % i) + " = " + monom2str(m, self.gen_symbols)
+            new_var_name + ("%d" % i) + " = " + monom2str(m, self.gen_symbols)
             for i, m in enumerate(self.introduced_vars, start_id)
         ])
 
