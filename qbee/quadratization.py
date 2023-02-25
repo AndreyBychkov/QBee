@@ -4,13 +4,12 @@ import copy
 import math
 import configparser
 import signal
-from sympy.core.function import AppliedUndef
 from typing import Set, Collection
 from ordered_set import OrderedSet
 from functools import partial
-from .selection import *  # replace with .selection if you want pip install
-from .util import *  # replace with .util if you want pip install
-from .polynomialization import EquationSystem, polynomialize
+from .selection import *
+from .util import *
+from .polynomialization import EquationSystem, polynomialize, eq_list_to_eq_system
 
 config = configparser.ConfigParser({
     'logging_enable': False,
@@ -27,72 +26,15 @@ if log_enable:
     print(f"Log file will be produced as {log_file}, quadratizations will be saved as {quad_systems_file}")
 
 
-def quadratize(polynomials: List[PolyElement],
-               conditions: Collection["SystemCondition"] = (),
-               calc_upper_bound=True,
-               generation_strategy=default_generation,
-               scoring: Scoring = default_scoring,
-               pruning_functions: Collection["Pruning"] | None = None, new_vars_name='w',
-               start_new_vars_with=0) -> QuadratizationResult | None:
-    """
-    Quadratize a system of ODEs with the polynomial right-hand side.
-
-    :param conditions:
-    :param polynomials: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
-     Left-hand side is given according to the definition of variables in sympy.ring.
-    :param selection_strategy: UPDATE
-    :param pruning_functions: predicates that remove transformations from the search space
-    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
-    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
-    :return: quadratized system or None if there is none found
-
-    Example:
-        >>> from sympy import ring, QQ
-        >>> R, x, y = ring("x, y", QQ)
-        >>> quad_res = quadratize([x**2 * y, x * y**3],new_vars_name='z',start_new_vars_with=1)
-        >>> print(quad_res)
-        ==================================================
-        Quadratization result
-        ==================================================
-        Number of introduced variables: 2
-        Nodes traversed: 16
-        Introduced variables:
-        z{1} = x*y**2
-        z{2} = x*y
-        x' = x*z{2}
-        y' = y*z{1}
-        z{1}' = 2*z{1}**2 + z{1}*z{2}
-        z{2}' = z{1}*z{2} + z{2}**2
-
-    """
-    if pruning_functions is None:
-        pruning_functions = default_pruning_rules
-    system = PolynomialSystem(polynomials)
-    algo = BranchAndBound(system, conditions, generation_strategy, scoring, (pruning_by_best_nvars,) + tuple(pruning_functions))
-    if calc_upper_bound:
-        algo.domination_upper_bound()
-    algo_res = algo.quadratize()
-    if pb_enable:
-        print("=" * 50)
-        print("Quadratization result")
-        print("=" * 50)
-        print(algo_res.print(new_vars_name, start_new_vars_with))
-        print()
-    if algo_res.system is not None:
-        quad_eqs, eq_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
-                                                 new_vars_name, start_new_vars_with)
-        return QuadratizationResult(quad_eqs, eq_vars, algo_res)
-    return None
-
-
-def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
-                                 input_der_orders=None, conditions: Collection["SystemCondition"] = (),
-                                 polynomialization_upper_bound=10, calc_upper_bound=True,
+def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Expr)],
+                                 input_der_orders=None,
+                                 conditions: Collection["SystemCondition"] = (),
+                                 polynomialization_upper_bound=10,
+                                 calc_upper_bound=True,
                                  generation_strategy=default_generation,
                                  scoring: Scoring = default_scoring,
                                  pruning_functions: Collection["Pruning"] | None = None,
-                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
-
+                                 new_vars_name="w_", start_new_vars_with=0) -> QuadratizationResult | None:
     """
     Polynomialize and then quadratize a system of ODEs with the continuous right-hand side.
 
@@ -137,23 +79,16 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
     if input_der_orders is None:
         input_der_orders = dict()
     if pb_enable:
-        # TODO: temporary solution, should incorporate printing variables with non-integer powers into subs. equations
         print("Variables introduced in polynomialization:")
     poly_system = polynomialize(system, polynomialization_upper_bound,
                                 new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
     if pb_enable:
         poly_system.print_substitutions()
-    poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
-    without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
-    pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
-    if pruning_functions is None:
-        pruning_functions = default_pruning_rules
-    quad_result = quadratize(poly_equations,
-                             conditions=[without_excl_inputs, *conditions],
+    quad_result = quadratize(poly_system, input_der_orders=input_der_orders,
+                             conditions=conditions,
                              calc_upper_bound=calc_upper_bound,
-                             generation_strategy=partial(generation_strategy, excl_vars=excl_inputs),
-                             scoring=scoring,
-                             pruning_functions=[pruning_by_best_nvars, pruning_by_decl_inputs, *pruning_functions],
+                             generation_strategy=generation_strategy, scoring=scoring,
+                             pruning_functions=pruning_functions,
                              new_vars_name=new_vars_name,
                              start_new_vars_with=start_new_vars_with + len(poly_system) - len(system))
     if quad_result:
@@ -161,10 +96,134 @@ def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Sym
     return quad_result
 
 
-def get_rhs(system, sym):
-    for lhs, rhs in system:
-        if lhs == sym:
-            return rhs
+def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | EquationSystem,
+               input_der_orders=None,
+               conditions: Collection["SystemCondition"] = (),
+               calc_upper_bound=True,
+               generation_strategy=default_generation,
+               scoring: Scoring = default_scoring,
+               pruning_functions: Collection["Pruning"] | None = None,
+               new_vars_name='w', start_new_vars_with=0) -> QuadratizationResult | None:
+    """
+    Quadratize a system of ODEs with the polynomial right-hand side.
+
+    :param conditions:
+    :param poly_system: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
+     Left-hand side is given according to the definition of variables in sympy.ring.
+    :param pruning_functions: predicates that remove transformations from the search space
+    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
+    :return: quadratized system or None if there is none found
+
+    Example:
+        >>> from sympy import ring, QQ
+        >>> R, x, y = ring("x, y", QQ)
+        >>> quad_res = quadratize([x**2 * y, x * y**3],new_vars_name='z',start_new_vars_with=1)
+        >>> print(quad_res)
+        ==================================================
+        Quadratization result
+        ==================================================
+        Number of introduced variables: 2
+        Nodes traversed: 16
+        Introduced variables:
+        z{1} = x*y**2
+        z{2} = x*y
+        x' = x*z{2}
+        y' = y*z{1}
+        z{1}' = 2*z{1}**2 + z{1}*z{2}
+        z{2}' = z{1}*z{2} + z{2}**2
+
+    """
+    if input_der_orders is None:
+        input_der_orders = dict()
+    if pruning_functions is None:
+        pruning_functions = default_pruning_rules
+
+    if isinstance(poly_system, list) and isinstance(poly_system[0], tuple):
+        poly_system = eq_list_to_eq_system(poly_system)
+
+    if isinstance(poly_system, EquationSystem):
+        if not poly_system.is_polynomial():
+            raise Exception("Nonpolynomial system is passed to `quadratize` function.")
+        poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
+        without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
+        pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
+        pruning_functions = [pruning_by_decl_inputs, *pruning_functions]
+        conditions = [without_excl_inputs, *conditions]
+    elif isinstance(poly_system, list) and isinstance(poly_system[0], PolyElement):
+        poly_equations = poly_system
+        excl_inputs = None
+    else:
+        raise TypeError("Incorrect type of the `system` parameter in quadratization.")
+
+    result = quadratize_poly(poly_equations,
+                             conditions=conditions,
+                             calc_upper_bound=calc_upper_bound,
+                             generation_strategy=partial(generation_strategy, excl_vars=excl_inputs),
+                             scoring=scoring,
+                             pruning_functions=[pruning_by_best_nvars, *pruning_functions],
+                             new_vars_name=new_vars_name,
+                             start_new_vars_with=start_new_vars_with)
+    return result
+
+
+def quadratize_poly(polynomials: List[PolyElement],
+                    conditions: Collection["SystemCondition"] = (),
+                    calc_upper_bound=True,
+                    generation_strategy=default_generation,
+                    scoring: Scoring = default_scoring,
+                    pruning_functions: Collection["Pruning"] | None = None,
+                    new_vars_name='w',
+                    start_new_vars_with=0) -> QuadratizationResult | None:
+    """
+    Quadratize a system of ODEs with the polynomial right-hand side.
+
+    :param conditions:
+    :param polynomials: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
+     Left-hand side is given according to the definition of variables in sympy.ring.
+    :param pruning_functions: predicates that remove transformations from the search space
+    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
+    :return: quadratized system or None if there is none found
+
+    Example:
+        >>> from sympy import ring, QQ
+        >>> R, x, y = ring("x, y", QQ)
+        >>> quad_res = quadratize([x**2 * y, x * y**3],new_vars_name='z',start_new_vars_with=1)
+        >>> print(quad_res)
+        ==================================================
+        Quadratization result
+        ==================================================
+        Number of introduced variables: 2
+        Nodes traversed: 16
+        Introduced variables:
+        z{1} = x*y**2
+        z{2} = x*y
+        x' = x*z{2}
+        y' = y*z{1}
+        z{1}' = 2*z{1}**2 + z{1}*z{2}
+        z{2}' = z{1}*z{2} + z{2}**2
+
+    """
+    if pruning_functions is None:
+        pruning_functions = default_pruning_rules
+
+    system = PolynomialSystem(polynomials)
+    algo = BranchAndBound(system, conditions, generation_strategy, scoring,
+                          (pruning_by_best_nvars,) + tuple(pruning_functions))
+    if calc_upper_bound:
+        algo.domination_upper_bound()
+    algo_res = algo.quadratize()
+    if pb_enable:
+        print("=" * 50)
+        print("Quadratization result")
+        print("=" * 50)
+        print(algo_res.print(new_vars_name, start_new_vars_with))
+        print()
+    if algo_res.system is not None:
+        quad_eqs, eq_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
+                                                 new_vars_name, start_new_vars_with)
+        return QuadratizationResult(quad_eqs, eq_vars, algo_res)
     return None
 
 
