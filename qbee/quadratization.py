@@ -145,14 +145,14 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
     if isinstance(poly_system, EquationSystem):
         if not poly_system.is_polynomial():
             raise Exception("Nonpolynomial system is passed to `quadratize` function.")
-        poly_equations, excl_inputs = poly_system.to_poly_equations(input_der_orders)
+        poly_equations, excl_inputs, all_inputs = poly_system.to_poly_equations(input_der_orders)
         without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
         pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
         pruning_functions = [pruning_by_decl_inputs, *pruning_functions]
         conditions = [without_excl_inputs, *conditions]
     elif isinstance(poly_system, list) and isinstance(poly_system[0], PolyElement):
         poly_equations = poly_system
-        excl_inputs = None
+        excl_inputs, all_inputs = None, None
     else:
         raise TypeError("Incorrect type of the `system` parameter in quadratization.")
 
@@ -164,6 +164,7 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
                              pruning_functions=[pruning_by_best_nvars, *pruning_functions],
                              new_vars_name=new_vars_name,
                              start_new_vars_with=start_new_vars_with)
+    result.exclude_variables(all_inputs)
     return result
 
 
@@ -345,6 +346,11 @@ class QuadratizationResult:
         self.lhs = derivatives(variables)
         self.quadratization = quad_res.system
         self.polynomialization = poly_res
+        self.excl_ders = []
+        self.variables = variables
+
+    def exclude_variables(self, variables):
+        self.excl_ders.extend(derivatives(variables))
 
     def to_list(self):
         return [self[i] for i in range(len(self.rhs))]
@@ -365,7 +371,7 @@ class QuadratizationResult:
 
     def __repr__(self):
         return '\n'.join([
-            f"{dx} = {fx}" for dx, fx in zip(self.lhs, self.rhs)
+            f"{dx} = {fx}" for dx, fx in zip(self.lhs, self.rhs) if dx not in self.excl_ders
         ])
 
     @property
