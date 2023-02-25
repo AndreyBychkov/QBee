@@ -1,5 +1,4 @@
 import pytest
-from qbee import *
 from examples import *
 from functools import partial
 

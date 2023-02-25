@@ -1,6 +1,4 @@
-import sympy as sp
 from qbee import *
-
 
 if __name__ == '__main__':
     c1, c2, c3, c4, T = functions("c1, c2, c3, c4, T")

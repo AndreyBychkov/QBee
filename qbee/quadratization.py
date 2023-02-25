@@ -4,21 +4,13 @@ import copy
 import math
 import configparser
 import signal
-import pickle
-import numpy as np
-from sympy.polys.rings import PolyElement
 from sympy.core.function import AppliedUndef
-from queue import Queue
-from typing import Callable, List, Optional, Set, Collection
+from typing import Set, Collection
 from ordered_set import OrderedSet
 from functools import partial
-from operator import add
 from .selection import *  # replace with .selection if you want pip install
 from .util import *  # replace with .util if you want pip install
 from .polynomialization import EquationSystem, polynomialize
-from .printer import print_qbee, str_qbee
-
-from memory_profiler import profile
 
 config = configparser.ConfigParser({
     'logging_enable': False,
@@ -93,13 +85,13 @@ def quadratize(polynomials: List[PolyElement],
     return None
 
 
-def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
-                                     input_der_orders=None, conditions: Collection["SystemCondition"] = (),
-                                     polynomialization_upper_bound=10, calc_upper_bound=True,
-                                     generation_strategy=default_generation,
-                                     scoring: Scoring = default_scoring,
-                                     pruning_functions: Collection["Pruning"] | None = None,
-                                     new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
+def polynomialize_and_quadratize(system: Union[EquationSystem, List[Tuple[sp.Symbol, sp.Expr]]],
+                                 input_der_orders=None, conditions: Collection["SystemCondition"] = (),
+                                 polynomialization_upper_bound=10, calc_upper_bound=True,
+                                 generation_strategy=default_generation,
+                                 scoring: Scoring = default_scoring,
+                                 pruning_functions: Collection["Pruning"] | None = None,
+                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
 
     """
     Polynomialize and then quadratize a system of ODEs with the continuous right-hand side.
@@ -115,7 +107,7 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
         >>> from sympy import exp
         >>> x, y, u = functions("x, y, u")
         >>> p = parameters("p")
-        >>> quad_res = polynomialize_and_quadratize_ode([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)],input_der_orders={u: 0},new_vars_name='z',start_new_vars_with=1)
+        >>> quad_res = polynomialize_and_quadratize([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)],input_der_orders={u: 0},new_vars_name='z',start_new_vars_with=1)
         >>> print(quad_res)
         Variables introduced in polynomialization:
         z{1} = exp(-p*x)
@@ -169,73 +161,11 @@ def polynomialize_and_quadratize_ode(system: Union[EquationSystem, List[Tuple[sp
     return quad_result
 
 
-def polynomialize_and_quadratize(start_system: List[Tuple[sp.Symbol, sp.Expr]], input_der_orders: Optional[Dict] = None,
-                                 conditions: Collection["SystemCondition"] = (), polynomialization_upper_bound=10,
-                                calc_quadr_upper_bound=True,
-                                 generation_strategy=default_generation,
-                                 scoring: Scoring = default_scoring,
-                                 pruning_functions: Collection["Pruning"] | None = None,
-                                 new_vars_name="w_", start_new_vars_with=0) -> Optional[QuadratizationResult]:
-    queue = Queue()
-    queue.put(start_system)
-    if input_der_orders is None:
-        inputs = select_inputs(start_system)
-        input_der_orders = {i: 0 for i in inputs}
-    while not queue.empty():
-        system = queue.get_nowait()
-        inputs_pde = select_pde_inputs(system)
-        input_orders_with_pde = {i: 0 for i in inputs_pde}
-        input_orders_with_pde.update(input_der_orders)
-        if pb_enable:
-            print("Current spatial time derivatives equations:")
-            print("...")
-            for eq in system[len(start_system):]:
-                print(f"{str_qbee(eq[0])} = {str_qbee(eq[1])}")
-            print()
-
-        quad_res = polynomialize_and_quadratize_ode(system, input_orders_with_pde, conditions,
-                                                    polynomialization_upper_bound,
-                                                    calc_upper_bound=calc_quadr_upper_bound,
-                                                    generation_strategy=generation_strategy, scoring=scoring,
-                                                    pruning_functions=pruning_functions, new_vars_name=new_vars_name,
-                                                    start_new_vars_with=start_new_vars_with)
-        if quad_res:
-            return quad_res
-        for i in inputs_pde:
-            new_sys = deepcopy(system)
-            ex, dx = rm_last_diff(i)
-            try:
-                new_sys.append((i, get_rhs(system, ex).diff(dx)))
-                queue.put(new_sys)
-            except AttributeError as e:
-                pass
-    return None
-
-
 def get_rhs(system, sym):
     for lhs, rhs in system:
         if lhs == sym:
             return rhs
     return None
-
-
-def rm_last_diff(der):
-    if len(der.variables) == 1:
-        return der.expr, der.variables[0]
-    elif len(der.variables) > 1:
-        return sp.Derivative(der.expr, *der.variables[:-1]), der.variables[-1]
-
-
-def select_inputs(system):
-    lhs, rhs = zip(*system)
-    funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
-    lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
-    return set(filter(lambda f: (f not in lhs) and (f not in lhs_args), funcs))
-
-
-def select_pde_inputs(system):
-    lhs, rhs = zip(*system)
-    return set(filter(lambda v: v not in lhs, reduce(lambda l, r: l | r, [eq.atoms(sp.Derivative) for eq in rhs])))
 
 
 # ------------------------------------------------------------------------------
@@ -381,7 +311,7 @@ class QuadratizationResult:
 
     @property
     def new_vars_count(self):
-        return self.quadratization.new_vars_count() +\
+        return self.quadratization.new_vars_count() + \
                (len(self.polynomialization.variables.generated) if self.polynomialization else 0)
 
     def __len__(self):
@@ -468,7 +398,7 @@ class Algorithm:
 
     @logged(log_enable, log_file)
     def next_gen(self, part_res: PolynomialSystem):
-        return part_res.next_generation(self.generation_strategy. self.scoring)
+        return part_res.next_generation(self.generation_strategy.self.scoring)
 
     @progress_bar(is_stop=True, enabled=pb_enable)
     @logged(log_enable, log_file, is_stop=True)

@@ -7,16 +7,13 @@ __version__ = "0.6.0"
 import sympy as sp
 from typing import Iterable
 from .polynomialization import polynomialize, EquationSystem, Parameter
-from .quadratization import BranchAndBound, PolynomialSystem, Pruning, \
+from .quadratization import quadratize, polynomialize_and_quadratize, BranchAndBound, PolynomialSystem, Pruning, \
     pruning_by_nodes_processed, pruning_by_vars_number, pruning_by_quadratic_upper_bound, pruning_by_squarefree_graphs, \
     pruning_by_best_nvars, pruning_by_elapsed_time, pruning_by_nodes_without_quadratization_found, \
     default_pruning_rules, \
-    without_variables, quadratize, polynomialize_and_quadratize
+    without_variables
 from .selection import *
 from .printer import print_qbee
-
-
-# from .util import derivatives
 
 INDEPENDENT_VARIABLE = sp.Symbol("_t")
 

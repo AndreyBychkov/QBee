@@ -1,6 +1,4 @@
-import sympy as sp
 from qbee import *
-
 
 if __name__ == '__main__':
     N = 4

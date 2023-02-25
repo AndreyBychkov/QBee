@@ -1,6 +1,5 @@
-import pytest
-import sympy as sp
 from qbee import *
+from qbee import polynomialize_and_quadratize
 
 
 def test_sigmoid_inv_arg():

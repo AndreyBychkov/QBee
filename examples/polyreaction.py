@@ -1,6 +1,4 @@
-import sympy as sp
 from qbee import *
-
 
 if __name__ == '__main__':
     psi, theta, Apsi, Atheta, u = functions("pse, theta, Apsi, Atheta, u")
