@@ -1,5 +1,15 @@
 from qbee import *
 from qbee import polynomialize_and_quadratize
+from qbee.polynomialization import eq_list_to_eq_system
+
+
+def test_handmade_negative_laurent():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, 1 / x ** 2)
+    ])
+
+    assert system.is_polynomial()
 
 
 def test_sigmoid_inv_arg():

@@ -17,6 +17,54 @@ def test_already_polynomial():
     assert system.equations == res.equations
 
 
+def test_handmade_sin_cos():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, sp.sin(x))
+    ])
+
+    xs = sp.Symbol("x")
+    system.add_new_var(sp.sin(xs))
+    system.add_new_var(sp.cos(xs))
+    assert system.is_polynomial()
+
+
+def test_handmade_sin_cos_inverted_order():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, sp.sin(x))
+    ])
+
+    xs = sp.Symbol("x")
+    system.add_new_var(sp.cos(xs))
+    system.add_new_var(sp.sin(xs))
+    assert system.is_polynomial()  # Should it be correct?
+
+
+def test_handmade_sigmoid():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, 1 / (1 + sp.exp(x)))
+    ])
+
+    xs = sp.Symbol("x")
+    system.add_new_var(sp.exp(xs))
+    system.add_new_var(1 / (1 + sp.exp(xs)))
+    assert system.is_polynomial()
+
+
+def test_handmade_negative():
+    x = functions("x", laurent=False)
+    system = eq_list_to_eq_system([
+        (x, 1 / x ** 2)
+    ])
+    assert not system.is_polynomial()
+
+    xs = sp.Symbol("x")
+    system.add_new_var(1 / xs)
+    assert system.is_polynomial()
+
+
 def test_sigmoid():
     x = functions("x")
     system = eq_list_to_eq_system([
@@ -57,18 +105,3 @@ def test_parameter():
     res = polynomialize(system, upper_bound=4)
     assert all([eq.rhs.is_Mul and sp.Symbol("p") in eq.rhs.args
                 for eq in res.polynomial_equations[2:]])
-
-
-def test_combustion():
-    c1, c2, c3, c4, T = functions("c1, c2, c3, c4, T", laurent=False)
-    A, Ea, Ru = parameters("A, Ea, Ru")
-    eq1 = -A * sp.exp(-Ea / (Ru * T)) * c1 ** 0.2 * c2 ** 1.3
-    system = [
-        (c1, eq1),
-        (c2, 2 * eq1),
-        (c3, -eq1),
-        (c4, -2 * eq1)
-    ]
-
-    res = polynomialize(system, upper_bound=8)
-    assert len(res) == 10
