@@ -43,7 +43,7 @@ def benchmark_everything(save_results=True, make_histogram=True, sort_by="name",
     # TODO: spawn processes to accelerate
     # TODO: Rewrite with pytest -m "benchmark" or smth like this
     [benchmark_file(file, save_results, make_histogram, sort_by, min_rounds)
-     for file in glob(r"*.py") if file not in ["main.py", "list.py", "__init__.py"]]
+     for file in glob(r"*.py") if file not in ["main.py", "__init__.py"]]
 
 
 if __name__ == '__main__':

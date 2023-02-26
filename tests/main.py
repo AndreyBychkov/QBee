@@ -1,8 +1,8 @@
 import os
 
 
-def run_without_benchmark_systems():
-    os.system('python3 -m pytest -m "not benchmark and not experimental"')
+def run_default():
+    os.system('python3 -m pytest -m "not benchmark and not experimental and not expensive"')
 
 
 def run_all():
@@ -10,4 +10,4 @@ def run_all():
 
 
 if __name__ == '__main__':
-    run_without_benchmark_systems()
+    run_default()

@@ -27,3 +27,10 @@ pyvis = "*"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.pytest.ini_options]
+markers = [
+    "experimental: test for unstable features, may fail (deselect with '-m \"not experimental\"')",
+    "expensive: slow tests which are needed mostly for important releases (deselect with '-m \"not experimental\"')"
+]
