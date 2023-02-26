@@ -5,6 +5,7 @@ from qbee import *
 from qbee.experimental import polynomialize_and_quadratize_pde
 
 
+@pytest.mark.experimental
 def test_scalar_pde():
     x, c = functions("x, c")
     u = multivariable_functions("u", [x])
@@ -20,6 +21,7 @@ def test_scalar_pde():
     print(res)
 
 
+@pytest.mark.experimental
 def test_scalar_pde_with_elem_funcs():
     x, c = functions("x, c")
     u = multivariable_functions("u", [x])
@@ -35,6 +37,7 @@ def test_scalar_pde_with_elem_funcs():
     print(res)
 
 
+@pytest.mark.experimental
 @pytest.mark.xfail
 def test_scalar_functional_pde_without_needed_space_var_derivative():
     x, c = functions("x, c")
@@ -48,6 +51,7 @@ def test_scalar_functional_pde_without_needed_space_var_derivative():
     polynomialize_and_quadratize_pde(system, pruning_functions=[no_quad_pruning, *default_pruning_rules])
 
 
+@pytest.mark.experimental
 def test_dym_equations():
     x = functions("x")
     u = multivariable_functions("u", [x])
