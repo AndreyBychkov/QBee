@@ -350,7 +350,7 @@ class QuadratizationResult:
         self.variables = variables
 
     def exclude_variables(self, variables):
-        if len(variables) > 0:
+        if variables and len(variables) > 0:
             self.excl_ders.extend(derivatives(variables))
 
     def to_list(self):
