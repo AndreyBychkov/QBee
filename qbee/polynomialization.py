@@ -137,23 +137,24 @@ class EquationSystem:
 
     def to_poly_equations(self, inputs_ord: dict):
         self._fill_poly_system()
-        inputs_ord_sym = {var: 1 for var in self.variables.input}
+        inputs_ord_sym = {var: 1 for var in self.variables.input if "'" not in str(var)}  # to remove derivatives
         inputs_ord_sym.update({sp.Symbol(str_qbee(k)): v for k, v in inputs_ord.items()})
         d_inputs = generate_derivatives(inputs_ord_sym)
         # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
+        unique_flattened_inputs = list(OrderedSet(sp.flatten(d_inputs)))
         # noinspection PyTypeChecker
-        R, *_ = sp.ring(list(self.variables.state + sp.flatten(d_inputs)), coef_field)
+        R, *_ = sp.ring(list(self.variables.state + unique_flattened_inputs), coef_field)
 
         equations = make_laurent_poly([eq.rhs for eq in self.polynomial_equations],
-                                      self.variables.state, sp.flatten(d_inputs), R)
+                                      self.variables.state, unique_flattened_inputs, R)
 
         for i, v in enumerate(inputs_ord_sym.keys()):
             for dv in [g for g in R.gens if str(v) + '\'' in str(g)]:
                 equations.append(dv)
             equations.append(R.zero)
         inputs_to_exclude = [tuple(R(v[-1])) for v in d_inputs]
-        return equations, inputs_to_exclude, sp.flatten(d_inputs)
+        return equations, inputs_to_exclude, unique_flattened_inputs
 
     @cached_property
     def laurent_substitutions(self):
