@@ -188,12 +188,6 @@ class EquationSystem:
             return
         if new_var is None:
             new_var = self.variables.create()
-        if substitution.is_Pow \
-                and substitution.exp.is_Float \
-                and (1 / substitution.base) not in self._substitution_equations.values() \
-                and substitution.base not in self.variables.laurent:
-            self.add_new_var(1 / substitution.base, new_var)
-            new_var = self.variables.create()
         self._substitution_equations[new_var] = substitution
         self._equations[new_var] = self._calculate_Lie_derivative(substitution)
 
@@ -415,7 +409,12 @@ def next_gen(system: EquationSystem) -> Iterator[EquationSystem]:
 def apply_substitution(system: EquationSystem, subs: sp.Expr) -> EquationSystem:
     # new_system: EquationSystem = pickle.loads(pickle.dumps(system, -1))  # fast deepcopy
     new_system = copy.copy(system)
-    new_system.add_new_var(subs)
+    if subs.is_Pow \
+            and (1 / subs.base) not in system._substitution_equations.values() \
+            and subs.base not in system.variables.laurent:
+        new_system.add_new_var(1 / subs.base)
+    else:
+        new_system.add_new_var(subs)
     return new_system
 
 
