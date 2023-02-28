@@ -66,7 +66,7 @@ def to_odeint_quadr(res: QuadratizationResult,
     quad_vars_lhs = sp.symbols(
         f"{base_name}{quad_start_index}:{quad_start_index + res.quadratization.new_vars_count()}")
     quad_vars_rhs = [tuple_to_monom(m, res.quadratization.gen_symbols) for m in res.quadratization.introduced_vars]
-    quad_subs = {k: v.subs(states_sym) for k, v in zip(quad_vars_lhs, quad_vars_rhs)}
+    quad_subs = {k: v.subs(states_sym | poly_subs) for k, v in zip(quad_vars_lhs, quad_vars_rhs)}
 
     state_subs = states_sym | poly_subs | quad_subs
 
