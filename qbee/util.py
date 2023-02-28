@@ -9,6 +9,7 @@ from typing import Iterable, Union, Tuple, List, Dict, Optional
 from itertools import product, chain, combinations
 from functools import reduce, wraps
 from copy import deepcopy
+from .printer import str_qbee
 
 
 def parametrized(dec):
@@ -189,7 +190,7 @@ def make_derivative_symbol(symbol) -> sp.Symbol:
 
 
 def monom2str(monom: tuple, gens):
-    return str(sp.Monomial(monom, gens).as_expr())
+    return str_qbee(sp.Monomial(monom, gens).as_expr())
 
 
 def symbol_from_derivative(derivative: sp.Symbol) -> sp.Symbol:
@@ -267,7 +268,7 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
                 squares[prod] = min(squares[prod], new_monom)
 
     result_as_dicts = [{squares[m]: c for m, c in p.items()} for p in system_dicts]
-    quad_varnames = [new_var_name + str(start_new_vars_with + i) for i in range(len(quadratization))]
+    quad_varnames = [new_var_name + '{' + str(start_new_vars_with + i) + '}' for i in range(len(quadratization))]
     new_varnames = [str(g) for g in polynomials[0].ring.gens] + quad_varnames
     new_ring = sp.ring(new_varnames, polynomials[0].ring.domain)[0]
     result = [new_ring(d) for d in result_as_dicts]

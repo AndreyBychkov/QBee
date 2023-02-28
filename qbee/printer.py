@@ -9,12 +9,19 @@ class QBeePrinter(sp.printing.StrPrinter):
             ''.join([self._print(i[0]) * i[1] for i in vars]))
 
     def _print_Function(self, expr: sp.Function):
-        return expr.func.__name__
+        # TODO
+        # from qbee import INDEPENDENT_VARIABLE
+        if sp.Symbol("_t") in expr.args:
+            return expr.func.__name__
+        return super()._print_Function(expr)
 
     def _print_Relational(self, expr):
         if isinstance(expr, sp.Eq):
-            return f"{expr.lhs} = {expr.rhs}"
+            return f"{self._print(expr.lhs)} = {self._print(expr.rhs)}"
         return super()._print_Relational(expr)
+
+    def _print_Symbol(self, expr):
+        return str(expr).replace('{', '').replace('}', '')
 
 
 def print_qbee(expr):
