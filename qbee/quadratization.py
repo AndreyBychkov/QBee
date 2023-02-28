@@ -219,7 +219,7 @@ def quadratize_poly(polynomials: List[PolyElement],
         print("=" * 50)
         print("Quadratization result")
         print("=" * 50)
-        print(algo_res.print(new_vars_name, start_new_vars_with))
+        print(algo_res.make_report(new_vars_name, start_new_vars_with))
         print()
     if algo_res.system is not None:
         quad_eqs, eq_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
@@ -319,15 +319,12 @@ class PolynomialSystem:
 # ------------------------------------------------------------------------------
 
 class AlgorithmResult:
-    def __init__(self,
-                 system: Optional[PolynomialSystem],
-                 introduced_vars: int,
-                 nodes_traversed: int):
+    def __init__(self, system: PolynomialSystem | None, introduced_vars: int, nodes_traversed: int):
         self.system = system
         self.num_introduced_vars = introduced_vars
         self.nodes_traversed = nodes_traversed
 
-    def print(self, new_var_name="z_", start_new_vars_with=0):
+    def make_report(self, new_var_name="z_", start_new_vars_with=0) -> str:
         if self.system is None:
             return "No quadratization found under the given condition\n" + \
                    f"Nodes traversed: {self.nodes_traversed}"
@@ -336,7 +333,7 @@ class AlgorithmResult:
                "Introduced variables:\n" + self.system.to_str(new_var_name, start_new_vars_with)
 
     def __repr__(self):
-        return self.print()
+        return self.make_report()
 
 
 class QuadratizationResult:
