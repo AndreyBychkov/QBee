@@ -10,6 +10,7 @@ from functools import partial
 from .selection import *
 from .util import *
 from .polynomialization import EquationSystem, polynomialize, eq_list_to_eq_system
+from .printer import str_qbee
 
 config = configparser.ConfigParser({
     'logging_enable': False,
@@ -222,9 +223,9 @@ def quadratize_poly(polynomials: List[PolyElement],
         print(algo_res.make_report(new_vars_name, start_new_vars_with))
         print()
     if algo_res.system is not None:
-        quad_eqs, eq_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
+        quad_eqs, eq_vars, quad_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
                                                  new_vars_name, start_new_vars_with)
-        return QuadratizationResult(quad_eqs, eq_vars, algo_res)
+        return QuadratizationResult(quad_eqs, eq_vars, quad_vars, algo_res)
     return None
 
 
@@ -337,48 +338,34 @@ class AlgorithmResult:
 
 
 class QuadratizationResult:
-    def __init__(self, equations, variables, quad_res: AlgorithmResult, poly_res: EquationSystem | None = None):
+    def __init__(self, equations, variables, quad_variables, quad_res: AlgorithmResult, poly_res: EquationSystem | None = None):
         self.nodes_traversed = quad_res.nodes_traversed
-        self.rhs = [copy.copy(e) for e in equations]
-        self.lhs = derivatives(variables)
+        self.variables = variables
+        self.equations = [sp.Eq(lhs, rhs.as_expr(), evaluate=False) for lhs, rhs in zip(derivatives(variables), equations)]
         self.quadratization = quad_res.system
         self.polynomialization = poly_res
-        self.excl_ders = []
-        self.variables = variables
+        self._excl_ders = []
+        self._quad_variables = quad_variables
+
+    @property
+    def introduced_variables(self) -> list:
+        poly_vars = self.polynomialization.substitution_equations if self.polynomialization else []
+        quad_rhs = [monom2PolyElem(v, self.quadratization.gen_symbols) for v in self.quadratization.introduced_vars]
+        quad_vars = [sp.Eq(dx, fx) for dx, fx in zip(self._quad_variables, quad_rhs)]
+        return poly_vars + quad_vars
 
     def exclude_variables(self, variables):
         if variables and len(variables) > 0:
-            self.excl_ders.extend(derivatives(variables))
-
-    def to_list(self):
-        return [self[i] for i in range(len(self.rhs))]
-
-    def introduced_variables_str(self):
-        if self.polynomialization:
-            base_name = self.polynomialization.variables.base_var_name
-            quad_start_index = self.polynomialization.variables.start_new_vars_with + \
-                               len(self.polynomialization.variables.generated)
-            return self.polynomialization.substitution_equations_str() + \
-                   '\n' + \
-                   self.quadratization.to_str(base_name, quad_start_index)
-        else:
-            return self.quadratization.to_str()
-
-    def __getitem__(self, i):
-        return sp.Eq(self.lhs[i], self.rhs[i])
+            self._excl_ders.extend(derivatives(variables))
 
     def __repr__(self):
         return '\n'.join([
-            f"{dx} = {fx}" for dx, fx in zip(self.lhs, self.rhs) if dx not in self.excl_ders
+            str_qbee(eq) for eq in self.equations if eq.lhs not in self._excl_ders
         ])
 
     @property
     def new_vars_count(self):
-        return self.quadratization.new_vars_count() + \
-               (len(self.polynomialization.variables.generated) if self.polynomialization else 0)
-
-    def __len__(self):
-        return len(self.lhs)
+        return len(self.introduced_variables)
 
 
 # ------------------------------------------------------------------------------

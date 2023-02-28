@@ -267,10 +267,11 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
                 squares[prod] = min(squares[prod], new_monom)
 
     result_as_dicts = [{squares[m]: c for m, c in p.items()} for p in system_dicts]
-    new_varnames = [str(g) for g in polynomials[0].ring.gens] + [new_var_name + str(start_new_vars_with + i) for i in range(len(quadratization))]
+    quad_varnames = [new_var_name + str(start_new_vars_with + i) for i in range(len(quadratization))]
+    new_varnames = [str(g) for g in polynomials[0].ring.gens] + quad_varnames
     new_ring = sp.ring(new_varnames, polynomials[0].ring.domain)[0]
     result = [new_ring(d) for d in result_as_dicts]
-    return result, [g.as_expr() for g in new_ring.gens]
+    return result, [g.as_expr() for g in new_ring.gens], [g.as_expr() for g in new_ring.gens if str(g) in quad_varnames]
 
 
 def monom2PolyElem(monom: tuple, gens):

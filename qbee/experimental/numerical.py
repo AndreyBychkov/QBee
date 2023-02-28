@@ -73,7 +73,7 @@ def to_odeint_quadr(res: QuadratizationResult,
     def func(y, t, *args):
         vars_subs = dict(zip(state_subs.keys(), y))
         inputs_subs = {k: v.evalf(subs={INDEPENDENT_VARIABLE: t}) for k, v in inputs_sym.items()}
-        return [expr.as_expr().evalf(subs=vars_subs | param_subs | inputs_subs) for dx, expr in zip(res.lhs, res.rhs)
-                if dx not in res.excl_ders]
+        return [eq.rhs.as_expr().evalf(subs=vars_subs | param_subs | inputs_subs) for eq in res.equations
+                if eq.lhs not in res._excl_ders]
 
     return partial(odeint, func, list(state_subs.values()))
