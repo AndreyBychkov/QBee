@@ -4,8 +4,9 @@ import sympy as sp
 from examples import *
 from functools import partial
 from typing import Sequence
-from qbee.quadratization import QuadratizationResult
-from qbee.polynomialization import eq_list_to_eq_system
+from ..quadratization import QuadratizationResult
+from ..polynomialization import eq_list_to_eq_system
+from ..printer import str_qbee
 from scipy.integrate import odeint
 
 
@@ -28,14 +29,14 @@ def to_odeint_no_quadr(res: Sequence[(sp.Symbol, sp.Expr)],
                        inputs: dict | None = None):
     if params is None:
         params = dict()
-    params_sym = {sp.Symbol(str(k)): v for k, v in params.items()}
+    params_sym = {sp.Symbol(str_qbee(k)): v for k, v in params.items()}
 
     if inputs is None:
         inputs = dict()
-    inputs_sym = {sp.Symbol(str(k)): v for k, v in inputs.items()}
+    inputs_sym = {sp.Symbol(str_qbee(k)): v for k, v in inputs.items()}
 
     system = eq_list_to_eq_system(res)
-    states_sym = {sp.Symbol(str(k)): v for k, v in state_values.items()}
+    states_sym = {sp.Symbol(str_qbee(k)): v for k, v in state_values.items()}
 
     def func(y, t, *args):
         vars_subs = dict(zip(states_sym.keys(), y))
@@ -51,13 +52,13 @@ def to_odeint_quadr(res: QuadratizationResult,
                     inputs: dict | None = None):
     if params is None:
         params = dict()
-    param_subs = {sp.Symbol(str(k)): v for k, v in params.items()}
+    param_subs = {sp.Symbol(str_qbee(k)): v for k, v in params.items()}
 
     if inputs is None:
         inputs = dict()
-    inputs_sym = {sp.Symbol(str(k)): v for k, v in inputs.items()}
+    inputs_sym = {sp.Symbol(str_qbee(k)): v for k, v in inputs.items()}
 
-    states_sym = {sp.Symbol(str(k)): v for k, v in state_values.items()}
+    states_sym = {sp.Symbol(str_qbee(k)): v for k, v in state_values.items()}
     poly_subs = {k: v.subs(states_sym) for k, v in res.polynomialization._substitution_equations.items()}
 
     base_name = res.polynomialization.variables.base_var_name
@@ -66,14 +67,16 @@ def to_odeint_quadr(res: QuadratizationResult,
     quad_vars_lhs = sp.symbols(
         f"{base_name}{{{quad_start_index}:{quad_start_index + res.quadratization.new_vars_count()}}}")
     quad_vars_rhs = [tuple_to_monom(m, res.quadratization.gen_symbols) for m in res.quadratization.introduced_vars]
-    quad_subs = {k: v.subs(states_sym | poly_subs) for k, v in zip(quad_vars_lhs, quad_vars_rhs)}
+    # Backward compatibility to Python 3.8 and less. Should be states_sym | poly_subs
+    quad_subs = {k: v.subs({**states_sym, **poly_subs}) for k, v in zip(quad_vars_lhs, quad_vars_rhs)}
 
-    state_subs = states_sym | poly_subs | quad_subs
+    # state_subs = states_sym | poly_subs | quad_subs
+    state_subs = {**states_sym, **poly_subs, **quad_subs}
 
     def func(y, t, *args):
         vars_subs = dict(zip(state_subs.keys(), y))
         inputs_subs = {k: v.evalf(subs={INDEPENDENT_VARIABLE: t}) for k, v in inputs_sym.items()}
-        return [eq.rhs.as_expr().evalf(subs=vars_subs | param_subs | inputs_subs) for eq in res.equations
+        return [eq.rhs.as_expr().evalf(subs={**vars_subs, **param_subs, **inputs_subs}) for eq in res.equations
                 if eq.lhs not in res._excl_ders]
 
     return partial(odeint, func, list(state_subs.values()))
