@@ -344,7 +344,7 @@ class QuadratizationResult:
             self._excl_ders.extend(derivatives(variables))
 
     def print(self, str_function=str_qbee, with_introduced_variables=True):
-        intr_vars_str = '\n'.join([str_function(eq) for eq in self.introduced_variables])
+        intr_vars_str = "Introduced variables:\n" + '\n'.join([str_function(eq) for eq in self.introduced_variables])
         equations_str = '\n'.join([
             str_function(eq) for eq in self.equations if eq.lhs not in self._excl_ders
         ])

@@ -9,4 +9,4 @@ if __name__ == '__main__':
         (x2, x1 + x2)
     ]
     quadr_system = quadratize(system)
-    print(quadr_system)
+    quadr_system.print()
