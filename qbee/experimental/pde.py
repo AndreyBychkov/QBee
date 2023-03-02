@@ -7,7 +7,7 @@ from queue import Queue
 from typing import Optional, Collection
 from functools import reduce
 from qbee.printer import str_qbee
-from qbee.quadratization import SystemCondition, QuadratizationResult, pb_enable, polynomialize_and_quadratize, Pruning
+from qbee.quadratization import SystemCondition, QuadratizationResult, polynomialize_and_quadratize, Pruning
 from qbee.selection import default_scoring, default_generation, Scoring
 
 
@@ -30,12 +30,12 @@ def polynomialize_and_quadratize_pde(start_system: list[(sp.Symbol, sp.Expr)],
         inputs_pde = select_pde_inputs(system)
         input_orders_with_pde = {i: 0 for i in inputs_pde}
         input_orders_with_pde.update(input_der_orders)
-        if pb_enable:
-            print("Current spatial time derivatives equations:")
-            print("...")
-            for eq in system[len(start_system):]:
-                print(f"{str_qbee(eq[0])} = {str_qbee(eq[1])}")
-            print()
+        # if pb_enable:
+        #     print("Current spatial time derivatives equations:")
+        #     print("...")
+        #     for eq in system[len(start_system):]:
+        #         print_qbee(eq)
+        #     print()
 
         quad_res = polynomialize_and_quadratize(system, input_orders_with_pde, conditions,
                                                 polynomialization_upper_bound,

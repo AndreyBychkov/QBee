@@ -1,3 +1,4 @@
+import numpy as np
 from sympy.polys.monomials import monomial_deg, monomial_divides
 from typing import Tuple, Callable, Iterable, Any
 

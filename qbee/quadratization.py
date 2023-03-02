@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import copy
 import math
-import configparser
 import signal
+import numpy as np
+import sympy as sp
 from typing import Set, Collection
 from ordered_set import OrderedSet
 from functools import partial
@@ -12,19 +13,7 @@ from .util import *
 from .polynomialization import EquationSystem, polynomialize, eq_list_to_eq_system
 from .printer import str_qbee
 
-config = configparser.ConfigParser({
-    'logging_enable': False,
-    'progress_bar_enable': True,
-    'logging_file': 'log/log.feather',
-    'quad_systems_file': 'log/quad_systems.pkl'
-})
-config.read("../config.ini")
-log_enable = eval(config.get('DEFAULT', 'logging_enable'))  # Security Error here, but does not matter I believe
-pb_enable = eval(config.get('DEFAULT', 'progress_bar_enable'))  # Security Error here, but does not matter I believe
-log_file = config.get('DEFAULT', 'logging_file')
-quad_systems_file = config.get('DEFAULT', 'quad_systems_file')
-if log_enable:
-    print(f"Log file will be produced as {log_file}, quadratizations will be saved as {quad_systems_file}")
+
 
 
 def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Expr)],
@@ -79,12 +68,8 @@ def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Ex
     """
     if input_der_orders is None:
         input_der_orders = dict()
-    if pb_enable:
-        print("Variables introduced in polynomialization:")
     poly_system = polynomialize(system, polynomialization_upper_bound,
                                 new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
-    if pb_enable:
-        poly_system.print_substitutions()
     quad_result = quadratize(poly_system, input_der_orders=input_der_orders,
                              conditions=conditions,
                              calc_upper_bound=calc_upper_bound,
@@ -222,12 +207,6 @@ def quadratize_poly(polynomials: List[PolyElement],
     if calc_upper_bound:
         algo.domination_upper_bound()
     algo_res = algo.quadratize()
-    if pb_enable:
-        print("=" * 50)
-        print("Quadratization result")
-        print("=" * 50)
-        print(algo_res.make_report(new_vars_name, start_new_vars_with))
-        print()
     if algo_res.system is not None:
         quad_eqs, eq_vars, quad_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
                                                  new_vars_name, start_new_vars_with)
@@ -364,10 +343,22 @@ class QuadratizationResult:
         if variables and len(variables) > 0:
             self._excl_ders.extend(derivatives(variables))
 
+    def print(self, str_function=str_qbee, with_introduced_variables=True):
+        intr_vars_str = '\n'.join([str_function(eq) for eq in self.introduced_variables])
+        equations_str = '\n'.join([
+            str_function(eq) for eq in self.equations if eq.lhs not in self._excl_ders
+        ])
+        if with_introduced_variables:
+            print(intr_vars_str + '\n\n' + equations_str)
+        else:
+            print(equations_str)
+
     def __repr__(self):
-        return '\n'.join([
+        intr_vars_str = '\n'.join([str_qbee(eq) for eq in self.introduced_variables])
+        equations_str = '\n'.join([
             str_qbee(eq) for eq in self.equations if eq.lhs not in self._excl_ders
         ])
+        return intr_vars_str + '\n\n' + equations_str
 
     @property
     def new_vars_count(self):
@@ -416,7 +407,7 @@ class Algorithm:
         self._final_iter()
         return res
 
-    @progress_bar(is_stop=False, enabled=pb_enable)
+    @progress_bar(is_stop=False)
     def _dls(self, part_res: PolynomialSystem, to_depth: int, pred: Callable[[PolynomialSystem], bool], res: set):
         if part_res.new_vars_count() > to_depth:
             return
@@ -428,12 +419,12 @@ class Algorithm:
                 self._dls(next_system, to_depth, pred, res)
         return
 
-    @dump_results(log_enable, quad_systems_file)
+    @dump_results
     def get_optimal_quadratizations(self) -> Set[PolynomialSystem]:
         optimal_first = self.quadratize()
         return self.get_quadratizations(optimal_first.num_introduced_vars)
 
-    @dump_results(log_enable, quad_systems_file)
+    @dump_results
     def get_quadratizations(self, depth: int) -> Set[PolynomialSystem]:
         return self.traverse_all(depth, lambda s: s.is_quadratized())
 
@@ -452,12 +443,12 @@ class Algorithm:
     def generation_strategy(self, value):
         self._generation = value
 
-    @logged(log_enable, log_file)
+    @logged(is_stop=False)
     def next_gen(self, part_res: PolynomialSystem):
         return part_res.next_generation(self.generation_strategy.self.scoring)
 
-    @progress_bar(is_stop=True, enabled=pb_enable)
-    @logged(log_enable, log_file, is_stop=True)
+    @progress_bar(is_stop=True)
+    @logged(is_stop=True)
     def _final_iter(self):
         pass
 
@@ -490,14 +481,13 @@ class BranchAndBound(Algorithm):
         else:
             print("No upper bound was found")
 
-    @timed(enabled=pb_enable)
     def quadratize(self) -> AlgorithmResult:
         nvars, opt_system, traversed = self._bnb_step(self._system, self.preliminary_upper_bound)
         self._final_iter()
         self._save_results(opt_system)
         return AlgorithmResult(opt_system, nvars, traversed)
 
-    @progress_bar(is_stop=False, enabled=pb_enable)
+    @progress_bar(is_stop=False)
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars) \
             -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
         self._nodes_traversed += 1
@@ -518,16 +508,16 @@ class BranchAndBound(Algorithm):
                 best_system = opt_system
         return min_nvars, best_system, traversed_total
 
-    @logged(log_enable, log_file)
+    @logged(is_stop=False)
     def next_gen(self, part_res: PolynomialSystem):
         return part_res.next_generation(self.generation_strategy, self.scoring)
 
-    @progress_bar(is_stop=True, enabled=pb_enable)
-    @logged(log_enable, log_file, is_stop=True)
+    @progress_bar(is_stop=True)
+    @logged(is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
 
-    @dump_results(enabled=log_enable, log_file=quad_systems_file)
+    @dump_results
     def _save_results(self, opt_system):
         return [opt_system, ]
 
