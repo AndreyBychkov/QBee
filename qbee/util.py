@@ -1,15 +1,39 @@
 import pickle
 import pandas as pd
 import sympy as sp
-import numpy as np
+import configparser
 from sympy.polys.rings import PolyElement
-from time import time
 from tqdm.autonotebook import tqdm
 from typing import Iterable, Union, Tuple, List, Dict, Optional
-from itertools import product, chain, combinations
 from functools import reduce, wraps
-from copy import deepcopy
 from .printer import str_qbee
+
+
+class Config:
+    def __init__(self, progress_bar_enabled=True,
+                 logging_enabled=False,
+                 logging_file="log.feather",
+                 quad_systems_file="quad_systems.pkl"):
+        self.progress_bar_enabled = progress_bar_enabled
+        self.logging_enabled = logging_enabled
+        self.logging_file = logging_file
+        self.quad_systems_file = quad_systems_file
+
+    def update_from_ini_file(self, path, section="DEFAULT"):
+        parser = configparser.ConfigParser()
+        with open(path, 'r') as f:
+            parser.read_string(f.read())  # Because ConfigParser.read_file somehow does not work
+            if pb_enabled := parser.get(section, "progress_bar_enabled"):
+                self.progress_bar_enabled = eval(pb_enabled)
+            if log_enabled := parser.get(section, "logging_enabled"):
+                self.logging_enabled = eval(log_enabled)
+            if log_file := parser.get(section, "logging_file"):
+                self.logging_file = log_file
+            if quad_file := parser.get(section, "quad_systems_file"):
+                self.quad_systems_file = quad_file
+
+
+QBEE_CONFIG = Config()
 
 
 def parametrized(dec):
@@ -22,90 +46,66 @@ def parametrized(dec):
     return layer
 
 
-@parametrized
-def timed(func, enabled=True):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = time()
-        res = func(*args, **kwargs)
-        end_time = time()
-        print()
-        print(f"Elapsed time: {np.round(end_time - start_time, 3)}s.")
-        return res
-
-    if enabled:
-        return wrapper
-    else:
-        return func
-
-
 __log_pb_evaluated = False
 __log_pb = None
 __log_records = list()
 
 
 @parametrized
-def progress_bar(func, is_stop, enabled=True):
+def progress_bar(func, is_stop):
     postfix_str = "Current best order = {}"
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        global __log_pb_evaluated
-        global __log_pb
-        if not __log_pb_evaluated:
-            __log_pb_evaluated = True
-            __log_pb = tqdm(desc="Nodes processed", unit=f" nodes", leave=True)
-            __log_pb.set_postfix_str(postfix_str.format(args[-1]))
-        if is_stop:
-            __log_pb.close()
-            __log_pb = None
-            __log_pb_evaluated = False
-        else:
-            __log_pb.update(1)
-            __log_pb.set_postfix_str(postfix_str.format(args[-1]))
-            __log_pb.refresh()
+        if QBEE_CONFIG.progress_bar_enabled:
+            global __log_pb_evaluated
+            global __log_pb
+            if not __log_pb_evaluated:
+                __log_pb_evaluated = True
+                __log_pb = tqdm(desc="Nodes processed", unit=f" nodes", leave=False)
+                __log_pb.set_postfix_str(postfix_str.format(args[-1]))
+            if is_stop:
+                __log_pb.close()
+                __log_pb = None
+                __log_pb_evaluated = False
+            else:
+                __log_pb.update(1)
+                __log_pb.set_postfix_str(postfix_str.format(args[-1]))
+                __log_pb.refresh()
         return func(*args, **kwargs)
 
-    if enabled:
-        return wrapper
-    else:
-        return func
+    return wrapper
 
 
 @parametrized
-def logged(method, enabled, log_file, is_stop=False):
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        global __log_records
-        res = method(self, *args, **kwargs)
-        if is_stop:
-            df = pd.DataFrame(__log_records, columns=['from', 'to']).applymap(str)
-            df.to_feather(log_file)
-            __log_records = list()
-        else:
-            part_res, *_ = args
-            for r in list(res):
-                __log_records.append([part_res, r])
-        return res
-
-    if enabled:
-        return wrapper
-    else:
-        return method
-
-
-@parametrized
-def dump_results(method, enabled, log_file):
+def logged(method, is_stop=False):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         res = method(self, *args, **kwargs)
-        pickle.dump(res, open(log_file, "wb"))
+        if QBEE_CONFIG.logging_enabled:
+            global __log_records
+            if is_stop:
+                df = pd.DataFrame(__log_records, columns=['from', 'to']).applymap(str)
+                df.to_feather(QBEE_CONFIG.logging_file)
+                __log_records = list()
+            else:
+                part_res, *_ = args
+                for r in list(res):
+                    __log_records.append([part_res, r])
         return res
 
-    if enabled:
-        return wrapper
-    else:
-        return method
+    return wrapper
+
+
+def dump_results(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        res = method(self, *args, **kwargs)
+        if QBEE_CONFIG.logging_enabled:
+            pickle.dump(res, open(QBEE_CONFIG.quad_systems_file, "wb"))
+        return res
+
+    return wrapper
 
 
 @parametrized
@@ -228,6 +228,7 @@ def top_priority():
         handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
         win32process.SetPriorityClass(handle, win32process.REALTIME_PRIORITY_CLASS)
 
+
 def Lie_derivative_on_dicts(monom, vector_field):
     result = dict()
     for i in range(len(monom)):
@@ -241,7 +242,8 @@ def Lie_derivative_on_dicts(monom, vector_field):
     return result
 
 
-def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple], new_var_name='z_', start_new_vars_with=0):
+def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tuple],
+                         new_var_name='z_', start_new_vars_with=0):
     n = len(polynomials)
     system_dicts = [p.to_dict() for p in polynomials]
     vector_field = {i: p for i, p in enumerate(system_dicts)}
