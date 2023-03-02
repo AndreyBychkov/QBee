@@ -99,6 +99,7 @@ def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Ex
 
 def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | EquationSystem,
                input_der_orders=None,
+               input_free=False,
                conditions: Collection["SystemCondition"] = (),
                calc_upper_bound=True,
                generation_strategy=default_generation,
@@ -146,6 +147,11 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
     if isinstance(poly_system, EquationSystem):
         if not poly_system.is_polynomial():
             raise Exception("Nonpolynomial system is passed to `quadratize` function.")
+        if input_free is not None:
+            if input_free:
+                input_der_orders = {var: 0 for var in poly_system.variables.input if "'" not in str(var)}
+            else:
+                input_der_orders = {var: 1 for var in poly_system.variables.input if "'" not in str(var)}
         poly_equations, excl_inputs, all_inputs = poly_system.to_poly_equations(input_der_orders)
         without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
         pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
