@@ -12,6 +12,7 @@ from .quadratization import quadratize, polynomialize_and_quadratize, BranchAndB
     pruning_by_best_nvars, pruning_by_elapsed_time, pruning_by_nodes_without_quadratization_found, \
     default_pruning_rules, \
     without_variables
+from .dimension_agnostic import quadratize_dimension_agnostic
 from .selection import *
 from .printer import print_qbee
 
