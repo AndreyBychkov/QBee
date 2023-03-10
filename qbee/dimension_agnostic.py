@@ -27,6 +27,7 @@ def quadratize_dimension_agnostic(system: list[(sp.Symbol, sp.Expr)], non_duplic
              for i in range(len(DA_GRAPH)):
                  odesubs[i][Df] = sum([odesubs[j][f] for j in DA_GRAPH[i]])
 
+    # constructing the system from Proposition 4.7
     ode_system = []
     for lhs, rhs in system:
         if lhs in non_duplicated_vars:
@@ -34,7 +35,21 @@ def quadratize_dimension_agnostic(system: list[(sp.Symbol, sp.Expr)], non_duplic
         for i in range(len(DA_GRAPH)):
             ode_system.append((lhs.subs(odesubs[i]), rhs.subs(odesubs[i])))
    
+    # computing ODE quadratization
     print(ode_system)
     quadr_system = quadratize(ode_system, generation_strategy=generation_semidiscretized)
     quadr_system.print()
 
+    # extracting dimension-agnostic quadratization
+    da_new_vars = []
+    uncoupled = {sp.symbols(str_qbee(v)) : sp.symbols(str_qbee(k)) for k, v in odesubs[0].items()}
+    coupled = {sp.symbols(str_qbee(v)) : sp.symbols(str_qbee(k) + "_tilda") for k, v in odesubs[1].items()}
+    non_duplicated = {sp.symbols(str_qbee(v)) for v in non_duplicated_vars}
+    for eq in quadr_system.introduced_variables:
+        new_var = eq.rhs
+        if new_var.free_symbols.issubset(uncoupled.keys() | non_duplicated):
+            da_new_vars.append(new_var.subs(uncoupled))
+        elif new_var.free_symbols.issubset(uncoupled.keys() | non_duplicated | coupled.keys()) and not new_var.free_symbols.issubset(non_duplicated | coupled.keys()):
+            da_new_vars.append(new_var.subs(uncoupled | coupled))
+
+    return da_new_vars
