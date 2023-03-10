@@ -31,6 +31,9 @@ def multivariable_functions(names, args, *, laurent=True, **kwargs):
         return [f(*args) for f in funcs]
     return funcs(*args)
 
+class Parameter(sp.Symbol):
+    pass
+
 
 def parameters(names, **kwargs):
     """Parameter variables in differential equations. The syntax is identical to `sympy.symbols`_.
@@ -41,6 +44,8 @@ def parameters(names, **kwargs):
         .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
         """
     return sp.symbols(names, cls=Parameter, **kwargs)
+
+
 class Config:
     def __init__(self, progress_bar_enabled=True,
                  logging_enabled=False,

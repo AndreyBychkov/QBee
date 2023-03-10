@@ -14,10 +14,6 @@ from .util import *
 from .printer import str_qbee
 
 
-class Parameter(sp.Symbol):
-    pass
-
-
 class VariablesHolder:
     """
     Class that manages variable storage.
