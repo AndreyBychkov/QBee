@@ -84,6 +84,7 @@ def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Ex
 
 def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | EquationSystem,
                input_der_orders=None,
+               input_free=False,
                conditions: Collection["SystemCondition"] = (),
                calc_upper_bound=True,
                generation_strategy=default_generation,
@@ -131,6 +132,11 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
     if isinstance(poly_system, EquationSystem):
         if not poly_system.is_polynomial():
             raise Exception("Nonpolynomial system is passed to `quadratize` function.")
+        if input_free is not None:
+            if input_free:
+                input_der_orders = {var: 0 for var in poly_system.variables.input if "'" not in str(var)}
+            else:
+                input_der_orders = {var: 1 for var in poly_system.variables.input if "'" not in str(var)}
         poly_equations, excl_inputs, all_inputs = poly_system.to_poly_equations(input_der_orders)
         without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
         pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
@@ -338,7 +344,7 @@ class QuadratizationResult:
             self._excl_ders.extend(derivatives(variables))
 
     def print(self, str_function=str_qbee, with_introduced_variables=True):
-        intr_vars_str = '\n'.join([str_function(eq) for eq in self.introduced_variables])
+        intr_vars_str = "Introduced variables:\n" + '\n'.join([str_function(eq) for eq in self.introduced_variables])
         equations_str = '\n'.join([
             str_function(eq) for eq in self.equations if eq.lhs not in self._excl_ders
         ])
