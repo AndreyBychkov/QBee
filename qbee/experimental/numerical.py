@@ -59,13 +59,10 @@ def to_odeint_quadr(res: QuadratizationResult,
     inputs_sym = {sp.Symbol(str_qbee(k)): v for k, v in inputs.items()}
 
     states_sym = {sp.Symbol(str_qbee(k)): v for k, v in state_values.items()}
-    poly_subs = {k: v.subs(states_sym) for k, v in res.polynomialization._substitution_equations.items()}
+    poly_subs = {k: v.subs({**states_sym, **param_subs}) for k, v in res.polynomialization._substitution_equations.items()} \
+        if res.polynomialization else dict()
 
-    base_name = res.polynomialization.variables.base_var_name
-    quad_start_index = res.polynomialization.variables.start_new_vars_with + \
-                       len(res.polynomialization.variables.generated)
-    quad_vars_lhs = sp.symbols(
-        f"{base_name}{{{quad_start_index}:{quad_start_index + res.quadratization.new_vars_count()}}}")
+    quad_vars_lhs = res._quad_variables
     quad_vars_rhs = [tuple_to_monom(m, res.quadratization.gen_symbols) for m in res.quadratization.introduced_vars]
     # Backward compatibility to Python 3.8 and less. Should be states_sym | poly_subs
     quad_subs = {k: v.subs({**states_sym, **poly_subs}) for k, v in zip(quad_vars_lhs, quad_vars_rhs)}
@@ -80,3 +77,12 @@ def to_odeint_quadr(res: QuadratizationResult,
                 if eq.lhs not in res._excl_ders]
 
     return partial(odeint, func, list(state_subs.values()))
+
+
+def generate_inputs_derivatives_subs(res: QuadratizationResult, inputs_sym: dict[sp.Symbol, sp.Expr]):
+    lhs = [eq.lhs for eq in res.equations]
+    inputs = []
+    reduce(lambda a, b: a.union(b), [eq.lhs.find(lambda e: "u" in str_qbee(e)) for eq in res.equations])
+
+def derivatives_for_input(lhs, input, derivaive):
+    pass
