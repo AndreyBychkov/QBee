@@ -5,7 +5,7 @@ from .util import *
 from .quadratization import *
 
 # The graph from Proposition 4.7
-DA_GRAPH = {0: {0, 1, 3}, 1: {1, 2}, 2: {2}, 3: {3}}
+DA_GRAPH = {0: {0, 1, 3}, 1: {1, 2}, 2: set(), 3: set()}
 
 
 def quadratize_dimension_agnostic(system: list[(sp.Symbol, sp.Expr)], 
