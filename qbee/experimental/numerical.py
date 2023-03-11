@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sympy as sp
+import re
 from examples import *
 from functools import partial
 from typing import Sequence
@@ -57,6 +58,7 @@ def to_odeint_quadr(res: QuadratizationResult,
     if inputs is None:
         inputs = dict()
     inputs_sym = {sp.Symbol(str_qbee(k)): v for k, v in inputs.items()}
+    inputs_ders_sym = generate_inputs_derivatives_subs(res, inputs_sym)
 
     states_sym = {sp.Symbol(str_qbee(k)): v for k, v in state_values.items()}
     poly_subs = {k: v.subs({**states_sym, **param_subs}) for k, v in res.polynomialization._substitution_equations.items()} \
@@ -70,19 +72,28 @@ def to_odeint_quadr(res: QuadratizationResult,
     # state_subs = states_sym | poly_subs | quad_subs
     state_subs = {**states_sym, **poly_subs, **quad_subs}
 
+    def eval_input_subs_at(t):
+        return {k: v.evalf(subs={INDEPENDENT_VARIABLE: t}) for k, v in {**inputs_sym, **inputs_ders_sym}.items()}
     def func(y, t, *args):
         vars_subs = dict(zip(state_subs.keys(), y))
-        inputs_subs = {k: v.evalf(subs={INDEPENDENT_VARIABLE: t}) for k, v in inputs_sym.items()}
+        inputs_subs = eval_input_subs_at(t)
         return [eq.rhs.as_expr().evalf(subs={**vars_subs, **param_subs, **inputs_subs}) for eq in res.equations
                 if eq.lhs not in res._excl_ders]
 
-    return partial(odeint, func, list(state_subs.values()))
+    inputs_at_0 = eval_input_subs_at(0)
+    return partial(odeint, func, [v.evalf(subs={**inputs_at_0, INDEPENDENT_VARIABLE: 0.0})
+                                  if isinstance(v, sp.Expr) else v
+                                  for v in state_subs.values()])
 
 
-def generate_inputs_derivatives_subs(res: QuadratizationResult, inputs_sym: dict[sp.Symbol, sp.Expr]):
+def generate_inputs_derivatives_subs(res: QuadratizationResult, inputs_sym: dict[sp.Symbol, sp.Expr]) -> dict:
     lhs = [eq.lhs for eq in res.equations]
-    inputs = []
-    reduce(lambda a, b: a.union(b), [eq.lhs.find(lambda e: "u" in str_qbee(e)) for eq in res.equations])
+    inputs_ders = [apply_derivative(subs, get_input_derivatives(lhs, inp)) for inp, subs in inputs_sym.items()]
+    return reduce(lambda a, b: {**a, **b}, inputs_ders, dict())
 
-def derivatives_for_input(lhs, input, derivaive):
-    pass
+def apply_derivative(inp_subs: sp.Expr, ders: list[sp.Symbol]) -> dict[sp.Symbol, sp.Expr]:
+    return {du: inp_subs.diff(INDEPENDENT_VARIABLE, str_qbee(du).count('\'')) for du in ders}
+
+
+def get_input_derivatives(symbols: list[sp.Symbol], inp: sp.Symbol):
+    return [s for s in symbols if re.match(rf"^{inp}\'+$", str_qbee(s))]
