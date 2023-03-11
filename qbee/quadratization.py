@@ -17,12 +17,10 @@ from .printer import str_qbee
 
 
 def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Expr)],
-                                 input_der_orders=None,
+                                 input_free=False, input_der_orders=None,
                                  conditions: Collection["SystemCondition"] = (),
-                                 polynomialization_upper_bound=10,
-                                 calc_upper_bound=True,
-                                 generation_strategy=default_generation,
-                                 scoring: Scoring = default_scoring,
+                                 polynomialization_upper_bound=10, calc_upper_bound=True,
+                                 generation_strategy=default_generation, scoring: Scoring = default_scoring,
                                  pruning_functions: Collection["Pruning"] | None = None,
                                  new_vars_name="w_", start_new_vars_with=0) -> QuadratizationResult | None:
     """
@@ -70,7 +68,7 @@ def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Ex
         input_der_orders = dict()
     poly_system = polynomialize(system, polynomialization_upper_bound,
                                 new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
-    quad_result = quadratize(poly_system, input_der_orders=input_der_orders,
+    quad_result = quadratize(poly_system, input_free=input_free, input_der_orders=input_der_orders,
                              conditions=conditions,
                              calc_upper_bound=calc_upper_bound,
                              generation_strategy=generation_strategy, scoring=scoring,
@@ -121,8 +119,6 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
         z{2}' = z{1}*z{2} + z{2}**2
 
     """
-    if input_der_orders is None:
-        input_der_orders = dict()
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
 
@@ -132,11 +128,13 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
     if isinstance(poly_system, EquationSystem):
         if not poly_system.is_polynomial():
             raise Exception("Nonpolynomial system is passed to `quadratize` function.")
-        if input_free is not None:
+
+        if input_der_orders is None:
             if input_free:
-                input_der_orders = {var: 0 for var in poly_system.variables.input if "'" not in str(var)}
+                input_der_orders = {var: 0 for var in poly_system.variables.input if "'" not in str_qbee(var)}
             else:
-                input_der_orders = {var: 1 for var in poly_system.variables.input if "'" not in str(var)}
+                input_der_orders = {var: 1 for var in poly_system.variables.input if "'" not in str_qbee(var)}
+
         poly_equations, excl_inputs, all_inputs = poly_system.to_poly_equations(input_der_orders)
         without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
         pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)

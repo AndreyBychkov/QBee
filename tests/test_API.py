@@ -31,7 +31,7 @@ def test_polynomialize_and_quadratize_list_input():
     res = polynomialize_and_quadratize([
         (x, sp.sin(k * x + u) * y),
         (y, p * sp.cos(y))
-    ], {u: 1})
+    ], input_der_orders={u: 1})
     assert res is not None
 
 
@@ -42,7 +42,7 @@ def test_polynomialize_and_quadratize_EquationSystem_input():
         x: sp.sin(k * x + u) * y,
         y: p * sp.cos(y)
     }, [p, k], [u])
-    res = polynomialize_and_quadratize(system, {u: 1})
+    res = polynomialize_and_quadratize(system, input_der_orders={u: 1})
     assert res is not None
 
 
