@@ -63,8 +63,9 @@ def generation_semidiscretized(system, excl_vars=None):
             if '_' not in str(s):
                 system.no_class.add(i)
                 continue
-            class_ind = int(str(s).split("_")[-1])
-            var_name = "_".join(str(s).split("_")[:-1])
+            var_split = str(s).split("_")
+            class_ind = int(var_split[-1])
+            var_name = "_".join(var_split[:-1])
             if class_ind not in system.equivalence_classes:
                 system.equivalence_classes[class_ind] = dict()
             system.equivalence_classes[class_ind][var_name] = i
@@ -84,11 +85,6 @@ def generation_semidiscretized(system, excl_vars=None):
                 for cl in classes:
                     if cl != c:
                         system.graph[c].add(cl)
-
-        print(system.equivalence_classes)
-        print(system.ind_to_class)
-        print(system.ind_to_var)
-        print(system.graph)
 
     # producing sets of new variables
     decomposition = raw_generation(system, excl_vars)

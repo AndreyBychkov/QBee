@@ -14,10 +14,6 @@ from .util import *
 from .printer import str_qbee
 
 
-class Parameter(sp.Symbol):
-    pass
-
-
 class VariablesHolder:
     """
     Class that manages variable storage.
@@ -175,7 +171,7 @@ class EquationSystem:
 
     def is_polynomial(self) -> bool:
         self._fill_poly_system()  # possible performance issue
-        return all(self._poly_equations.values())
+        return all([x is not None for x in self._poly_equations.values()])
 
     def add_new_var(self, substitution: sp.Expr, new_var: sp.Symbol | None = None) -> None:
         """
@@ -317,6 +313,8 @@ signal.signal(signal.SIGINT, signal_handler)
 
 def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSystem:
     lhs, rhs = zip(*system)
+    # making constant right-hand sides symbolic expressions
+    rhs = [sp.sympify(x) for x in rhs]
     params = set(reduce(lambda l, r: l | r, [eq.atoms(Parameter) for eq in rhs]))
     funcs = set(reduce(lambda l, r: l | r, [eq.atoms(AppliedUndef) for eq in rhs]))
     lhs_args = set(sp.flatten([eq.args for eq in lhs if not isinstance(eq, sp.Derivative)]))
