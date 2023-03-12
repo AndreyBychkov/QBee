@@ -11,5 +11,5 @@ if __name__ == '__main__':
         (theta, theta_diff),
         (w1, gamma * w1 / theta**2 * theta_diff)
     ]
-    new_vars = quadratize_dimension_agnostic(system, non_duplicated_vars=[u])
+    new_vars = quadratize_dimension_agnostic(system)
     print(new_vars)

@@ -42,11 +42,11 @@ def quadratize_dimension_agnostic(system: list[(sp.Symbol, sp.Expr)],
         # checking linearity
         for Dg in Dfuncs:
             if any([e[1].diff(Df).diff(Dg) != 0 for e in system]):
-                error("The family is not linear with respect to the coupling")
+                raise Exception("The family is not linear with respect to the coupling")
         # generating the substitution
         f = [F for F in all_funcs if str_qbee(F) == str_qbee(Df)[1:]]
         if len(f) == 0:
-            error(f"Function {str_qbee(Df)} was interpreted as coupling but the corresponding state {str_qbee(Df)[1:]} was not found")
+            raise Exception(f"Function {str_qbee(Df)} was interpreted as coupling but the corresponding state {str_qbee(Df)[1:]} was not found")
         f = f[0]
         for i in range(len(DA_GRAPH)):
             odesubs[i][Df] = sum([odesubs[j][f] for j in DA_GRAPH[i]])
