@@ -8,6 +8,43 @@ from typing import Iterable, Union, Tuple, List, Dict, Optional
 from functools import reduce, wraps
 from .printer import str_qbee
 
+INDEPENDENT_VARIABLE = sp.Symbol("_t")
+
+def functions(names, *, laurent=True, **kwargs):
+    """Dependent and input variables in differential equations. The syntax is identical to `sympy.symbols`_.
+
+    Examples
+        >>> x, y, z = functions('x, y, z')
+
+    .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
+    """
+    t = INDEPENDENT_VARIABLE
+    funcs = sp.symbols(names, cls=sp.Function, is_laurent=laurent, **kwargs)
+    if isinstance(funcs, Iterable):
+        return [f(t) for f in funcs]
+    return funcs(t)
+
+
+def multivariable_functions(names, args, *, laurent=True, **kwargs):
+    funcs = sp.symbols(names, cls=sp.Function, is_laurent=laurent, **kwargs)
+    if isinstance(funcs, Iterable):
+        return [f(*args) for f in funcs]
+    return funcs(*args)
+
+class Parameter(sp.Symbol):
+    pass
+
+
+def parameters(names, **kwargs):
+    """Parameter variables in differential equations. The syntax is identical to `sympy.symbols`_.
+
+        Examples
+            >>> p, k = parameters('p, k')
+
+        .. _sympy.symbols: https://docs.sympy.org/latest/modules/core.html?highlight=symbols#sympy.core.symbol.symbols
+        """
+    return sp.symbols(names, cls=Parameter, **kwargs)
+
 
 class Config:
     def __init__(self, progress_bar_enabled=True,
