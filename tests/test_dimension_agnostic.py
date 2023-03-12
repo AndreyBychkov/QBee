@@ -11,7 +11,7 @@ def test_basic():
 def test_scalar_input():
     x, Dx, u = functions("x Dx u")
     system = [(x, x * u * Dx)]
-    new_vars = quadratize_dimension_agnostic(system, non_duplicated_vars=[u])
+    new_vars = quadratize_dimension_agnostic(system)
     assert len(new_vars) == 1
     x, u = sp.symbols("x u")
     assert new_vars[0] == x * u
@@ -20,7 +20,7 @@ def test_scalar_input_free():
     x, Dx, u = functions("x Dx u")
     a = parameters("a")
     system = [(x, x**2 * Dx + a * u * x)]
-    new_vars = quadratize_dimension_agnostic(system, non_duplicated_vars=[u], input_free=True)
+    new_vars = quadratize_dimension_agnostic(system, input_free=True)
     assert len(new_vars) == 2
     x, xt = sp.symbols("x x_tilda")
     assert set(new_vars) == {x**2, x * xt}

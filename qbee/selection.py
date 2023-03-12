@@ -63,10 +63,9 @@ def generation_semidiscretized(system, excl_vars=None):
             if '_' not in str(s):
                 system.no_class.add(i)
                 continue
-            # stripping \' to handle derivatives of inputs
             var_split = str(s).split("_")
-            class_ind = int(var_split[-1].strip('\''))
-            var_name = "_".join(var_split[:-1]) + '\'' * var_split[-1].count('\'')
+            class_ind = int(var_split[-1])
+            var_name = "_".join(var_split[:-1])
             if class_ind not in system.equivalence_classes:
                 system.equivalence_classes[class_ind] = dict()
             system.equivalence_classes[class_ind][var_name] = i
