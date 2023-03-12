@@ -268,14 +268,18 @@ class EquationSystem:
         non_polynomials = find_nonpolynomial_terms(expr, set(self.variables.state) | self.variables.input)
         return len(filter_laurent_monoms(self, non_polynomials)) == 0
 
-    def print(self, str_func=str_qbee, use_poly_equations=True):
+    def print(self, str_func=str_qbee, use_poly_equations=True, with_introduced_variables=True):
         """
         Prints equations
 
         :param str_func: function that stringify Sympy objects.
          Refer to https://docs.sympy.org/latest/tutorials/intro-tutorial/printing.html
         :param use_poly_equations: if True prints polynomial equations. Otherwise, prints equations without substitutions
+        :param with_introduced_variables: if True prints introduced variables
         """
+        if with_introduced_variables:
+            self.print_substitutions(str_func)
+            print()
 
         equations = self.polynomial_equations if use_poly_equations else self.equations
         print("\n".join(map(str_func, equations)))
@@ -284,6 +288,7 @@ class EquationSystem:
         return '\n'.join(map(str_qbee, self.substitution_equations))
 
     def print_substitutions(self, str_func=str_qbee):
+        print("Introduced variables:")
         print('\n'.join(map(str_func, self.substitution_equations)))
 
     def __str__(self):

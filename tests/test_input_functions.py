@@ -90,7 +90,7 @@ def test_numerical():
     system = [
         (x, p * sp.sin(x) + u),
     ]
-    res = polynomialize_and_quadratize(system, {u: 0})
+    res = polynomialize_and_quadratize(system, input_der_orders={u: 0})
     print(res)
 
     ts = np.linspace(0, 100, 10000)

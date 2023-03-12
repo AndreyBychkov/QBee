@@ -15,6 +15,6 @@ if __name__ == '__main__':
     no_quad_pruning = partial(pruning_by_nodes_without_quadratization_found, nodes_processed=100)
     # {T: 1} means than T can have a derivative of order at most one => T'
     quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 1},
-                                                    pruning_functions=[no_quad_pruning] + default_pruning_rules)
+                                                pruning_functions=[no_quad_pruning] + default_pruning_rules)
     if quadr_system:
         print(quadr_system)

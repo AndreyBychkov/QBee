@@ -37,8 +37,8 @@ def polynomialize_and_quadratize_pde(start_system: list[(sp.Symbol, sp.Expr)],
         #         print_qbee(eq)
         #     print()
 
-        quad_res = polynomialize_and_quadratize(system, input_orders_with_pde, conditions,
-                                                polynomialization_upper_bound,
+        quad_res = polynomialize_and_quadratize(system, input_der_orders=input_orders_with_pde, conditions=conditions,
+                                                polynomialization_upper_bound=polynomialization_upper_bound,
                                                 calc_upper_bound=calc_quadr_upper_bound,
                                                 generation_strategy=generation_strategy, scoring=scoring,
                                                 pruning_functions=pruning_functions, new_vars_name=new_vars_name,
