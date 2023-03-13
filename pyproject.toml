@@ -17,6 +17,7 @@ tqdm = "^4"
 memory_profiler = "*"
 pyarrow = "^10"
 ordered-set = "*"
+pygal = "^3.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -27,6 +28,7 @@ pyvis = "*"
 [tool.poetry.group.test.dependencies]
 pytest = "*"
 pytest-benchmark = "^4.0.0"
+pygal = "*"
 
 
 [build-system]
