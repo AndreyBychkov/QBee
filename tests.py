@@ -19,7 +19,7 @@ def platform_python():
 
 
 def benchmark_everything(save_results=True, make_histogram=True, sort_by="name", min_rounds=10, workers=1):
-    query = [f"{platform_python()} -m pytest",
+    query = [f"{platform_python()} -m pytest -v",
              "--benchmark-only",
              "--benchmark-group-by=param:ord",
              "--benchmark-warmup=on",
@@ -35,7 +35,7 @@ def benchmark_everything(save_results=True, make_histogram=True, sort_by="name",
 
 def tests():
     top_priority()
-    os.system(f'{platform_python()} -m pytest -m "not benchmark and not experimental and not expensive"')
+    os.system(f'{platform_python()} -m pytest -v -m "not benchmark and not experimental and not expensive"')
 
 
 def benchmarks():
