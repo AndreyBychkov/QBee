@@ -12,6 +12,7 @@ matplotlib = "^3.6.2"
 sympy = "^1.5.0"
 pandas = "^1"
 numpy = "^1"
+scipy = "^1"
 tqdm = "^4"
 memory_profiler = "*"
 pyarrow = "^10"
@@ -22,6 +23,10 @@ ordered-set = "*"
 networkx = "*"
 matplotlib = "*"
 pyvis = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+pytest-benchmark = "^4.0.0"
 
 
 [build-system]
@@ -34,3 +39,7 @@ markers = [
     "experimental: test for unstable features, may fail (deselect with '-m \"not experimental\"')",
     "expensive: slow tests which are needed mostly for important releases (deselect with '-m \"not experimental\"')"
 ]
+
+[tool.poetry.scripts]
+tests = "tests:tests"
+benchmarks = "tests:benchmarks"
