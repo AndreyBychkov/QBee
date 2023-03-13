@@ -43,5 +43,5 @@ markers = [
 ]
 
 [tool.poetry.scripts]
-tests = "tests:tests"
-benchmarks = "tests:benchmarks"
+tests = "tests:run_tests"
+benchmarks = "tests:run_benchmarks"
