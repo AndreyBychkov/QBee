@@ -33,15 +33,15 @@ def benchmark_everything(save_results=True, make_histogram=True, sort_by="name",
     os.system(" ".join(query))
 
 
-def tests():
+def run_tests():
     top_priority()
     os.system(f'{platform_python()} -m pytest -v -m "not benchmark and not experimental and not expensive"')
 
 
-def benchmarks():
+def run_benchmarks():
     top_priority()
     benchmark_everything()
 
 
 if __name__ == '__main__':
-    tests()
+    run_tests()
