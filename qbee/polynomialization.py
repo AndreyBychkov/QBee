@@ -4,14 +4,16 @@ import copy
 import math
 import signal
 import warnings
+import pickle
 import sympy as sp
-from functools import cached_property
+from sympy.polys.rings import PolyElement
+from functools import cached_property, reduce
 from sympy.core.function import AppliedUndef
 from sympy.polys.rings import PolyRing
-from typing import Iterator, Collection
+from typing import Iterator, Collection, Iterable
 from ordered_set import OrderedSet
-from .util import *
 from .printer import str_qbee
+from .util import make_derivative_symbol, generate_derivatives, key_from_value, Parameter, progress_bar, monom2PolyElem
 
 
 class VariablesHolder:
@@ -124,7 +126,7 @@ class EquationSystem:
         return [sp.Eq(make_derivative_symbol(dx), f) for dx, f in self._equations.items()]
 
     @property
-    def substitution_equations(self):
+    def introduced_variables(self) -> list[sp.Eq]:
         return [sp.Eq(x, f) for x, f in self._substitution_equations.items()]
 
     @property
@@ -136,7 +138,6 @@ class EquationSystem:
         inputs_ord_sym = {var: 0 for var in self.variables.input if "'" not in str(var)}  # to remove derivatives
         inputs_ord_sym.update({sp.Symbol(str_qbee(k)): v for k, v in inputs_ord.items()})
         d_inputs = generate_derivatives(inputs_ord_sym)
-        # TODO: Make explicit names for the highest order derivatives instead of 0
         coef_field = sp.FractionField(sp.QQ, list(map(str, self.variables.parameter)))
         unique_flattened_inputs = list(OrderedSet(sp.flatten(d_inputs)))
         # noinspection PyTypeChecker
@@ -285,11 +286,11 @@ class EquationSystem:
         print("\n".join(map(str_func, equations)))
 
     def substitution_equations_str(self):
-        return '\n'.join(map(str_qbee, self.substitution_equations))
+        return '\n'.join(map(str_qbee, self.introduced_variables))
 
     def print_substitutions(self, str_func=str_qbee):
         print("Introduced variables:")
-        print('\n'.join(map(str_func, self.substitution_equations)))
+        print('\n'.join(map(str_func, self.introduced_variables)))
 
     def __str__(self):
         equations = self.polynomial_equations if self.is_polynomial() else self.equations
@@ -299,19 +300,19 @@ class EquationSystem:
         return len(self._equations)
 
 
-ALGORITHM_INTERRUPTED = False
+POLY_ALGORITHM_INTERRUPTED = False
 
 
 def signal_handler(sig_num, frame):
-    global ALGORITHM_INTERRUPTED
+    global POLY_ALGORITHM_INTERRUPTED
     print("The algorithm has been interrupted. Returning the current best.")
-    ALGORITHM_INTERRUPTED = True
+    POLY_ALGORITHM_INTERRUPTED = True
 
 
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSystem:
+def eq_list_to_eq_system(system: list[(sp.Symbol, sp.Expr)]) -> EquationSystem:
     lhs, rhs = zip(*system)
     # making constant right-hand sides symbolic expressions
     rhs = [sp.sympify(x) for x in rhs]
@@ -344,20 +345,42 @@ def eq_list_to_eq_system(system: List[Tuple[sp.Symbol, sp.Expr]]) -> EquationSys
 
 
 def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bound=10,
-                  new_var_name="w_", start_new_vars_with=0) -> EquationSystem:
+                  new_vars_name="w_", start_new_vars_with=0) -> EquationSystem:
     """
-    Transforms the system into polynomial form using variable substitution techniques.
+    Transforms a system of nonlinear ODEs to a system of polynomial ODEs.
 
-    :param system: non-linear ODEs system
-    :param upper_bound: a maximum number of new variables that algorithm can introduce.
-     If infinite, the algorithm may never stop.
-    :param new_var_name: base name for new variables. Example: new_var_name='w' => w0, w1, w2, ...
-    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
+    :param system: system of equations in form [(X, f(X)), ...] where the left-hand side is derivatives of X.
+    :param upper_bound: how many new variables the polynomialization algorithm can introduce.
+    :param new_vars_name: base name for new variables. For example, new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w_3, w_4, ...
+    :return: a container of a polynomialized system and new variables introduced
 
+
+    Examples:
+        >>> from qbee import *
+        >>> from sympy import exp, sin
+        >>> x = functions("x")
+        >>> polynomialize([(x, sp.exp(x) + sp.exp(2 * x))]).print()
+        Introduced variables:
+        w_0 = exp(x)
+
+        x' = w_0**2 + w_0\n
+        w_0' = w_0*(w_0**2 + w_0)\n
+
+        >>> x, u = functions("x, u")
+        >>> p = parameters("p")
+        >>> polynomialize([(x, p* sp.sin(x * u))]).print()
+        Introduced variables:
+        w_0 = cos(u*x)
+        w_1 = sin(u*x)
+
+        x' = p*w_1 \n
+        w_0' = -p*u*w_1**2 - u'*w_1*x\n
+        w_1' = p*u*w_0*w_1 + u'*w_0*x\n
     """
     if not isinstance(system, EquationSystem):
         system = eq_list_to_eq_system(system)
-    system.variables.base_var_name = new_var_name
+    system.variables.base_var_name = new_vars_name
     system.variables.start_new_vars_with = start_new_vars_with
     nvars, opt_system, traversed = poly_algo_step(system, upper_bound, math.inf)
     return make_laurent(system, opt_system)
@@ -387,7 +410,7 @@ def poly_algo_step(part_res: EquationSystem, upper_bound, best_nvars) -> (int, E
     if part_res.is_polynomial():
         return len(part_res.variables.generated), part_res, 1
     if len(part_res.variables.generated) >= best_nvars - 1 or \
-            len(part_res.variables.generated) >= upper_bound or ALGORITHM_INTERRUPTED:
+            len(part_res.variables.generated) >= upper_bound or POLY_ALGORITHM_INTERRUPTED:
         return math.inf, None, 1
 
     traversed_total = 1
@@ -427,7 +450,7 @@ def available_substitutions(system: EquationSystem) -> set[sp.Expr]:
     subs = [find_nonpolynomial_terms(eq.rhs, set(system.variables.state) | system.variables.input)
             for eq in non_poly_equations]
     non_empty_subs = filter(lambda s: s, subs)
-    system_subs_rhs = [eq.rhs for eq in system.substitution_equations]
+    system_subs_rhs = [eq.rhs for eq in system.introduced_variables]
     unused_subs = {s for s in sp.flatten(non_empty_subs)
                    if not (s in system_subs_rhs or (s.is_Pow and find_pow(system_subs_rhs, s) is not None))}
     return filter_laurent_monoms(system, unused_subs)

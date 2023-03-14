@@ -4,6 +4,7 @@
 import math
 from itertools import combinations
 
+
 def has_C4(G):
     common_heighbours = set()
     for neighbours in G:
@@ -17,6 +18,7 @@ def has_C4(G):
                 common_heighbours.add(pair)
     return False
 
+
 def graph_from_edges(n, edges):
     G = [[] for _ in range(n)]
     for i, j in edges:
@@ -24,6 +26,7 @@ def graph_from_edges(n, edges):
         if i != j:
             G[j].append(i)
     return G
+
 
 def max_num_edges(n):
     result = []
@@ -60,6 +63,7 @@ def max_num_edges(n):
         result.append((best_so_far, witness))
 
     return result
+
 
 ####################
 

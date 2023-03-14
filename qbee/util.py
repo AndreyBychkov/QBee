@@ -10,6 +10,7 @@ from .printer import str_qbee
 
 INDEPENDENT_VARIABLE = sp.Symbol("_t")
 
+
 def functions(names, *, laurent=True, **kwargs):
     """Dependent and input variables in differential equations. The syntax is identical to `sympy.symbols`_.
 
@@ -30,6 +31,7 @@ def multivariable_functions(names, args, *, laurent=True, **kwargs):
     if isinstance(funcs, Iterable):
         return [f(*args) for f in funcs]
     return funcs(*args)
+
 
 class Parameter(sp.Symbol):
     pass

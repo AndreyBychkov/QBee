@@ -10,8 +10,8 @@ if __name__ == '__main__':
     system = [
         (x, p * sp.sin(x) + u),
     ]
-    res = polynomialize_and_quadratize(system, input_der_orders={u: 0})
-    print(res)
+    res = polynomialize_and_quadratize(system, input_free=True)
+    res.print()
 
     ts = np.linspace(0, 100, 10000)
     t = INDEPENDENT_VARIABLE

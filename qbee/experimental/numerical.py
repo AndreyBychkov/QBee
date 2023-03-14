@@ -8,6 +8,7 @@ from typing import Sequence
 from ..quadratization import QuadratizationResult
 from ..polynomialization import eq_list_to_eq_system
 from ..printer import str_qbee
+from ..util import tuple_to_monom
 from scipy.integrate import odeint
 
 

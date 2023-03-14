@@ -3,17 +3,19 @@ from __future__ import annotations
 import copy
 import math
 import signal
+import pickle
 import numpy as np
 import sympy as sp
+from sympy.polys.rings import PolyElement
 from typing import Set, Collection
 from ordered_set import OrderedSet
 from functools import partial
+from time import time
 from .selection import *
-from .util import *
+from .util import progress_bar, dump_results, dominated, monom2PolyElem, apply_quadratization, monom2str, derivatives, \
+    logged
 from .polynomialization import EquationSystem, polynomialize, eq_list_to_eq_system
 from .printer import str_qbee
-
-
 
 
 def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Expr)],
@@ -26,48 +28,69 @@ def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Ex
     """
     Polynomialize and then quadratize a system of ODEs with the continuous right-hand side.
 
-    :param system: system of equations in the form [(X, f(X)), ...] where the left-hand side is the derivatives.
-    :param input_der_orders: mapping of input variables to maximum order of their derivatives. For example {T: 2} => T in C2
-    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
-    :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
-    :return: quadratized system or None if there is none found
+    :param system: system of equations in form [(X, f(X)), ...] where the left-hand side is derivatives of X.
+    :param input_free: if True the function will not introduce derivatives of input functions.
+    :param input_der_orders: a mapping of input variables to maximum order of their derivatives.
+     For example, {T: 2} => T' and T'' are introduced.
+    :param conditions: a list of predicates PolynomialSystem -> bool the quadratized systems must comply with.
+     For example, use `partial(without_variables, [x1, x2])` to stop the algorithm from using x1 and x2 in new varaibles.
+    :param polynomialization_upper_bound: how many new variables the polynomialization algorithm can introduce.
+    :param calc_upper_bound: if True a non-optimal quadratization will be quickly found and used as upper bound.
+     Disable if you already know an upper bound and add it in pruning_functions via `pruning_by_vars_number`.
+    :param generation_strategy: a function for proposing new variables during quadratization evaluation.
+    :param pruning_functions: a predicate indicating should the algorithm drop a current branch.
+     Unlike `conditions` parameter, prunings apply to each intermediate result, not just to quadratizations.
+     Check functions starting with `pruning_by` to see examples.
+    :param new_vars_name: base name for new variables. For example, new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w_3, w_4, ...
+    :return: a container of a quadratized system and new variables introduced or None if there is nothing found
 
     Example:
         >>> from qbee import *
         >>> from sympy import exp
         >>> x, y, u = functions("x, y, u")
         >>> p = parameters("p")
-        >>> quad_res = polynomialize_and_quadratize([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)],input_der_orders={u: 0},new_vars_name='z',start_new_vars_with=1)
-        >>> print(quad_res)
-        Variables introduced in polynomialization:
-        z{1} = exp(-p*x)
-        z{2} = 1/(z{1} + 1)
-        z{3} = exp(y)
-        ==================================================
-        Quadratization result
-        ==================================================
-        Number of introduced variables: 4
-        Nodes traversed: 116
+        >>> polynomialize_and_quadratize([(x, y / (1 + exp(-p * x))), (y, x * exp(y) + u)], input_free=True).print()
         Introduced variables:
-        z{4} = y*z{2}
-        z{5} = y*z{1}*z{2}**2
-        z{6} = z{1}*z{2}**2
-        z{7} = x*z{3}
-        x' = z{4}
-        y' = u + z{7}
-        z{1}' = -p*z{1}*z{4}
-        z{2}' = p*z{4}*z{6}
-        z{3}' = u*z{3} + z{3}*z{7}
-        u' = 0
-        z{4}' = p*z{4}*z{5} + u*z{2} + z{2}*z{7}
-        z{5}' = -p*z{4}*z{5} + 2*p*z{5}**2 + u*z{6} + z{6}*z{7}
-        z{6}' = -p*z{4}*z{6} + 2*p*z{5}*z{6}
-        z{7}' = u*z{7} + z{3}*z{4} + z{7}**2
+        w_0 = 1/(1 + exp(-p*x))
+        w_1 = exp(y)
+        w_2 = exp(-p*x)
+        w_3 = w_1*x
+        w_4 = w_0*y
+        w_5 = w_0**2*w_2*y
+        w_6 = w_0**2*w_2
+
+        x' = w_4\n
+        y' = u + w_3\n
+        w_0' = p*w_4*w_6\n
+        w_1' = u*w_1 + w_1*w_3\n
+        w_2' = -p*w_2*w_4\n
+        w_3' = u*w_3 + w_1*w_4 + w_3**2\n
+        w_4' = p*w_4*w_5 + u*w_0 + w_0*w_3\n
+        w_5' = -p*w_4*w_5 + 2*p*w_5**2 + u*w_6 + w_3*w_6\n
+        w_6' = -p*w_4*w_6 + 2*p*w_5*w_6\n
+
+        >>> polynomialize_and_quadratize([(x, y**3), (y, x**3)], new_vars_name="c_", start_new_vars_with=1).print()
+        Introduced variables:
+        c_1 = y**2
+        c_2 = x**2
+        c_3 = x*y
+
+        x' = c_1*y\n
+        y' = c_2*x\n
+        c_1' = 2*c_2*c_3\n
+        c_2' = 2*c_1*c_3\n
+        c_3' = c_1**2 + c_2**2\n
+
+        >>> upper_bound = partial(pruning_by_vars_number, nvars=10)
+        >>> res = polynomialize_and_quadratize([(x, x**2 * u)], input_free=True, pruning_functions=[upper_bound, *default_pruning_rules])
+        >>> print(res is None)
+        True
     """
     if input_der_orders is None:
         input_der_orders = dict()
     poly_system = polynomialize(system, polynomialization_upper_bound,
-                                new_var_name=new_vars_name, start_new_vars_with=start_new_vars_with)
+                                new_vars_name=new_vars_name, start_new_vars_with=start_new_vars_with)
     quad_result = quadratize(poly_system, input_free=input_free, input_der_orders=input_der_orders,
                              conditions=conditions,
                              calc_upper_bound=calc_upper_bound,
@@ -92,14 +115,22 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
     """
     Quadratize a system of ODEs with the polynomial right-hand side.
 
-    :param conditions:
-    :param poly_system: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
-     Left-hand side is given according to the definition of variables in sympy.ring.
-    :param pruning_functions: predicates that remove transformations from the search space
-    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
-    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
-    :return: quadratized system or None if there is none found
-
+    :param poly_system: system of polynomial equations in form [(X, p(X)), ...] where the left-hand side is derivatives of X.
+    :param input_free: if True the function will not introduce derivatives of input functions.
+    :param input_der_orders: a mapping of input variables to maximum order of their derivatives.
+     For example, {T: 2} => T' and T'' are introduced.
+    :param conditions: a list of predicates PolynomialSystem -> bool the quadratized systems must comply with.
+     For example, use `partial(without_variables, [x1, x2])` to stop the algorithm from using x1 and x2 in new varaibles.
+    :param calc_upper_bound: if True a non-optimal quadratization will be quickly found and used as upper bound.
+     Disable if you already know an upper bound and add it in pruning_functions via `pruning_by_vars_number`.
+    :param generation_strategy: a function for proposing new variables during quadratization evaluation.
+    :param scoring: an ordering function for new variables.
+    :param pruning_functions: a predicate indicating should the algorithm drop a current branch.
+     Unlike `conditions` parameter, prunings apply to each intermediate result, not just to quadratizations.
+     Check functions starting with `pruning_by` to see examples.
+    :param new_vars_name: base name for new variables. For example, new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w_3, w_4, ...
+    :return: a container of a quadratized system and new variables introduced or None if there is nothing found
     Example:
         >>> from sympy import ring, QQ
         >>> R, x, y = ring("x, y", QQ)
@@ -154,11 +185,12 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
                              pruning_functions=[pruning_by_best_nvars, *pruning_functions],
                              new_vars_name=new_vars_name,
                              start_new_vars_with=start_new_vars_with)
-    result.exclude_variables(all_inputs)
+    if result:
+        result.exclude_variables(all_inputs)
     return result
 
 
-def quadratize_poly(polynomials: List[PolyElement],
+def quadratize_poly(polynomials: list[PolyElement],
                     conditions: Collection["SystemCondition"] = (),
                     calc_upper_bound=True,
                     generation_strategy=default_generation,
@@ -169,32 +201,34 @@ def quadratize_poly(polynomials: List[PolyElement],
     """
     Quadratize a system of ODEs with the polynomial right-hand side.
 
-    :param conditions:
-    :param polynomials: List of polynomials that are the right-hand side of a system and are built from the elements of sympy.PolyRing.
-     Left-hand side is given according to the definition of variables in sympy.ring.
-    :param pruning_functions: predicates that remove transformations from the search space
-    :param new_vars_name: base name for new variables. Example: new_var_name='z' => z0, z1, z2, ...
-    :param start_new_vars_with: Initial index for new variables. Example: start_new_vars_with=3 => w3, w4, ...
-    :return: quadratized system or None if there is none found
+    :param polynomials: right-hand side of a system of polynomial ODEs, ordereded as in the variables in polynomials' Ring.
+     Example: Ring("x, y, z", ...) => x' = p_0, y' = p_1, z' = p_2
+    :param conditions: a list of predicates PolynomialSystem -> bool the quadratized systems must comply with.
+     For example, use `partial(without_variables, [x1, x2])` to stop the algorithm from using x1 and x2 in new varaibles.
+    :param calc_upper_bound: if True a non-optimal quadratization will be quickly found and used as upper bound.
+     Disable if you already know an upper bound and add it in pruning_functions via `pruning_by_vars_number`.
+    :param generation_strategy: a function for proposing new variables during quadratization evaluation.
+    :param scoring: an ordering function for new variables.
+    :param pruning_functions: a predicate indicating should the algorithm drop a current branch.
+     Unlike `conditions` parameter, prunings apply to each intermediate result, not just to quadratizations.
+     Check functions starting with `pruning_by` to see examples.
+    :param new_vars_name: base name for new variables. For example, new_var_name='z' => z0, z1, z2, ...
+    :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w_3, w_4, ...
+    :return: a container of a quadratized system and new variables introduced or None if there is nothing found
 
     Example:
         >>> from sympy import ring, QQ
         >>> R, x, y = ring("x, y", QQ)
-        >>> quad_res = quadratize([x**2 * y, x * y**3],new_vars_name='z',start_new_vars_with=1)
-        >>> print(quad_res)
-        ==================================================
-        Quadratization result
-        ==================================================
-        Number of introduced variables: 2
-        Nodes traversed: 16
+        >>> quad_res = quadratize_poly([x**2 * y, x * y**3])
+        >>> quad_res.print()
         Introduced variables:
-        z{1} = x*y**2
-        z{2} = x*y
-        x' = x*z{2}
-        y' = y*z{1}
-        z{1}' = 2*z{1}**2 + z{1}*z{2}
-        z{2}' = z{1}*z{2} + z{2}**2
+        w0 = x*y
+        w1 = x*y**2
 
+        x' = w0*x
+        y' = w1*y
+        w0' = w0**2 + w0*w1
+        w1' = w0*w1 + 2*w1**2
     """
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
@@ -207,7 +241,7 @@ def quadratize_poly(polynomials: List[PolyElement],
     algo_res = algo.quadratize()
     if algo_res.system is not None:
         quad_eqs, eq_vars, quad_vars = apply_quadratization(polynomials, algo_res.system.introduced_vars,
-                                                 new_vars_name, start_new_vars_with)
+                                                            new_vars_name, start_new_vars_with)
         return QuadratizationResult(quad_eqs, eq_vars, quad_vars, algo_res)
     return None
 
@@ -215,7 +249,7 @@ def quadratize_poly(polynomials: List[PolyElement],
 # ------------------------------------------------------------------------------
 
 class PolynomialSystem:
-    def __init__(self, polynomials: List[PolyElement]):
+    def __init__(self, polynomials: list[PolyElement]):
         """
         polynomials - right-hand sides of the ODE system listed in the same order as
                       the variables in the polynomial ring
@@ -321,10 +355,12 @@ class AlgorithmResult:
 
 
 class QuadratizationResult:
-    def __init__(self, equations, variables, quad_variables, quad_res: AlgorithmResult, poly_res: EquationSystem | None = None):
+    def __init__(self, equations, variables, quad_variables, quad_res: AlgorithmResult,
+                 poly_res: EquationSystem | None = None):
         self.nodes_traversed = quad_res.nodes_traversed
         self.variables = variables
-        self.equations = [sp.Eq(lhs, rhs.as_expr(), evaluate=False) for lhs, rhs in zip(derivatives(variables), equations)]
+        self.equations = [sp.Eq(lhs, rhs.as_expr(), evaluate=False) for lhs, rhs in
+                          zip(derivatives(variables), equations)]
         self.quadratization = quad_res.system
         self.polynomialization = poly_res
         self._excl_ders = []
@@ -332,7 +368,7 @@ class QuadratizationResult:
 
     @property
     def introduced_variables(self) -> list:
-        poly_vars = self.polynomialization.substitution_equations if self.polynomialization else []
+        poly_vars = self.polynomialization.introduced_variables if self.polynomialization else []
         quad_rhs = [monom2PolyElem(v, self.quadratization.gen_symbols) for v in self.quadratization.introduced_vars]
         quad_vars = [sp.Eq(dx, fx) for dx, fx in zip(self._quad_variables, quad_rhs)]
         return poly_vars + quad_vars
@@ -453,13 +489,13 @@ class Algorithm:
 
 # ------------------------------------------------------------------------------
 
-ALGORITHM_INTERRUPTED = False
+QUAD_ALGORITHM_INTERRUPTED = False
 
 
 def signal_handler(sig_num, frame):
-    global ALGORITHM_INTERRUPTED
+    global POLY_ALGORITHM_INTERRUPTED
     print("The algorithm has been interrupted. Returning the current best.")
-    ALGORITHM_INTERRUPTED = True
+    QUAD_ALGORITHM_INTERRUPTED = True
 
 
 signal.signal(signal.SIGINT, signal_handler)
@@ -487,13 +523,13 @@ class BranchAndBound(Algorithm):
 
     @progress_bar(is_stop=False)
     def _bnb_step(self, part_res: PolynomialSystem, best_nvars) \
-            -> Tuple[Union[int, float], Optional[PolynomialSystem], int]:
+            -> Tuple[int | float, PolynomialSystem | None, int]:
         self._nodes_traversed += 1
         # The order of these blocks is important: pruning rules assume that
         # the input partial result is not a quadratization
         if part_res.is_quadratized() and all(cond(part_res) for cond in self._sys_cond):
             return part_res.new_vars_count(), part_res, 1
-        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)) or ALGORITHM_INTERRUPTED:
+        if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)) or QUAD_ALGORITHM_INTERRUPTED:
             return math.inf, None, 1
 
         traversed_total = 1
@@ -524,9 +560,9 @@ class BranchAndBound(Algorithm):
 
 def pruning_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
     """
-    Stops a search if it's computer 'nodes_processed' nodes.
+    Stops a search when the algorithm checks 'nodes_processed' nodes.
 
-    :examples
+    Example:
         >>> from functools import partial
         >>> pruning = partial(pruning_by_nodes_processed, nodes_processed=100000)
     """
@@ -536,6 +572,13 @@ def pruning_by_nodes_processed(algo: Algorithm, _: PolynomialSystem, *args, node
 
 
 def pruning_by_nodes_without_quadratization_found(algo: Algorithm, _: PolynomialSystem, *args, nodes_processed: int):
+    """
+    Stops a search when the algorithm can not find a quadratization after checking `nodes_processed` nodes.
+
+    Example:
+        >>> from functools import partial
+        >>> pruning = partial(pruning_by_nodes_without_quadratization_found, nodes_processed=1000)
+    """
     best_nvars = args[0]
     if best_nvars < math.inf:
         return False
@@ -546,12 +589,11 @@ def pruning_by_nodes_without_quadratization_found(algo: Algorithm, _: Polynomial
 
 def pruning_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, start_t, max_t):
     """
-    Stops a search if 'max_t' was exceeded.
+    Stops a search after 'max_t' seconds.
 
-    :examples
+    Example:
         >>> from functools import partial
         >>> pruning = partial(pruning_by_elapsed_time, start_t=time(), max_t=100) # 100 seconds
-
     """
     curr_t = time()
     if curr_t - start_t >= max_t:
@@ -582,6 +624,7 @@ def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
 
 
 def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *args):
+    """Internal optimization pruning rule. For details check Section 5.1 from https://arxiv.org/abs/2103.08013"""
     best_nvars, *_ = args
 
     degree_one_monomials = dict()
@@ -611,7 +654,8 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
     return False
 
 
-def pruning_by_declining_variables(a: Algorithm, part_res: PolynomialSystem, *args, excl_vars: List[Tuple]):
+def pruning_by_declining_variables(a: Algorithm, part_res: PolynomialSystem, *args, excl_vars: list[Tuple]):
+    """Prune out systems with `excl_vars` in quadratization"""
     return not without_variables(part_res, excl_vars)
 
 
@@ -631,6 +675,7 @@ MAX_C4_FREE_EDGES = [
 
 
 def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args):
+    """Internal optimization pruning rule. For details check Section 5.2 from https://arxiv.org/abs/2103.08013"""
     best_nvars, *_ = args
 
     no_C4_monoms = set()
@@ -683,6 +728,7 @@ def pruning_by_squarefree_graphs(a: Algorithm, part_res: PolynomialSystem, *args
 
 
 def pruning_by_domination(a: BranchAndBound, part_res: PolynomialSystem, *args, dominators):
+    """Internal optimization pruning rule that is used for a fast search of suboptimal quadratization."""
     if not part_res.introduced_vars:
         return False
 
@@ -697,7 +743,8 @@ default_pruning_rules = [
 
 # ------------------------------------------------------------------------------------------------
 
-def without_variables(part_res: PolynomialSystem, excl_vars: List[Tuple]):
+def without_variables(part_res: PolynomialSystem, excl_vars: list[Tuple]):
+    """Deny quadratizations which have `excl_vars`."""
     excl_indices = [np.argmax(v) for v in excl_vars]
     if any([any([v[i] != 0 for i in excl_indices]) for v in part_res.introduced_vars]):
         return False

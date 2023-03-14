@@ -32,4 +32,4 @@ if __name__ == '__main__':
     up_as_tuple = tuple([0] * (len(allvars) - 1) + [1])
     quadr_system = quadratize(eqs, generation_strategy=partial(generation_semidiscretized, excl_vars=[up_as_tuple]))
     if quadr_system:
-        print(quadr_system)
+        quadr_system.print()

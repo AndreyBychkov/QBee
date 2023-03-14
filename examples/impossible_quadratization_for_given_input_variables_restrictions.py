@@ -1,3 +1,4 @@
+import sympy as sp
 from qbee import *
 from functools import partial
 
@@ -17,4 +18,4 @@ if __name__ == '__main__':
     quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 1},
                                                 pruning_functions=[no_quad_pruning] + default_pruning_rules)
     if quadr_system:
-        print(quadr_system)
+        quadr_system.print()

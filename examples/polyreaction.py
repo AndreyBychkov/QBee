@@ -10,4 +10,4 @@ if __name__ == '__main__':
 
     quadr_system = polynomialize_and_quadratize(system, input_der_orders={Apsi: 0, Atheta: 0, u: 0})
     if quadr_system:
-        print(quadr_system)
+        quadr_system.print()

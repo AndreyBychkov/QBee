@@ -1,8 +1,7 @@
 import numpy as np
 from sympy.polys.monomials import monomial_deg, monomial_divides
-from typing import Tuple, Callable, Iterable, Any
-
-from .util import *
+from typing import Tuple, Callable
+from .util import get_decompositions
 
 Scoring = Callable[['PolynomialSystem'], int]
 
