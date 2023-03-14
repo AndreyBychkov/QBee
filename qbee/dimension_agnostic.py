@@ -3,6 +3,7 @@ from __future__ import annotations
 import sympy as sp
 from .util import *
 from .quadratization import *
+from .printer import str_qbee
 
 # The graph from Proposition 4.7
 DA_GRAPH = {0: {0, 1, 3}, 1: {1, 2}, 2: {2}, 3: {3}}
@@ -56,6 +57,11 @@ def quadratize_dimension_agnostic(system: list[(sp.Symbol, sp.Expr)],
     for lhs, rhs in system:
         for i in range(len(DA_GRAPH)):
             ode_system.append((lhs.subs(odesubs[i]), rhs.subs(odesubs[i])))
+    if print_intermediate:
+        print("Auxiliary ODE system:")
+        for lhs, rhs in ode_system:
+            print(f"{str_qbee(lhs)}' = {str_qbee(rhs)}")
+        print()
 
     # computing ODE quadratization
     quadr_system = quadratize(ode_system, 
