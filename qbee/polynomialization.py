@@ -363,9 +363,9 @@ def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bou
         >>> polynomialize([(x, sp.exp(x) + sp.exp(2 * x))]).print()
         Introduced variables:
         w_0 = exp(x)
-
-        x' = w_0**2 + w_0\n
-        w_0' = w_0*(w_0**2 + w_0)\n
+         ‎
+        x' = w_0**2 + w_0
+        w_0' = w_0*(w_0**2 + w_0)
 
         >>> x, u = functions("x, u")
         >>> p = parameters("p")
@@ -373,10 +373,10 @@ def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bou
         Introduced variables:
         w_0 = cos(u*x)
         w_1 = sin(u*x)
-
-        x' = p*w_1 \n
-        w_0' = -p*u*w_1**2 - u'*w_1*x\n
-        w_1' = p*u*w_0*w_1 + u'*w_0*x\n
+         ‎
+        x' = p*w_1
+        w_0' = -p*u*w_1**2 - u'*w_1*x
+        w_1' = p*u*w_0*w_1 + u'*w_0*x
     """
     if not isinstance(system, EquationSystem):
         system = eq_list_to_eq_system(system)

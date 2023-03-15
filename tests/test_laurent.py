@@ -1,5 +1,7 @@
+import pytest
+
+import sympy as sp
 from qbee import *
-from qbee import polynomialize_and_quadratize
 from qbee.polynomialization import eq_list_to_eq_system
 
 

@@ -2,7 +2,7 @@ import pytest
 
 from functools import partial
 from qbee import *
-from qbee.experimental import polynomialize_and_quadratize_pde
+from qbee.experimental import polynomialize_and_quadratize_pde, multivariable_functions
 
 
 @pytest.mark.experimental

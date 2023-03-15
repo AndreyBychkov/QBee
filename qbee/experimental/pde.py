@@ -9,6 +9,7 @@ from functools import reduce
 from qbee.printer import str_qbee
 from qbee.quadratization import SystemCondition, QuadratizationResult, polynomialize_and_quadratize, Pruning
 from qbee.selection import default_scoring, default_generation, Scoring
+from qbee.util import multivariable_functions
 
 
 def polynomialize_and_quadratize_pde(start_system: list[(sp.Symbol, sp.Expr)],

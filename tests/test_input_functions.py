@@ -1,5 +1,5 @@
-import numpy as np
 import pytest
+import numpy as np
 from examples import *
 from functools import partial
 from qbee.experimental import to_odeint

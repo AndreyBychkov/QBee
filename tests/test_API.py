@@ -1,5 +1,8 @@
 import pytest
+
+import sympy as sp
 from qbee import *
+from qbee.polynomialization import EquationSystem
 from qbee.experimental import polynomialize_and_quadratize_pde
 from functools import partial
 

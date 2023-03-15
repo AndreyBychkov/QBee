@@ -1,3 +1,6 @@
+import pytest
+
+import sympy as sp
 from qbee import *
 
 def test_basic():

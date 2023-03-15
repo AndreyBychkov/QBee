@@ -59,28 +59,28 @@ def polynomialize_and_quadratize(system: EquationSystem | list[(sp.Symbol, sp.Ex
         w_4 = w_0*y
         w_5 = w_0**2*w_2*y
         w_6 = w_0**2*w_2
-
-        x' = w_4\n
-        y' = u + w_3\n
-        w_0' = p*w_4*w_6\n
-        w_1' = u*w_1 + w_1*w_3\n
-        w_2' = -p*w_2*w_4\n
-        w_3' = u*w_3 + w_1*w_4 + w_3**2\n
-        w_4' = p*w_4*w_5 + u*w_0 + w_0*w_3\n
-        w_5' = -p*w_4*w_5 + 2*p*w_5**2 + u*w_6 + w_3*w_6\n
-        w_6' = -p*w_4*w_6 + 2*p*w_5*w_6\n
+         ‎
+        x' = w_4
+        y' = u + w_3
+        w_0' = p*w_4*w_6
+        w_1' = u*w_1 + w_1*w_3
+        w_2' = -p*w_2*w_4
+        w_3' = u*w_3 + w_1*w_4 + w_3**2
+        w_4' = p*w_4*w_5 + u*w_0 + w_0*w_3
+        w_5' = -p*w_4*w_5 + 2*p*w_5**2 + u*w_6 + w_3*w_6
+        w_6' = -p*w_4*w_6 + 2*p*w_5*w_6
 
         >>> polynomialize_and_quadratize([(x, y**3), (y, x**3)], new_vars_name="c_", start_new_vars_with=1).print()
         Introduced variables:
         c_1 = y**2
         c_2 = x**2
         c_3 = x*y
-
-        x' = c_1*y\n
-        y' = c_2*x\n
-        c_1' = 2*c_2*c_3\n
-        c_2' = 2*c_1*c_3\n
-        c_3' = c_1**2 + c_2**2\n
+         ‎
+        x' = c_1*y
+        y' = c_2*x
+        c_1' = 2*c_2*c_3
+        c_2' = 2*c_1*c_3
+        c_3' = c_1**2 + c_2**2
 
         >>> upper_bound = partial(pruning_by_vars_number, nvars=10)
         >>> res = polynomialize_and_quadratize([(x, x**2 * u)], input_free=True, pruning_functions=[upper_bound, *default_pruning_rules])
@@ -131,24 +131,17 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
     :param new_vars_name: base name for new variables. For example, new_var_name='z' => z0, z1, z2, ...
     :param start_new_vars_with: initial index for new variables. Example: start_new_vars_with=3 => w_3, w_4, ...
     :return: a container of a quadratized system and new variables introduced or None if there is nothing found
-    Example:
-        >>> from sympy import ring, QQ
-        >>> R, x, y = ring("x, y", QQ)
-        >>> quad_res = quadratize([x**2 * y, x * y**3],new_vars_name='z',start_new_vars_with=1)
-        >>> print(quad_res)
-        ==================================================
-        Quadratization result
-        ==================================================
-        Number of introduced variables: 2
-        Nodes traversed: 16
-        Introduced variables:
-        z{1} = x*y**2
-        z{2} = x*y
-        x' = x*z{2}
-        y' = y*z{1}
-        z{1}' = 2*z{1}**2 + z{1}*z{2}
-        z{2}' = z{1}*z{2} + z{2}**2
 
+    Example:
+        >>> from qbee import *
+        >>> x1, x2, u = functions("x1, x2, u")
+        >>> quadratize(([x1, x1 + x1 * u), (x2, x1**2 * u)], input_free=True).print()
+        Introduced variables:
+        w0 = x1**2
+         ‎
+        x1' = u*x1 + x1
+        x2' = u*w0
+        w0' = 2*u*w0 + 2*w0
     """
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
@@ -605,7 +598,7 @@ def pruning_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars:
     """
     Search for quadratization with at most 'nvars' components
 
-    :Examples
+    Example:
         >>> from functools import partial
         >>> pruning = partial(pruning_by_vars_number, nvars=10)
 
@@ -655,7 +648,15 @@ def pruning_by_quadratic_upper_bound(a: Algorithm, part_res: PolynomialSystem, *
 
 
 def pruning_by_declining_variables(a: Algorithm, part_res: PolynomialSystem, *args, excl_vars: list[Tuple]):
-    """Prune out systems with `excl_vars` in quadratization"""
+    """
+    Prune out systems with `excl_vars` in quadratization
+
+    Example:
+        Tupples will correspond to variables ordering: z in Ring('x, y, z') => (0, 0, 1)
+
+        >>> from functools import partial
+        >>> pruning = partial(pruning_by_declining_variables, excl_vars=[(0, 0, 1)])
+    """
     return not without_variables(part_res, excl_vars)
 
 

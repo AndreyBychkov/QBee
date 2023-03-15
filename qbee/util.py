@@ -9,6 +9,7 @@ from functools import reduce, wraps
 from .printer import str_qbee
 
 INDEPENDENT_VARIABLE = sp.Symbol("_t")
+"""Independent variable for :func:`qbee.functions`"""
 
 
 def functions(names, *, laurent=True, **kwargs):
