@@ -13,5 +13,7 @@ if __name__ == '__main__':
         (x3, -x1_diff),
         (x4, -2 * x1_diff)
     ]
+    laurent_system = polynomialize(system)
+    laurent_system.print()
     quadr_system = polynomialize_and_quadratize(system, input_der_orders={u: 2})
     quadr_system.print()
