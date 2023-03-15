@@ -22,7 +22,6 @@ pygal = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 networkx = "*"
-matplotlib = "*"
 pyvis = "*"
 
 [tool.poetry.group.test.dependencies]
@@ -30,6 +29,14 @@ pytest = "*"
 pytest-benchmark = "^4.0.0"
 pygal = "*"
 
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = ">=6.0"
+sphinx-rtd-theme = "*"
+sphinx-math-dollar = "*"
 
 [build-system]
 requires = ["poetry-core"]
