@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.com/AndreyBychkov/QBee.svg?branch=dev)](https://app.travis-ci.com/github/AndreyBychkov/QBee)
-[![Documentation Status](https://readthedocs.org/projects/qbee/badge/?version=latest)](https://qbee.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/qbee/badge/?version=dev)](https://qbee.readthedocs.io/en/dev/?badge=dev)
 # QBee
 
 ### [Online playground](https://huggingface.co/spaces/Armaliltril/qbee)

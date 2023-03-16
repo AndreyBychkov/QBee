@@ -6,34 +6,29 @@
 Welcome to QBee's documentation!
 ================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+**qbee** is a package for transforming differential equations into polynomial and quadratic polynomial forms via introducing new variables.
+It includes functionality for:
 
-.. automodule:: qbee
-   :members: polynomialize_and_quadratize, quadratize, polynomialize, quadratize_dimension_agnostic,
-               pruning_by_nodes_processed, pruning_by_vars_number, pruning_by_declining_variables,
-               pruning_by_elapsed_time, pruning_by_nodes_without_quadratization_found, default_pruning_rules, without_variables,
-               functions, parameters,
-               print_qbee, str_qbee,
-               default_generation, generation_semidiscretized, default_scoring, smd_scoring, aeqd_scoring,
-   :member-order: bysource
+* exact transformation of Ordinary Differential Equations (ODEs) into a form with a polynomial right-hand side (**polynomialization**).
+* exact transformation of polynomial ODEs intro a form with right-hand side being quadratic polynomials (**quadratization**).
+* obtaining a general (vectorized) form of new variables to quadratize linearly coupled polynomial ODEs given in vectorized form (**dimension-agnostic quadratization**)
+* automatized transformation of polynomialized and quadratized systems of ODEs into a form suitable for **numerical integrators**.
 
-.. data:: qbee.INDEPENDENT_VARIABLE
-   Independent variable for functions.
+Background - Why we created **qbee**
+------------------------------------
 
-   Example:
-      >>> from qbee import *
-      >>> from qbee.experimental import to_odeint
-      >>> from sympy import sin
-      >>> x, u = functions("x, u")
-      >>> res = polynomialize_and_quadratize([(x, sin(x) + u)])
-      >>> t = INDEPENDENT_VARIABLE
-      >>> my_odeint = to_odeint(res, {x: 1}, inputs={u: sin(t)})
+Lorem ipsum add articles and examples
+
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   installation
+   api

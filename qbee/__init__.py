@@ -1,9 +1,3 @@
-"""
-QBee - Package for transforming Systems of Differential Equations to quadratic form.
-"""
-
-__version__ = "0.8.0"
-
 from .quadratization import polynomialize_and_quadratize, quadratize
 from .polynomialization import polynomialize
 from .dimension_agnostic import quadratize_dimension_agnostic
