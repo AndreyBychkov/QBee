@@ -424,6 +424,9 @@ class Algorithm:
             for m in points + list(poly_system.vars):
                 if not dominated(m, self.dominating_monomials):
                     self.dominating_monomials.add(m)
+        else:
+            # A quick fix. Should we do better?
+            self.dominating_monomials = set()
 
     def quadratize(self) -> AlgorithmResult:
         pass
@@ -486,7 +489,7 @@ QUAD_ALGORITHM_INTERRUPTED = False
 
 
 def signal_handler(sig_num, frame):
-    global POLY_ALGORITHM_INTERRUPTED
+    global QUAD_ALGORITHM_INTERRUPTED
     print("The algorithm has been interrupted. Returning the current best.")
     QUAD_ALGORITHM_INTERRUPTED = True
 
