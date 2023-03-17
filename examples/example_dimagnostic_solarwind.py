@@ -9,4 +9,3 @@ if __name__ == '__main__':
         (u, Du / v + C1 * Dv / v)
     ]
     new_vars = quadratize_dimension_agnostic(system)
-    print(new_vars)

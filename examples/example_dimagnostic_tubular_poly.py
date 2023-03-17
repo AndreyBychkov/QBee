@@ -12,4 +12,3 @@ if __name__ == '__main__':
         (theta, Dtheta + btheta + b * u + B * D * psi * poly),
     ]
     new_vars = quadratize_dimension_agnostic(system)
-    print(new_vars)
