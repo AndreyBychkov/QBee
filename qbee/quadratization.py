@@ -227,6 +227,21 @@ def quadratize_poly(polynomials: list[PolyElement],
         pruning_functions = default_pruning_rules
 
     system = PolynomialSystem(polynomials)
+    # setting an upper bound if not already
+    if not any(map(is_var_bound, pruning_functions)):
+        bound = math.inf
+        # we could produce a bound for the Laurent case as well, does not seem to be necessary
+        # from the practical standpoint
+        if not system.laurent:
+            bound = 1
+            for i in range(system.dim):
+                deg = 0
+                for j, p in system.rhs.items():
+                    if len(p) > 0:
+                        deg = max(deg, max({mon[i] for mon in p}) + (1 if i == j else 0))
+                bound *= deg + 1
+            pruning_functions.append(partial(pruning_by_vars_number, nvars=bound))
+
     algo = BranchAndBound(system, conditions, generation_strategy, scoring,
                           (pruning_by_best_nvars,) + tuple(pruning_functions))
     if calc_upper_bound:
@@ -610,6 +625,8 @@ def pruning_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars:
         return True
     return False
 
+def is_var_bound(f):
+    return type(f) == partial and f.func == pruning_by_vars_number
 
 def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     """Branch-and-Bound default pruning """
