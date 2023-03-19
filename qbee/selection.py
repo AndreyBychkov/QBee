@@ -2,6 +2,7 @@ import numpy as np
 from sympy.polys.monomials import monomial_deg, monomial_divides
 from typing import Tuple, Callable
 from .util import get_decompositions
+from functools import partial
 
 Scoring = Callable[['PolynomialSystem'], int]
 
@@ -120,6 +121,9 @@ def generation_semidiscretized(system, excl_vars=None):
             result.add(tuple(sorted(list(extended_vars))))
     return result
 
+# helper function to check the generation strategy
+def is_semidiscretized(strategy):
+    return (strategy == generation_semidiscretized) or (type(strategy) == partial and strategy.func == generation_semidiscretized)
 
 # Different scoring functions
 
