@@ -233,25 +233,7 @@ def quadratize_poly(polynomials: list[PolyElement],
     system = PolynomialSystem(polynomials)
     # setting an upper bound if not already
     if not any(map(is_var_bound, pruning_functions)):
-        bound = math.inf
-        # we could produce a bound for the Laurent case as well, does not seem to be necessary
-        # from the practical standpoint
-        if not system.laurent:
-            # usual (not dimension-agnostic) case
-            if not is_semidiscretized(generation_strategy):
-                print(generation_strategy)
-                bound = 1
-                for i in range(system.dim):
-                    deg = 0
-                    for j, p in system.rhs.items():
-                        if len(p) > 0:
-                            deg = max(deg, max({mon[i] for mon in p}) + (1 if i == j else 0))
-                    bound *= deg + 1
-            # we are in the dimagnostic case
-            else:
-                total_deg = max([max({sum(m) for m in p}) + 1 for p in system.rhs.values() if len(p) > 0])
-                nd = system.dim // 4
-                bound = (3 * nd + 4) * math.comb(nd + total_deg, total_deg)
+        bound = _quadratization_theoretical_upper_bound(system, generation_strategy)
         pruning_functions.append(partial(pruning_by_vars_number, nvars=bound))
 
     algo = BranchAndBound(system, conditions, generation_strategy, scoring,
@@ -264,6 +246,33 @@ def quadratize_poly(polynomials: list[PolyElement],
                                                             new_vars_name, start_new_vars_with)
         return QuadratizationResult(quad_eqs, eq_vars, quad_vars, algo_res)
     return None
+
+
+def _quadratization_theoretical_upper_bound(system: "PolynomialSystem", generation_strategy):
+    """
+    For a detailed explanation, see Theorem 4.6, Subsection 5.3 and Algorithm 5.3 in
+     Exact and optimal quadratization of nonlinear finite-dimensional non-autonomous dynamical systems
+    """
+    # TODO: Replace full name of the paper with a url
+    bound = math.inf
+    # we could produce a bound for the Laurent case as well, does not seem to be necessary
+    # from the practical standpoint
+    if not system.laurent:
+        # usual (not dimension-agnostic) case
+        if not is_semidiscretized(generation_strategy):
+            bound = 1
+            for i in range(system.dim):
+                deg = 0
+                for j, p in system.rhs.items():
+                    if len(p) > 0:
+                        deg = max(deg, max({mon[i] for mon in p}) + (1 if i == j else 0))
+                bound *= deg + 1
+        # we are in the dimagnostic case
+        else:
+            total_deg = max([max({sum(m) for m in p}) + 1 for p in system.rhs.values() if len(p) > 0])
+            nd = system.dim // 4
+            bound = (3 * nd + 4) * math.comb(nd + total_deg, total_deg)
+    return bound
 
 
 # ------------------------------------------------------------------------------
