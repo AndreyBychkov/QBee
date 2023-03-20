@@ -2,7 +2,7 @@
 # QBee
 
 ### [Online playground](https://huggingface.co/spaces/Armaliltril/qbee)
-### [Tutorial in Jupyter](QBee_tutorial.ipynb)
+### [Tutorial in Jupyter](QBee_tutorial.ipynb) ([Colab](https://colab.research.google.com/github/AndreyBychkov/QBee/blob/dev/QBee_tutorial.ipynb))
 
 QBee is a Python library for transforming systems of differential equations into a systems with quadratic right-rand side.
 
