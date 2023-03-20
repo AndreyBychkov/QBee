@@ -1,7 +1,4 @@
 import os
-import multiprocessing as mp
-from psutil import cpu_count
-from glob import glob
 
 
 def top_priority():
@@ -18,14 +15,11 @@ def top_priority():
 
 
 def platform_python():
-    if os.name == 'posix':
-        return "python3"
-    else:
-        return "python"
+    return "python3" if os.name == "posix" else "python"
 
 
-def benchmark_file(filename, save_results=True, make_histogram=True, sort_by="name", min_rounds=5):
-    query = [f"{platform_python()} -m pytest {filename}",
+def benchmark_everything(save_results=True, make_histogram=True, sort_by="name", min_rounds=10, workers=1):
+    query = [f"{platform_python()} -m pytest -v",
              "--benchmark-only",
              "--benchmark-group-by=param:ord",
              "--benchmark-warmup=on",
@@ -39,13 +33,15 @@ def benchmark_file(filename, save_results=True, make_histogram=True, sort_by="na
     os.system(" ".join(query))
 
 
-def benchmark_everything(save_results=True, make_histogram=True, sort_by="name", min_rounds=10, workers=1):
-    # TODO: spawn processes to accelerate
-    # TODO: Rewrite with pytest -m "benchmark" or smth like this
-    [benchmark_file(file, save_results, make_histogram, sort_by, min_rounds)
-     for file in glob(r"*.py") if file not in ["main.py", "list.py", "__init__.py"]]
+def run_tests():
+    top_priority()
+    os.system(f'{platform_python()} -m pytest -v -m "not benchmark and not experimental and not expensive"')
+
+
+def run_benchmarks():
+    top_priority()
+    benchmark_everything()
 
 
 if __name__ == '__main__':
-    top_priority()
-    benchmark_everything()
+    run_tests()

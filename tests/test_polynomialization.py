@@ -1,65 +1,107 @@
 import pytest
 import sympy as sp
-
-from qbee import EquationSystem, polynomialize
-from qbee.util import derivatives
-
-x, y, z = sp.symbols('x, y, z')
-dot_x, dot_y, dot_z = derivatives('x, y, z')
-
-
-def assert_check_poly(expected_system: EquationSystem, actual_system: EquationSystem):
-    try:
-        assert actual_system.equations == expected_system.equations
-    except AssertionError as e:
-        if actual_system.is_polynomial():
-            raise AssertionError("Systems are not equal but actual system is polynomial.")
-        else:
-            raise e
+from qbee import *
+from qbee.polynomialization import eq_list_to_eq_system
 
 
 def test_already_polynomial():
-    system = EquationSystem([
-        sp.Eq(dot_x, x + x ** 2 + 3)
+    x = functions("x")
+    p = parameters("p")
+    system = eq_list_to_eq_system([
+        (x, p * x ** 2 + x ** 3 + 1)
     ])
 
-    assert polynomialize(system).equations == system.equations
+    res = polynomialize(system)
+    assert system.is_polynomial()
+    assert system.polynomial_equations == res.polynomial_equations
+    assert system.equations == res.equations
 
 
-def test_sigmoid_diff():
-    system = EquationSystem([
-        sp.Eq(dot_x, 1 / (1 + sp.exp(x)))
+def test_handmade_sin_cos():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, sp.sin(x))
     ])
 
-    poly_system = polynomialize(system)
+    xs = sp.Symbol("x")
+    system.add_new_var(sp.sin(xs))
+    system.add_new_var(sp.cos(xs))
+    assert system.is_polynomial()
 
-    _, y0, y1 = poly_system.variables.free
-    dot_y0, dot_y1 = derivatives([y0, y1])
-    expected_system = EquationSystem([
-        sp.Eq(dot_x, y1),
-        sp.Eq(dot_y0, y0 * y1),
-        sp.Eq(dot_y1, -y0 * y1 ** 3)
+
+def test_handmade_sin_cos_inverted_order():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, sp.sin(x))
     ])
 
-    assert_check_poly(expected_system, poly_system)
+    xs = sp.Symbol("x")
+    system.add_new_var(sp.cos(xs))
+    system.add_new_var(sp.sin(xs))
+    assert system.is_polynomial()  # Should it be correct?
+
+
+def test_handmade_sigmoid():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, 1 / (1 + sp.exp(x)))
+    ])
+
+    xs = sp.Symbol("x")
+    system.add_new_var(sp.exp(xs))
+    system.add_new_var(1 / (1 + sp.exp(xs)))
+    assert system.is_polynomial()
+
+
+def test_handmade_negative():
+    x = functions("x", laurent=False)
+    system = eq_list_to_eq_system([
+        (x, 1 / x ** 2)
+    ])
+    assert not system.is_polynomial()
+
+    xs = sp.Symbol("x")
+    system.add_new_var(1 / xs)
+    assert system.is_polynomial()
+
+
+def test_sigmoid():
+    x = functions("x")
+    system = eq_list_to_eq_system([
+        (x, 1 / (1 + sp.exp(x)))
+    ])
+
+    res = polynomialize(system)
+    assert len(res) == 3
+
+
+def test_sigmoid_inv_arg():
+    x = functions("x", laurent=False)
+    system = [
+        (x, 1 / (1 + sp.exp(1 / x)))
+    ]
+
+    res = polynomialize(system)
+    assert len(res) == 4
+
+
+def test_nested_functions():
+    x = functions("x", laurent=False)
+    system = eq_list_to_eq_system([
+        (x, sp.sin(sp.exp(x)))
+    ])
+
+    res = polynomialize(system)
+    assert len(res) == 4
 
 
 def test_parameter():
-    k = sp.Symbol('k')
-
-    system = EquationSystem([
-        sp.Eq(dot_x, sp.exp(k * x)),
-        sp.Eq(dot_y, sp.exp(k * x))
-    ], parameter_variables=[k])
-
-    poly_system = polynomialize(system, new_var_name="w", start_new_vars_with=0)
-
-    w0 = sp.Symbol("w{0}")
-    dw0 = derivatives("w{0}")
-    expected_system = EquationSystem([
-        sp.Eq(dot_x, w0),
-        sp.Eq(dot_y, w0),
-        sp.Eq(dw0, k * w0 ** 2)
-    ], parameter_variables=[k])
-
-    assert_check_poly(expected_system, poly_system)
+    x, y = functions("x, y", laurent=False)
+    p = parameters("p")
+    system = [
+        (x, sp.exp(p * y)),
+        (y, sp.exp(p * x))
+    ]
+    res = polynomialize(system, upper_bound=4)
+    assert all([eq.rhs.is_Mul and sp.Symbol("p") in eq.rhs.args
+                for eq in res.polynomial_equations[2:]])

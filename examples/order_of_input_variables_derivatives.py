@@ -1,7 +1,6 @@
 import sympy as sp
 from qbee import *
 
-
 if __name__ == '__main__':
     c1, c2, c3, c4, T = functions("c1, c2, c3, c4, T")
     A, Ea, Ru = parameters("A, Ea, Ru")
@@ -16,4 +15,4 @@ if __name__ == '__main__':
     # {T: 2} means than T can have a derivative of order at most two => T''
     quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 2})
     if quadr_system:
-        print(quadr_system)
+        quadr_system.print()

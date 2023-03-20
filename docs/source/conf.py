@@ -12,7 +12,7 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -22,7 +22,7 @@ copyright = '2021, Andrey Bychkov, Gleb Pogudin'
 author = 'Andrey Bychkov, Gleb Pogudin'
 
 # The full version, including alpha/beta/rc tags
-release = '0.6'
+release = '0.8'
 
 
 # -- General configuration ---------------------------------------------------
@@ -33,7 +33,8 @@ release = '0.6'
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
-    "sphinx.ext.autosectionlabel"
+    "sphinx.ext.autosectionlabel",
+    "sphinx.ext.mathjax"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
