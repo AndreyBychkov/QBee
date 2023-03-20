@@ -159,6 +159,10 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
             else:
                 input_der_orders = {var: 1 for var in poly_system.variables.input if "'" not in str_qbee(var)}
 
+        # if at least one input has requested to be absent, we set the upper bound to infinity
+        if any([x < 1 for x in input_der_orders.values()]):
+            pruning_functions.append(partial(pruning_by_vars_number, nvars=math.inf))
+
         poly_equations, excl_inputs, all_inputs = poly_system.to_poly_equations(input_der_orders)
         without_excl_inputs = partial(without_variables, excl_vars=excl_inputs)
         pruning_by_decl_inputs = partial(pruning_by_declining_variables, excl_vars=excl_inputs)
@@ -227,6 +231,11 @@ def quadratize_poly(polynomials: list[PolyElement],
         pruning_functions = default_pruning_rules
 
     system = PolynomialSystem(polynomials)
+    # setting an upper bound if not already
+    if not any(map(is_var_bound, pruning_functions)):
+        bound = _quadratization_theoretical_upper_bound(system, generation_strategy)
+        pruning_functions.append(partial(pruning_by_vars_number, nvars=bound))
+
     algo = BranchAndBound(system, conditions, generation_strategy, scoring,
                           (pruning_by_best_nvars,) + tuple(pruning_functions))
     if calc_upper_bound:
@@ -237,6 +246,33 @@ def quadratize_poly(polynomials: list[PolyElement],
                                                             new_vars_name, start_new_vars_with)
         return QuadratizationResult(quad_eqs, eq_vars, quad_vars, algo_res)
     return None
+
+
+def _quadratization_theoretical_upper_bound(system: "PolynomialSystem", generation_strategy):
+    """
+    For a detailed explanation, see Theorem 4.6, Subsection 5.3 and Algorithm 5.3 in
+     Exact and optimal quadratization of nonlinear finite-dimensional non-autonomous dynamical systems
+    """
+    # TODO: Replace full name of the paper with a url
+    bound = math.inf
+    # we could produce a bound for the Laurent case as well, does not seem to be necessary
+    # from the practical standpoint
+    if not system.laurent:
+        # usual (not dimension-agnostic) case
+        if not is_semidiscretized(generation_strategy):
+            bound = 1
+            for i in range(system.dim):
+                deg = 0
+                for j, p in system.rhs.items():
+                    if len(p) > 0:
+                        deg = max(deg, max({mon[i] for mon in p}) + (1 if i == j else 0))
+                bound *= deg + 1
+        # we are in the dimagnostic case
+        else:
+            total_deg = max([max({sum(m) for m in p}) + 1 for p in system.rhs.values() if len(p) > 0])
+            nd = system.dim // 4
+            bound = (3 * nd + 4) * math.comb(nd + total_deg, total_deg)
+    return bound
 
 
 # ------------------------------------------------------------------------------
@@ -610,6 +646,8 @@ def pruning_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars:
         return True
     return False
 
+def is_var_bound(f):
+    return type(f) == partial and f.func == pruning_by_vars_number
 
 def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     """Branch-and-Bound default pruning """
