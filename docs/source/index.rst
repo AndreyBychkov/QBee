@@ -31,4 +31,10 @@ Indices and tables
    :caption: Contents:
 
    installation
+   quadratization
+   inputs_and_parameters
+   polynomialization
+   dimension_agnostic
+   numerical_integration
+   articles_and_resources
    api
