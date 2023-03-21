@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import sympy as sp
 import re
-from examples import *
-from functools import partial
+from functools import partial, reduce
 from typing import Sequence
 from ..quadratization import QuadratizationResult
 from ..polynomialization import eq_list_to_eq_system
 from ..printer import str_qbee
-from ..util import tuple_to_monom
+from ..util import tuple_to_monom, INDEPENDENT_VARIABLE
 from scipy.integrate import odeint
 
 

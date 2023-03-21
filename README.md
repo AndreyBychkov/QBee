@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.com/AndreyBychkov/QBee.svg?branch=dev)](https://app.travis-ci.com/github/AndreyBychkov/QBee)
-[![Documentation Status](https://readthedocs.org/projects/qbee/badge/?version=dev)](https://qbee.readthedocs.io/en/dev/?badge=dev)
+[![Documentation Status](https://readthedocs.org/projects/qbee/badge/?version=latest)](https://qbee.readthedocs.io/en/dev/?badge=latest)
 # QBee
 
 ### [Online playground](https://huggingface.co/spaces/Armaliltril/qbee)
+### [Tutorial in Jupyter](QBee_tutorial.ipynb) ([Colab](https://colab.research.google.com/github/AndreyBychkov/QBee/blob/dev/QBee_tutorial.ipynb))
 
 QBee is a Python library for transforming systems of differential equations into a systems with quadratic right-rand side.
 
@@ -55,10 +55,8 @@ in [examples section](examples).
 QBee relies on Sympy for a high-level API.
 
 ```python
-import sympy
+import sympy as sp
 from qbee import *
-
-sympy.init_printing()  # If you work in Jupyter notebook 
 ```
 
 ### 2. System definition
@@ -97,75 +95,41 @@ The example system is not polynomial, so we use the most general method for achi
 # {T: 2} means than T can have a derivative of order at most two => T''
 quadr_system = polynomialize_and_quadratize(system, input_der_orders={T: 2})
 if quadr_system:
-    print("Quadratized system:")
-    print(quadr_system)
+    quadr_system.print()
 ```
 
 Sample output:
 
 ```
-Variables introduced in polynomialization:
-w_{0} = c1**(-0.8)
-w_{1} = c2**(-0.7)
-w_{2} = 1/T
-w_{3} = exp(-Ea*w_{2}/Ru)
-
-Elapsed time: 0.139s.
-==================================================
-Quadratization result
-==================================================
-Number of introduced variables: 5
-Nodes traversed: 117
 Introduced variables:
-w_{4} = T'*w_{2}
-w_{5} = T'*w_{2}**2
-w_{6} = c2**2*w_{0}*w_{1}*w_{3}
-w_{7} = w_{2}**2
-w_{8} = c1*c2*w_{0}*w_{1}*w_{3}
+w_0 = exp(-Ea/(Ru*T))
+w_1 = c1**0.2
+w_2 = c2**1.3
+w_3 = w_0*w_1
+w_4 = T'/T**2
+w_5 = T**(-2)
+w_6 = T'/T
+w_7 = 1/T
+w_8 = w_0*w_1*w_2/c1
+w_9 = w_0*w_1*w_2/c2
 
-Quadratized system:
-c1' = -A*c2*w_{8}
-c2' = -2*A*c2*w_{8}
-c3' = A*c2*w_{8}
-c4' = 2*A*c2*w_{8}
-w_{0}' = 4*A*w_{0}*w_{6}/5
-w_{1}' = 7*A*w_{1}*w_{8}/5
-w_{2}' = -T'*w_{7}
-w_{3}' = Ea*w_{3}*w_{5}/Ru
-T' = T'
-T'' = T''
-T''' = 0
-w_{4}' = -T'*w_{5} + T''*w_{2}
-w_{5}' = T''*w_{7} - 2*w_{4}*w_{5}
-w_{6}' = 4*A*w_{6}**2/5 - 13*A*w_{6}*w_{8}/5 + Ea*w_{5}*w_{6}/Ru
-w_{7}' = -2*w_{4}*w_{7}
-w_{8}' = -A*w_{6}*w_{8}/5 - 3*A*w_{8}**2/5 + Ea*w_{5}*w_{8}/Ru
-
-Process finished with exit code 0
-
+c1' = -A*w_2*w_3
+c2' = -2*A*w_2*w_3
+c3' = A*w_2*w_3
+c4' = 2*A*w_2*w_3
+w_0' = Ea*w_0*w_4/Ru
+w_1' = -A*w_1*w_8/5
+w_2' = -13*A*w_2*w_9/5
+w_3' = -A*w_3*w_8/5 + Ea*w_3*w_4/Ru
+w_4' = T''*w_5 - 2*w_4*w_6
+w_5' = -2*w_5*w_6
+w_6' = T''*w_7 - w_6**2
+w_7' = -w_6*w_7
+w_8' = 4*A*w_8**2/5 - 13*A*w_8*w_9/5 + Ea*w_4*w_8/Ru
+w_9' = -A*w_8*w_9/5 - 3*A*w_9**2/5 + Ea*w_4*w_9/Ru
 ```
 
 Introduced variables are the optimal monomial quadratization.
-
-### 4. Work inside of package
-
-#### 1. Configuration
-
-Inside of `config.ini` you can change the following arguments:
-
-* `logging_enable = [True | False]`. If enabled, work of algorithm is logged into `logging_file` and `quad_systems_file`
-  . Requires memory to work. Is not recommended for long quadratizations.
-* `logging_file`: must be in Apache Arrow `.feather` format.
-* `quad_systems_file`: dump quadratic systems by using pickle. `.pkl` file format is recommended.
-* `progress_bar_enable`: enables progress bar during quadratization.
-
-#### 2. Visualization
-
-In order to visualize work of an algorithm you can pass logging data to `qbee.visualize.visualize_pyvis`:
-
-```python
-visualize_pyvis('log.feather', 'quad_systems.pkl')
-```
 
 ## Papers
 

@@ -1,7 +1,7 @@
 from examples import *
 from functools import partial
 
-from qbee.experimental import polynomialize_and_quadratize_pde
+from qbee.experimental import polynomialize_and_quadratize_pde, multivariable_functions
 
 if __name__ == '__main__':
     x, c = functions("x, c")
