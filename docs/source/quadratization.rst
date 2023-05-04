@@ -83,11 +83,79 @@ and $w_1(\mathbf{x}),\dots,w_l(\mathbf{x})$ are non-negative monomials
 (:ref:`Otherwise <Laurent monomials>`, quadratization may have a smaller order
 but we are not aware of algorithm to find an optimal quadratization in this case).
 
+The polynomial quadratization, on the other hand, is generally of a lower order, as seen in the example below.
+However, the general algorithm of finding polynomial quadratizations is unknown to us.
+Nevertheless, shifting variables can help you to produce better order when using QBee.
+
+**Example**: The system
+$$
+x' = (x + 1)^{10}
+$$
+has a polynomial quadratization of order $1$:
+$$
+\mathbf{w} = [(x+1)^9],
+$$
+while its optimal monomial quadratization is
+$$
+\mathbf{v} = [x^2, x^4, x^6, x^8, x^9].
+$$
+Replacing $x$ with $y = x+1$ will have a result similar to the polynomial case, yet reachable by using QBee:
+$$
+y' = y^{10}, \quad \mathbf{v} = [x^9].
+$$
+
+As a further read, we recommend an article by Foyez Allaudin "`Quadratization of ODEs: Monomial vs. Non-Monomial <https://arxiv.org/abs/2011.03959>`_".
+
 
 Laurent monomials
 ----------------------
 
+Laurent monomials are monomials that may be built with both positive and negative powers, for instance $m(x, y) = x^2 y^{-3}$.
+By default, QBee introduces new variables as Laurent monomials, since it results in more optimal quadratizations than by using ordinary monomials.
 
+**Example**: Let's quadratize the system below by using QBee:
+$$
+x' = \exp(1/x).
+$$
 
+.. code-block:: python
 
+    >>> import sympy as sp
+    >>> from qbee import *
+    >>> x = functions("x")
+    >>> polynomialize_and_quadratize([(x, sp.exp(1/x))]).print()
+    Introduced variables:
+    w_0 = exp(1/x)
+    w_1 = w_0/x**2  <- It's a Laurent monomial;
+    w_2 = w_0/x**3  <- This one as well;
 
+    x' = w_0
+    w_0' = -w_0*w_1
+    w_1' = -2*w_0*w_2 - w_1**2
+    w_2' = -3*w_1**2 - w_1*w_2
+
+**Note**: We first polynomialize the system to bring it to a polynomial form. Read about this technique in :ref:`Polynomialization section <Polynomialization>`.
+
+However, in some contexts, using Laurent monomials is undesirable or even forbidden.
+For such cases, we can disable them:
+
+.. code-block:: python
+
+    >>> import sympy as sp
+    >>> from qbee import *
+    >>> x = functions("x", laurent=False)  # Forbid "x" to be of negative powers in monomials
+    >>> polynomialize_and_quadratize([(x, sp.exp(1/x))]).print()
+    Introduced variables:  # Note that the quadratization order has grown;
+    w_0 = exp(1/x)
+    w_1 = 1/x  <- We introduce 1/x to tackle with the lack of Laurent monomials;
+    w_2 = w_0*w_1**2
+    w_3 = w_0*w_1**3
+
+    x' = w_0
+    w_0' = -w_0*w_2
+    w_1' = -w_2
+    w_2' = -2*w_0*w_3 - w_2**2
+    w_3' = -3*w_2**2 - w_2*w_3
+
+For more details and context, check Remark 5.1 in
+`Exact and optimal quadratization of nonlinear finite-dimensional non-autonomous dynamical systems <https://doi.org/10.48550/arXiv.2303.10285>`_.
