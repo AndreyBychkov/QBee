@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 # -- Project information -----------------------------------------------------
 
 project = 'QBee'
-copyright = '2021, Andrey Bychkov, Gleb Pogudin'
+copyright = '2023, Andrey Bychkov, Gleb Pogudin'
 author = 'Andrey Bychkov, Gleb Pogudin'
 
 # The full version, including alpha/beta/rc tags
@@ -35,7 +35,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.mathjax",
-    "sphinx_math_dollar"
+    "sphinx_math_dollar",
+    "sphinx_toolbox.collapse"
 ]
 
 # Add any paths that contain templates here, relative to this directory.

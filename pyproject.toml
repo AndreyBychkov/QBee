@@ -37,6 +37,7 @@ optional = true
 sphinx = ">=6.0"
 sphinx-rtd-theme = "*"
 sphinx-math-dollar = "*"
+sphinx_toolbox = "*"
 
 [build-system]
 requires = ["poetry-core"]
