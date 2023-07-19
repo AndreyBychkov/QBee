@@ -13,7 +13,8 @@ from sympy.polys.rings import PolyRing
 from typing import Iterator, Collection, Iterable
 from ordered_set import OrderedSet
 from .printer import str_qbee
-from .util import make_derivative_symbol, generate_derivatives, key_from_value, Parameter, progress_bar, monom2PolyElem
+from .util import (make_derivative_symbol, generate_derivatives, key_from_value,
+                   Parameter, progress_bar, monom2PolyElem)
 
 
 class VariablesHolder:
@@ -303,13 +304,10 @@ class EquationSystem:
 POLY_ALGORITHM_INTERRUPTED = False
 
 
-def signal_handler(sig_num, frame):
+def signal_handler_poly(sig_num, frame):
     global POLY_ALGORITHM_INTERRUPTED
-    print("The algorithm has been interrupted. Returning the current best.")
+    print("The polynomialization algorithm has been interrupted. Returning the current best...")
     POLY_ALGORITHM_INTERRUPTED = True
-
-
-signal.signal(signal.SIGINT, signal_handler)
 
 
 def eq_list_to_eq_system(system: list[(sp.Symbol, sp.Expr)]) -> EquationSystem:
@@ -382,7 +380,9 @@ def polynomialize(system: EquationSystem | list[(sp.Symbol, sp.Expr)], upper_bou
         system = eq_list_to_eq_system(system)
     system.variables.base_var_name = new_vars_name
     system.variables.start_new_vars_with = start_new_vars_with
+    signal.signal(signal.SIGINT, signal_handler_poly)  # Add Ctrl+C stopper
     nvars, opt_system, traversed = poly_algo_step(system, upper_bound, math.inf)
+    final_iter()
     return make_laurent(system, opt_system)
 
 
@@ -426,7 +426,8 @@ def poly_algo_step(part_res: EquationSystem, upper_bound, best_nvars) -> (int, E
 
 @progress_bar(is_stop=True)
 def final_iter():
-    pass
+    global POLY_ALGORITHM_INTERRUPTED
+    POLY_ALGORITHM_INTERRUPTED = False
 
 
 def next_gen(system: EquationSystem) -> Iterator[EquationSystem]:

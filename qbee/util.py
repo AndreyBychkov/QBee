@@ -93,7 +93,7 @@ __log_records = list()
 
 @parametrized
 def progress_bar(func, is_stop):
-    postfix_str = "Current best order = {}"
+    postfix_str = "Current best order = {}, To return current best press Ctrl+C"
 
     @wraps(func)
     def wrapper(*args, **kwargs):

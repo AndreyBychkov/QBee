@@ -227,6 +227,8 @@ def quadratize_poly(polynomials: list[PolyElement],
         w0' = w0**2 + w0*w1
         w1' = w0*w1 + 2*w1**2
     """
+    signal.signal(signal.SIGINT, signal_handler_quad)
+
     if pruning_functions is None:
         pruning_functions = default_pruning_rules
 
@@ -524,13 +526,10 @@ class Algorithm:
 QUAD_ALGORITHM_INTERRUPTED = False
 
 
-def signal_handler(sig_num, frame):
+def signal_handler_quad(sig_num, frame):
     global QUAD_ALGORITHM_INTERRUPTED
-    print("The algorithm has been interrupted. Returning the current best.")
+    print("The quadratization algorithm has been interrupted. Returning the current best...")
     QUAD_ALGORITHM_INTERRUPTED = True
-
-
-signal.signal(signal.SIGINT, signal_handler)
 
 
 class BranchAndBound(Algorithm):
@@ -582,6 +581,9 @@ class BranchAndBound(Algorithm):
     @logged(is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
+
+        global QUAD_ALGORITHM_INTERRUPTED
+        QUAD_ALGORITHM_INTERRUPTED = False
 
     @dump_results
     def _save_results(self, opt_system):
@@ -646,8 +648,10 @@ def pruning_by_vars_number(_: Algorithm, system: PolynomialSystem, *args, nvars:
         return True
     return False
 
+
 def is_var_bound(f):
     return type(f) == partial and f.func == pruning_by_vars_number
+
 
 def pruning_by_best_nvars(a: Algorithm, part_res: PolynomialSystem, *args):
     """Branch-and-Bound default pruning """
