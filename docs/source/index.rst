@@ -31,6 +31,7 @@ Indices and tables
    :caption: Contents:
 
    installation
+   cheatsheet
    quadratization
    inputs_and_parameters
    polynomialization

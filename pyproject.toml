@@ -34,10 +34,10 @@ pygal = "*"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-sphinx = ">=6.0"
+sphinx = "6.2.1"
 sphinx-rtd-theme = "*"
 sphinx-math-dollar = "*"
-sphinx_toolbox = "*"
+sphinx_toolbox = "3.4.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -53,3 +53,4 @@ markers = [
 [tool.poetry.scripts]
 tests = "tests:run_tests"
 benchmarks = "tests:run_benchmarks"
+docs = "docs.build:build_html"
