@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qbee"
-version = "0.8.1"
+version = "0.8.2"
 description = "Quadratization of differential equations in python"
 authors = ["Andrey Bychkov, Gleb Pogudin"]
 license = "MIT"
@@ -34,9 +34,10 @@ pygal = "*"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-sphinx = ">=6.0"
+sphinx = "6.2.1"
 sphinx-rtd-theme = "*"
 sphinx-math-dollar = "*"
+sphinx_toolbox = "3.4.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -52,3 +53,4 @@ markers = [
 [tool.poetry.scripts]
 tests = "tests:run_tests"
 benchmarks = "tests:run_benchmarks"
+docs = "docs.build:build_html"

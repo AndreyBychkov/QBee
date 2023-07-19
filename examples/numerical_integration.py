@@ -22,3 +22,8 @@ if __name__ == '__main__':
     num_res_quad = my_odeint_quad(ts, rtol=1e-10)
     print(f"L-infinity distance between numerical solutions of the original ODE and the quadratized one: "
           f"{np.linalg.norm(num_res[:, 0] - num_res_quad[:, 0], np.inf)}")
+
+    import matplotlib.pyplot as plt
+    plt.plot(ts, np.abs(num_res - num_res_quad))
+    plt.title("Absolute difference between solutions of original and quadratized systems")
+    plt.savefig("../docs/source/images/num_integration_abs_diff.png")

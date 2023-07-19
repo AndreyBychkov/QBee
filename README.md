@@ -26,19 +26,34 @@ The problem of *quadratization* is, given a system of ODEs with polynomial right
 system with quadratic right-hand side by introducing as few new variables as possible. We will explain it using toy
 example. Consider the system
 
-<img alt="\begin{cases} x_1&#39; = x_1 x_2 \\ x_2&#39; = -x_1 x_2^3 \end{cases}" height="135" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}&amp;space;\begin{cases}&amp;space;x_1&#39;&amp;space;=&amp;space;x_1&amp;space;x_2&amp;space;\\&amp;space;x_2&#39;&amp;space;=&amp;space;-x_1&amp;space;x_2^3&amp;space;\end{cases}}" width="200"/>
+$$
+\begin{cases}
+x_1' = x_1 x_2 \\
+x_2' = -x_1 x_2^3
+\end{cases}
+$$
 
-An example of quadratization of this system will be a new variable
+An example of quadratization of this system will be a singular vector of new variables
 
-<img alt="y = x_1 x_2^2" height="60" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;amp;amp;space;\huge&amp;amp;amp;space;{\color{DarkOrange}y&amp;amp;amp;space;=&amp;amp;amp;space;x_1&amp;amp;amp;space;x_2^2}" width="150"/>
+$$
+[y' = x_2 y - 2y^2]
+$$
 
 leading to the following ODE
 
-<img alt="y&#39; = x_2 y - 2y^2" height="50" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}y&#39;&amp;space;=&amp;space;x_2&amp;space;y&amp;space;-&amp;space;2y^2}" width="250"/>
+$$
+y' = x_2 y - 2y^2
+$$
 
 Thus, we attained the system with quadratic right-hand side
 
-<img alt="\begin{cases} x_1&#39; = x_1 x_2 \\ x_2&#39; = -x_2 y \\ y&#39; = x_2 y - 2y^2 \end{cases}" height="202" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}\begin{cases}&amp;space;x_1&#39;&amp;space;=&amp;space;x_1&amp;space;x_2&amp;space;\\&amp;space;x_2&#39;&amp;space;=&amp;space;-x_2&amp;space;y&amp;space;\\&amp;space;y&#39;&amp;space;=&amp;space;x_2&amp;space;y&amp;space;-&amp;space;2y^2&amp;space;\end{cases}}" width="300"/>
+$$
+\begin{cases}
+x_1' = x_1 x_2 \\
+x_2 ' = -x^2 y \\
+y' = x_2 y - 2y^2
+\end{cases}
+$$
 
 We used only one new variable, so we achieved an *optimal* quadratization.
 
@@ -63,7 +78,14 @@ from qbee import *
 
 For example, we will take the **A1** system from [Swischuk et al.'2020](https://arxiv.org/abs/1908.03620)
 
-<img alt="{\color{DarkOrange} \begin{cases} c_1&#39; = -A \exp(-E_a / (R_u T)) c_1 ^{0.2} c_2^{1.3}\\ c_2&#39; = 2c_1&#39; \\ c_3&#39; = -c_1&#39; \\ c_4&#39; = -2 c_1&#39; \end{cases}}" height="250" src="https://latex.codecogs.com/png.latex?\dpi{200}&amp;space;\huge&amp;space;{\color{DarkOrange}&amp;space;\begin{cases}&amp;space;c_1&#39;&amp;space;=&amp;space;-A&amp;space;\exp(-E_a&amp;space;/&amp;space;(R_u&amp;space;T))&amp;space;c_1&amp;space;^{0.2}&amp;space;c_2^{1.3}\\&amp;space;c_2&#39;&amp;space;=&amp;space;2c_1&#39;&amp;space;\\&amp;space;c_3&#39;&amp;space;=&amp;space;-c_1&#39;&amp;space;\\&amp;space;c_4&#39;&amp;space;=&amp;space;-2&amp;space;c_1&#39;&amp;space;\end{cases}}" width="550"/>
+$$
+\begin{cases}
+c_1' = -A \exp(-E_a / (R_u T)) c_1 ^{0.2} c_2^{1.3} \\
+c_2 ' = 2c_1' \\
+c_3' = -c_1' \\
+c_4' = -2 c_1'
+\end{cases}
+$$
 
 The parameters in the system are `A, Ea and Ru`, and the others are either state variables or inputs.
 So, let's define them with the system in code:
