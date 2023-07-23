@@ -153,7 +153,7 @@ def quadratize(poly_system: list[PolyElement] | list[(sp.Symbol, sp.Expr)] | Equ
         if not poly_system.is_polynomial():
             raise Exception("Nonpolynomial system is passed to `quadratize` function.")
 
-        if input_der_orders is None:
+        if not input_der_orders:
             if input_free:
                 input_der_orders = {var: 0 for var in poly_system.variables.input if "'" not in str_qbee(var)}
             else:
