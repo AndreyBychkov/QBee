@@ -401,7 +401,7 @@ class QuadratizationResult:
     def introduced_variables(self) -> list:
         poly_vars = self.polynomialization.introduced_variables if self.polynomialization else []
         quad_rhs = [monom2PolyElem(v, self.quadratization.gen_symbols) for v in self.quadratization.introduced_vars]
-        quad_vars = [sp.Eq(dx, fx) for dx, fx in zip(self._quad_variables, quad_rhs)]
+        quad_vars = [sp.Eq(dx, fx, evaluate=False) for dx, fx in zip(self._quad_variables, quad_rhs)]
         return poly_vars + quad_vars
 
     def exclude_variables(self, variables):
