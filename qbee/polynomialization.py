@@ -230,10 +230,11 @@ class EquationSystem:
                 replaced_non_pow_lazy = expr.subs(
                     {v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
             replaced_pow_lazy = replaced_non_pow_lazy \
+                .replace(sp.Pow, self._replace_symbolic_pow) \
                 .replace(sp.Pow, self._replace_irrational_pow) \
                 .replace(sp.Pow, self._replace_negative_integer_pow)
         except Exception as e:
-            warnings.warn("Substituting new variables failed to produce the expected calculations,"
+            earnings.warn("Substituting new variables failed to produce the expected calculations,"
                           " so the calculation was done in an alternative mode. "
                           "If you see this message, please let us know in the Issues: "
                           "https://github.com/AndreyBychkov/QBee/issues", RuntimeWarning)
@@ -246,6 +247,7 @@ class EquationSystem:
         # eager evaluation
         replaced_non_pow = expr.subs({v: k for k, v in self._substitution_equations.items() if not v.is_Pow})
         replaced_pow = replaced_non_pow \
+            .replace(sp.Pow, self._replace_symbolic_pow) \
             .replace(sp.Pow, self._replace_irrational_pow) \
             .replace(sp.Pow, self._replace_negative_integer_pow)
         return replaced_pow if self._is_expr_polynomial(replaced_pow) else None
@@ -261,6 +263,14 @@ class EquationSystem:
             new_vars = [k for k, v in self._substitution_equations.items()
                         if v.is_Pow and v.base == base and math.isclose(v.exp, exp)]
             return new_vars[0] if len(new_vars) != 0 else base ** exp
+        return base ** exp
+
+    def _replace_symbolic_pow(self, base, exp):
+        if not (exp.is_Float or exp.is_Integer):
+            for k, v in self._substitution_equations.items():
+                if v.is_Pow and v.base == base:
+                    if sp.simplify(exp / v.exp).is_Integer:
+                        return k ** sp.simplify(exp / v.exp)
         return base ** exp
 
     def _is_expr_polynomial(self, expr: sp.Expr):
@@ -457,8 +467,17 @@ def available_substitutions(system: EquationSystem) -> set[sp.Expr]:
     return filter_laurent_monoms(system, unused_subs)
 
 
-def find_pow(values: Collection[sp.Expr], pow: sp.Pow) -> sp.Pow | None:
-    all_matches = [v for v in values if v.is_Pow and v.base == pow.base and math.isclose(v.exp, pow.exp)]
+def find_pow(values: Collection[sp.Expr], pw: sp.Pow) -> sp.Pow | None:
+    all_matches = []
+    numtypes = (sp.core.numbers.Float, sp.core.numbers.Integer, float, int)
+    for v in values:
+        if v.is_Pow and v.base == pw.base:
+            if type(v.exp) in numtypes and type(pw.exp) in numtypes:
+                if math.isclose(v.exp, pw.exp):
+                    all_matches.append(v)
+            else:
+                if sp.simplify(v.exp - pw.exp) == 0:
+                    all_matches.append(v)
     if all_matches:
         return all_matches[0]
     return None

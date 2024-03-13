@@ -94,6 +94,30 @@ def test_nested_functions():
     res = polynomialize(system)
     assert len(res) == 4
 
+def test_parametric_pow():
+    x = functions("x")
+    a = parameters("a")
+    system = [(x, x**a)]
+    res = polynomialize(system)
+    assert len(res) == 2
+
+    x = functions("x", laurent=False)
+    res = polynomialize([(x, x**a)])
+    assert len(res) == 3
+
+    res = polynomialize([(x, x**(-a))])
+    assert len(res) == 3
+
+def test_hill():
+    x = functions("x")
+    a, b = parameters("a b")
+    system = [(x, 1 / (a + x**b))]
+    res = polynomialize(system)
+    assert len(res) == 3
+
+    x = functions("x", laurent=False)
+    res = polynomialize([(x, 1 / (a + x**b))])
+    assert len(res) == 4
 
 def test_parameter():
     x, y = functions("x, y", laurent=False)
