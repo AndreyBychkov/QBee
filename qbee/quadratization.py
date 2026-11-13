@@ -449,6 +449,7 @@ class Algorithm:
         self._pruning_funs = list(pruning_funcs) if pruning_funcs is not None else [lambda a, b, *_: False]
         self._sys_cond = list(system_conditions) if system_conditions else [lambda v: True]
         self._nodes_traversed = 0
+        self._quadratizations_found = 0
         self.preliminary_upper_bound = math.inf
 
         if len(list(poly_system.vars)[0]) > 1:
@@ -559,6 +560,8 @@ class BranchAndBound(Algorithm):
         # The order of these blocks is important: pruning rules assume that
         # the input partial result is not a quadratization
         if part_res.is_quadratized() and all(cond(part_res) for cond in self._sys_cond):
+            if part_res.new_vars_count() < best_nvars:   # the caller keeps only results below its best
+                self._quadratizations_found += 1
             return part_res.new_vars_count(), part_res, 1
         if any(map(lambda f: f(self, part_res, best_nvars), self._pruning_funs)) or QUAD_ALGORITHM_INTERRUPTED:
             return math.inf, None, 1
@@ -581,6 +584,7 @@ class BranchAndBound(Algorithm):
     @logged(is_stop=True)
     def _final_iter(self):
         self._nodes_traversed = 0
+        self._quadratizations_found = 0
 
         global QUAD_ALGORITHM_INTERRUPTED
         QUAD_ALGORITHM_INTERRUPTED = False
@@ -619,6 +623,24 @@ def pruning_by_nodes_without_quadratization_found(algo: Algorithm, _: Polynomial
     elif algo._nodes_traversed >= nodes_processed:
         return True
     return False
+
+
+def pruning_by_quadratizations_found(algo: Algorithm, _: PolynomialSystem, *args, quadratizations: int = 1):
+    """
+    Stops a search once the algorithm has found 'quadratizations' quadratizations (by default, the first one).
+    The result is the best of those found, not necessarily an optimal one.
+
+    Use it on systems where a search for an optimal quadratization does not finish in reasonable time, but a
+    quadratization of any order is useful. With calc_upper_bound=False the result is the first quadratization found.
+    With calc_upper_bound=True (the default) the preliminary upper-bound search stops at its first quadratization, and
+    the main search stops at its first one within that bound: often smaller, but slower.
+
+    Example:
+        >>> from functools import partial
+        >>> res = quadratize(system, pruning_functions=[pruning_by_quadratizations_found, *default_pruning_rules])
+        >>> pruning = partial(pruning_by_quadratizations_found, quadratizations=5)  # the best of the first five
+    """
+    return algo._quadratizations_found >= quadratizations
 
 
 def pruning_by_elapsed_time(algo: Algorithm, system: PolynomialSystem, *args, start_t, max_t):
