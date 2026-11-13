@@ -318,6 +318,16 @@ def apply_quadratization(polynomials: List[PolyElement], quadratization: List[Tu
 
 
 def monom2PolyElem(monom: tuple, gens):
+    """
+    The monomial prod(gen ** e) of `gens` with exponents `monom`, which may be negative (Laurent monomials).
+
+    `gens` are sympy expressions or the generators of a polynomial ring, in the ring's order. In a ring the term is
+    built from its exponent tuple: sympy's PolyElement ** does not take negative exponents (sympy 1.14).
+    """
+    gens = tuple(gens)
+    if gens and isinstance(gens[0], PolyElement) and gens == tuple(gens[0].ring.gens) and len(monom) == len(gens):
+        ring = gens[0].ring
+        return ring({tuple(monom): ring.domain.one})
     return sp.prod([gen ** e for gen, e in zip(gens, monom)])
 
 
