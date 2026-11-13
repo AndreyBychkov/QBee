@@ -7,4 +7,5 @@ from .quadratization import pruning_by_nodes_processed, pruning_by_vars_number, 
 from .selection import default_generation, generation_semidiscretized, default_scoring, smd_scoring, aeqd_scoring
 from .printer import print_qbee, str_qbee
 from .verification import QuadratizationCheck, is_quadratization, reduce_quadratization, result_new_variables
+from .affine_coordinates import affine_subexpressions, choose_coordinates, quadratize_affine
 from .util import functions, parameters, INDEPENDENT_VARIABLE, QBEE_CONFIG
