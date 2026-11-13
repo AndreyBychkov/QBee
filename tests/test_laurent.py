@@ -28,10 +28,12 @@ def test_solarwind_quad_only():
     coef_field = sp.FractionField(sp.QQ, ["c"])
     R, v1, v2, v3 = sp.ring("v1, v2, v3", coef_field)
     c, *_ = coef_field.gens
+    # v^(-1) as a Laurent monomial of the ring (PolyElement ** takes no negative exponent in sympy 1.14)
+    inv = lambda v: R({tuple(-e for e in v.LM): R.domain.one})  # noqa: E731
     # vt = vx * vinv - c * vx
-    v1t = (v1 + v2) * v1 ** (-1) - c * (v1 + v2)
-    v2t = (v1 + v2 + v3) * v2 ** (-1) + c * (v1 + v2 + v3)
-    v3t = (v2 + v3) * v3 ** (-1) + c * (v2 + v3)
+    v1t = (v1 + v2) * inv(v1) - c * (v1 + v2)
+    v2t = (v1 + v2 + v3) * inv(v2) + c * (v1 + v2 + v3)
+    v3t = (v2 + v3) * inv(v3) + c * (v2 + v3)
 
     quadr_system = quadratize([v1t, v2t, v3t])
     if quadr_system:
