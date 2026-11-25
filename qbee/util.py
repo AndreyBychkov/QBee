@@ -125,7 +125,7 @@ def logged(method, is_stop=False):
         if QBEE_CONFIG.logging_enabled:
             global __log_records
             if is_stop:
-                df = pd.DataFrame(__log_records, columns=['from', 'to']).applymap(str)
+                df = pd.DataFrame(__log_records, columns=['from', 'to']).astype(str)
                 df.to_feather(QBEE_CONFIG.logging_file)
                 __log_records = list()
             else:
